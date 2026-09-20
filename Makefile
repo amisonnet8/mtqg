@@ -3,7 +3,10 @@
 
 .PHONY: build fmt vet lint unit check test race trivy shellcheck
 
+# Compile every package first: a package that cmd/mtqg does not import yet
+# would otherwise be skipped, and so would its build errors.
 build:
+	go build ./...
 	go build ./cmd/mtqg
 
 # Rewrite files with the formatters enabled in .golangci.yaml.

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The lock is implemented per OS (flock and LockFileEx), so every OS runs the checks.
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # windows-latest has no GNU Make.
+      - name: Install make
+        if: runner.os == 'Windows'
+        run: choco install make -y
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          install-only: true
+      - name: make check
+        shell: bash
+        run: make check
+
+  # -race needs a C compiler, which windows-latest does not have.
+  race:
+    name: race (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: make race
+        shell: bash
+        run: make race
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: make shellcheck
+        run: make shellcheck
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.71.2
+      - name: make trivy
+        run: make trivy

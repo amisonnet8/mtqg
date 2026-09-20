@@ -10,7 +10,7 @@ import (
 
 // isolateGit keeps the developer's git configuration out of the tests: HOME and
 // GIT_CONFIG_GLOBAL point into a temporary directory.
-func isolateGit(t *testing.T) {
+func isolateGit(t testing.TB) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -20,7 +20,7 @@ func isolateGit(t *testing.T) {
 }
 
 // git runs the real git command in dir and fails the test if it fails.
-func git(t *testing.T, dir string, args ...string) string {
+func git(t testing.TB, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -34,7 +34,7 @@ func git(t *testing.T, dir string, args ...string) string {
 // newRepo creates a git repository in a temporary directory and returns its
 // physical path (so that comparisons hold where the temporary directory is
 // reached through a symbolic link, as on macOS).
-func newRepo(t *testing.T) string {
+func newRepo(t testing.TB) string {
 	t.Helper()
 	isolateGit(t)
 	dir := realPath(t, t.TempDir())
@@ -44,7 +44,7 @@ func newRepo(t *testing.T) string {
 	return dir
 }
 
-func realPath(t *testing.T, path string) string {
+func realPath(t testing.TB, path string) string {
 	t.Helper()
 	real, err := filepath.EvalSymlinks(path)
 	if err != nil {
@@ -56,7 +56,7 @@ func realPath(t *testing.T, path string) string {
 // newMtqg creates .mtqg/ inside root with the given format version and journal
 // content and returns the .mtqg/ directory. A nil journal creates no
 // journal.jsonl.
-func newMtqg(t *testing.T, root string, version string, journal *string) string {
+func newMtqg(t testing.TB, root string, version string, journal *string) string {
 	t.Helper()
 	dir := filepath.Join(root, mtqgDirName)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -75,7 +75,7 @@ func newMtqg(t *testing.T, root string, version string, journal *string) string 
 
 func str(s string) *string { return &s }
 
-func mkdir(t *testing.T, path string) string {
+func mkdir(t testing.TB, path string) string {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o750); err != nil {
 		t.Fatal(err)

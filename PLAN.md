@@ -63,15 +63,24 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 1（足場固め）：完了（2026-09-20）。Step 2（ジャーナル層）に着手。** 計画は承認済み（JSONは`encoding/json/v2`、ロックの待ち時間は5秒、`golang.org/x/sys`を追加）。進め方は次の8つの区切り：①文書（済み） ②`go get golang.org/x/sys`→`make trivy` ③`errors`・`id`・`event`（書き出し）とゴールデン ④`read` ⑤`find`・`version` ⑥`lock`・`append`と並行テスト ⑦`rewrite`と並行テスト ⑧ベンチ、`make check`・`make race`・`make trivy`。`init`、`git config user.name`・端末識別子の解決、アーカイブへの移動はStep 2に含めない（Step 3・7）。
+**段階1 Step 2（ジャーナル層）：手元では完了（2026-09-20）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 3（CLI順1）。** Step 1（足場）は完了済み（コミット`9e3bc6f`・`4bc8efd`、CIの3OSがgreen、`PostToolUse`フックの反映）。
 
-1. ~~最初のコミット~~ **済み。** `git config user.email`をこのリポジトリだけGitHubのnoreplyに上書きした（グローバルの`~/.gitconfig`は個人のGmailのまま）。コミットは、既存の文書一式（`9e3bc6f`）と、Step 1の足場（`4bc8efd`）の2つ
-2. ~~`PostToolUse`フックの反映~~ **済み。** `.claude/hooks/build.sh`と`.claude/settings.json`の`hooks`（`.go`・`go.mod`・`go.sum`の`Edit|Write`後に`make build`）。人間の許可を得て、Claude Codeが書いた。確認したこと：`shellcheck`が通る／`.go`以外・`file_path`なしでは何もしない／`.go`でビルドが通る／壊れたビルドでは終了コード2で理由が返る／実際の編集でフックが発火し、ビルドエラーがClaude Codeに届く
-3. ~~最初のpushでCIの3OSがgreenになること~~ **済み（人間が確認）。** `check`（3OS）・`race`（ubuntu・macOS）・`shellcheck`・`trivy`が通った。annotationが4件（`ubuntu-latest`の移行予告。下記「保留事項」）
+**ジャーナル層（`internal/journal/`）にあるもの**（計画は承認済み。JSONは`encoding/json/v2`、ロックの待ち時間は5秒、`golang.org/x/sys`を追加）：`errors.go`（エラーの種類）、`id.go`（UUIDv4）、`event.go`（書き出し・読み取り。JSONを触るのはここだけ）、`read.go`（`Scan`）、`find.go`（`.mtqg/`の探索）、`version.go`、`journal.go`（`Open`・`Read`）、`lock*.go`（`flock`／`LockFileEx`）、`append.go`、`rewrite.go`＋`replace_*.go`。テストは`*_test.go`（ゴールデン、別プロセスの並行、ロックを持つプロセスの`Kill`、シンボリックリンク、ベンチ）。
 
-手元で確かめたこと：`make build`・`make check`（vet・lint・単体テスト）・`make race`・`make shellcheck`・`make trivy`がすべて通る。`make test`は、e2eがまだ無いので「無い」と表示して終わるだけ（Step 8で中身を入れる）。Trivyは依存が0件のため、ライセンスの検出はまだ確かめられていない（「未確認事項」2）。
+**手元で確かめたこと：** `make build`・`make check`・`make race`（10回×3の繰り返しでも失敗なし）・`make shellcheck`・`make trivy`が通る。macOS・Windows向けに`go vet`とテストバイナリのコンパイルが通る（**実行はしていない**）。ロックを無効にする変異と、`Rewrite`からロックを外す変異で、それぞれテストが失敗することを手で確かめた（`testing.md`）。Trivyは`golang.org/x/sys`のBSD-3-Clauseを検出し、脆弱性は0件。
 
-リポジトリにあるコードは、`go.mod`、`schema.go`（`docs/reference/schema.md`をembed、`schema_test.go`で確認）、`cmd/mtqg/main.go`（空の入口）のみ。`internal/`はまだ無い（Step 2から）。
+**まだ確かめられていないこと（CIで初めて分かる）：** WindowsでのLockFileEx（別プロセスの排他、`Kill`後の解放）、Windowsでの置き換え（開いているファイルへの再試行）、macOSでのロックとシンボリックリンク（`/var`→`/private/var`）。Windowsのシンボリックリンクのテストは、権限が無ければskipされる。
+
+**実装しながら決めたこと（計画に無かったもの）：**
+- **`.mtqg/`の中はすべて`os.Root`経由**（`Journal.openRoot`）。外を指すシンボリックリンクに書かない。悪意のあるリポジトリが`journal.jsonl`や`.local`を外へのリンクとしてコミットしていても、cloneした直後に動かされたmtqgがリンク先へ書かない。gosecのG703も、除外を足さずに解消した（`journal-format.md`）
+- `Append`が`journal.jsonl`を新しく作るときの権限は`0600`（gosecのG302を、除外なしで通すため）。**`init`（Step 3）が作る`journal.jsonl`の権限は、そのとき決める**（普通のファイルとして共有されるので`0644`にしたいが、gosecの除外が要るなら確認を取る）。書き直しは、既存の権限を引き継ぐ
+- **ロックは公平ではない。** 休みなしで追記し続けると、待っている書き直しを締め出しうる。実際の使い方（短いコマンド、間に休み）では問題にならないと判断した。`lock`のコメントに書いた
+- 追記は、ファイルの末尾が改行でなければ改行を先に足す（書きかけの行に次の行がくっつかない）
+- `make build`は全パッケージをコンパイルする（`cmd/mtqg`がimportしていないパッケージのビルドエラーを、`PostToolUse`フックが見逃さないため）
+
+**性能（AMD Ryzen 9・Linux、1行約250バイト）：** 追記は1万行で0.95ms、10万行で7.7ms（毎回、全体を読んで衝突マーカーを探す。「書き込みの速さが最優先」を満たす）。読み込みは1万行で19ms、10万行で180ms（1行あたり約1.8µs）。書き直しは1万行で25ms、10万行で159ms。読み込みが10万行で目立つ点は、サンプルPJで使ってから判断する（遅ければ、読み取りの割り当てを減らす、`archive`で小さく保つ）。JSONのv1との速度比較はしていない（v2は速さではなく、正しさで選んだ）。
+
+**Step 2に含めなかったもの：** `init`と`.mtqg/`の作成、`git config user.name`・端末識別子の解決（どちらもStep 3）、アーカイブへの移動（Step 7）。
 
 **公開の方針を決めた（2026-09-20）：リポジトリは最初からpublicにする。** 完成してから公開するのではなく、未完成のまま公開し、READMEの注意書きで「まだ使わないでほしい」と伝える（下記「公開の2段階」）。GitHubリポジトリの作成と`git init`は人間が行い、済んだらStep 1に入る。
 

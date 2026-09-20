@@ -50,6 +50,12 @@ func (j *Journal) openLockFile() (*os.File, error) {
 //
 // It waits up to the lock timeout. The lock is not re-entrant: a second call
 // from the code that holds it waits until the timeout.
+//
+// The lock is not fair. A waiter gets it when it happens to try while it is
+// free, so a stream of writers that take it again the moment they let go can
+// keep a waiter out until the timeout. That does not happen with the way mtqg is
+// used (short commands, with pauses between them); the tests that write in a
+// tight loop pause between writes for the same reason.
 func (j *Journal) lock() (release func(), err error) {
 	path := j.lockPath()
 	f, err := j.openLockFile()

@@ -32,11 +32,13 @@ func TestHelperProcess(t *testing.T) {
 	switch mode {
 	case "append":
 		count, _ := strconv.Atoi(os.Getenv("MTQG_COUNT"))
+		pause, _ := strconv.Atoi(os.Getenv("MTQG_PAUSE_MS"))
 		for i := range count {
 			text := fmt.Sprintf("%s-%d", os.Getenv("MTQG_TAG"), i)
 			if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: text}); err != nil {
 				fail(err)
 			}
+			time.Sleep(time.Duration(pause) * time.Millisecond)
 		}
 	case "hold":
 		release, err := j.lock()

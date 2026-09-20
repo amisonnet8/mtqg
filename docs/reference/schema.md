@@ -125,8 +125,9 @@ AI wrote it on their behalf).
 
 ## Reading: building the current state
 
-1. Read `journal.jsonl` line by line. Lines that are not valid JSON objects are
-   skipped with a warning.
+1. Read `journal.jsonl` line by line. Blank lines are ignored. A line is
+   skipped with a warning if it is not a valid JSON object, contains invalid
+   UTF-8, or has no `id` or no `op`.
 2. Treat lines whose content is exactly identical as one event.
 3. Order events by `ts`, then by `id` for equal `ts`. **Do not rely on the
    order of lines in the file.** Clock skew between machines can reorder
@@ -221,4 +222,5 @@ diffs stay readable and identical events stay identical:
 - Append only. Write a whole line in one write.
 
 Readers must accept any valid JSON regardless of key order, spacing or
-escaping.
+escaping. Key names are case-sensitive. If a key appears more than once in one
+line, the last value is used.

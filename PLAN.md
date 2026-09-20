@@ -63,7 +63,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 1（足場固め）：完了（2026-09-20）。次はStep 2（ジャーナル層）。** Step 2に入る前に、「未確認事項」の3（`encoding/json`か`encoding/json/v2`か）と5（ロックの待ち時間）を決める。`golang.org/x/sys`の追加（ロック用）は`go get`の確認が出るので、理由を説明してから行う。Step 2は壊れやすい部分（ロック、Windowsでの置き換え、追記と書き直しの並行）なので、プランモード（Opus）で設計してから実装する。
+**段階1 Step 1（足場固め）：完了（2026-09-20）。Step 2（ジャーナル層）に着手。** 計画は承認済み（JSONは`encoding/json/v2`、ロックの待ち時間は5秒、`golang.org/x/sys`を追加）。進め方は次の8つの区切り：①文書（済み） ②`go get golang.org/x/sys`→`make trivy` ③`errors`・`id`・`event`（書き出し）とゴールデン ④`read` ⑤`find`・`version` ⑥`lock`・`append`と並行テスト ⑦`rewrite`と並行テスト ⑧ベンチ、`make check`・`make race`・`make trivy`。`init`、`git config user.name`・端末識別子の解決、アーカイブへの移動はStep 2に含めない（Step 3・7）。
 
 1. ~~最初のコミット~~ **済み。** `git config user.email`をこのリポジトリだけGitHubのnoreplyに上書きした（グローバルの`~/.gitconfig`は個人のGmailのまま）。コミットは、既存の文書一式（`9e3bc6f`）と、Step 1の足場（`4bc8efd`）の2つ
 2. ~~`PostToolUse`フックの反映~~ **済み。** `.claude/hooks/build.sh`と`.claude/settings.json`の`hooks`（`.go`・`go.mod`・`go.sum`の`Edit|Write`後に`make build`）。人間の許可を得て、Claude Codeが書いた。確認したこと：`shellcheck`が通る／`.go`以外・`file_path`なしでは何もしない／`.go`でビルドが通る／壊れたビルドでは終了コード2で理由が返る／実際の編集でフックが発火し、ビルドエラーがClaude Codeに届く
@@ -83,9 +83,9 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 1. ~~Goのモジュールパス。~~ **確定：`github.com/amisonnet8/mtqg`**（コマンドは`github.com/amisonnet8/mtqg/cmd/mtqg`）
 2. **Trivyのライセンス検出がGoの依存で効くか。** `trivy.yaml`は配置済み（脆弱性とライセンス、HIGH・CRITICALで失敗、ライセンスの分類はTrivyの既定＝GPL系は失敗、MIT・BSD・Apache・MPLは通る）。最初の依存を足したとき（`go mod download`後）に、依存のライセンスが実際に検出・表示されることを確かめる
-3. **JSONの書き出しに`encoding/json`と`encoding/json/v2`（Go 1.27）のどちらを使うか。** 書き出し規則（`.claude/rules/journal-format.md`）を満たせばどちらでもよい。v2の既定のエスケープの挙動を確かめて決める
+3. ~~JSONの書き出しに`encoding/json`と`encoding/json/v2`のどちらを使うか。~~ **確定：`encoding/json/v2`**（2026-09-20）。v1は`SetEscapeHTML(false)`でもU+2028・U+2029を常にエスケープし、不正なUTF-8を黙って置き換える。理由は`docs/design/history.md`。JSONを扱うのは`internal/journal/event.go`だけにして、ゴールデンテストで固定する
 4. **e2eの仕組み。** `testscript`を第一候補として、Step 3〜8の間に決める。決めたら`.claude/rules/testing.md`に追記する
-5. **ロックの待ち時間**（何秒待ってエラーにするか）
+5. ~~ロックの待ち時間~~ **確定：5秒**（2026-09-20）。ロックを持つのは追記の一瞬か書き直しの間だけなので、5秒待って取れなければ、ロックを持ったまま固まったプロセスがいるとみなす。テストでは短い値に差し替えられるようにする
 
 ## 保留事項
 

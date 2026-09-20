@@ -138,6 +138,50 @@ func TestLockTimeout(t *testing.T) {
 	}
 }
 
+// Several processes that start together in a fresh clone all find .local/
+// missing. Every one of them must get the lock, none may fail because another
+// is making the directory at the same moment. A run of CI on macOS failed here
+// once: "openat .local/lock: no such file or directory".
+func TestLockWhenManyStartTogetherWithoutTheLocalDirectory(t *testing.T) {
+	const starters, rounds = 16, 60
+	j := newJournal(t, nil)
+	local := filepath.Join(j.loc.Dir, localName)
+
+	for round := range rounds {
+		if err := os.RemoveAll(local); err != nil {
+			t.Fatal(err)
+		}
+		var (
+			ready sync.WaitGroup
+			done  sync.WaitGroup
+			start = make(chan struct{})
+			errs  = make(chan error, starters)
+		)
+		for range starters {
+			ready.Add(1)
+			done.Add(1)
+			go func() {
+				defer done.Done()
+				ready.Done()
+				<-start // all of them go at once
+				release, err := j.lock()
+				if err != nil {
+					errs <- err
+					return
+				}
+				release()
+			}()
+		}
+		ready.Wait()
+		close(start)
+		done.Wait()
+		close(errs)
+		for err := range errs {
+			t.Fatalf("round %d: %v", round, err)
+		}
+	}
+}
+
 func TestLockIsNotReentrant(t *testing.T) {
 	j := newJournal(t, nil)
 	j.opts.LockTimeout = 50 * time.Millisecond

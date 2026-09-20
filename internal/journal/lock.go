@@ -1,7 +1,9 @@
 package journal
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,22 +26,43 @@ func (j *Journal) lockPath() string {
 	return filepath.Join(j.loc.Dir, localName, lockName)
 }
 
-// openLockFile opens the lock file, creating it and .local/ when needed. .local/
-// is not committed, so a fresh clone does not have it.
+// lockOpenAttempts bounds how often opening the lock file is tried again when
+// .local/ is not there.
+const lockOpenAttempts = 20
+
+// openLockFile opens the lock file, creating it and .local/ when needed.
+//
+// .local/ is not committed, so a fresh clone does not have it, and it may be
+// deleted at any time. The file is opened first and .local/ is only made when it
+// is missing: the common case then costs one call, and several processes that
+// start together in a fresh clone (agents running commands in parallel) do not
+// all make the directory at once. A missing .local/ is tried again after making
+// it, a few times, because opening the file can still fail with "no such file"
+// while another process is creating the directory (seen on macOS in CI).
 func (j *Journal) openLockFile() (*os.File, error) {
 	root, err := j.openRoot()
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = root.Close() }()
-	if err := root.MkdirAll(localName, 0o750); err != nil {
-		return nil, fmt.Errorf("journal: %w", err)
+
+	name := filepath.Join(localName, lockName)
+	var missing error
+	for attempt := range lockOpenAttempts {
+		f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE, 0o600)
+		if err == nil {
+			return f, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("journal: %w", err)
+		}
+		missing = err
+		if err := root.MkdirAll(localName, 0o750); err != nil {
+			return nil, fmt.Errorf("journal: %w", err)
+		}
+		time.Sleep(time.Duration(attempt) * time.Millisecond)
 	}
-	f, err := root.OpenFile(filepath.Join(localName, lockName), os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("journal: %w", err)
-	}
-	return f, nil
+	return nil, fmt.Errorf("journal: %w", missing)
 }
 
 // lock takes the write lock and returns the function that gives it back.

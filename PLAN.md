@@ -69,6 +69,8 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **手元で確かめたこと：** `make build`・`make check`・`make race`（10回×3の繰り返しでも失敗なし）・`make shellcheck`・`make trivy`が通る。macOS・Windows向けに`go vet`とテストバイナリのコンパイルが通る（**実行はしていない**）。ロックを無効にする変異と、`Rewrite`からロックを外す変異で、それぞれテストが失敗することを手で確かめた（`testing.md`）。Trivyは`golang.org/x/sys`のBSD-3-Clauseを検出し、脆弱性は0件。
 
+**CIで見つかった問題（2026-09-20、macOS）：** `TestAppendConcurrentGoroutines`が`openat .local/lock: no such file or directory`で失敗した（`check`と`race`の2件。同じ原因）。`.local/`が無い状態（cloneした直後）で、複数のgoroutineが同時に`MkdirAll`と`OpenFile`をすると起きる。**原因は特定できていない**：Linuxでは、3000回×16並行のストレステストでも再現せず、標準ライブラリの`os.Root`にdarwin向けの特別な処理も見当たらない。対策として、①ロックのファイルを先に開き、`.local/`が無いときだけ作る（通常時は`MkdirAll`を呼ばない）、②`no such file`は上限つきで再試行する（`.local/`は「いつ消えても困らない」ものなので、開く直前に消えた場合にも正しい）、③macOSのCIで競合を毎回検出するテスト（`TestLockWhenManyStartTogetherWithoutTheLocalDirectory`）を足した。**この修正がmacOSで効くかは、次のCIで初めて分かる。** 効かなければ、原因を掘る（macOSのカーネルの挙動か、Goの不具合か）。
+
 **まだ確かめられていないこと（CIで初めて分かる）：** WindowsでのLockFileEx（別プロセスの排他、`Kill`後の解放）、Windowsでの置き換え（開いているファイルへの再試行）、macOSでのロックとシンボリックリンク（`/var`→`/private/var`）。Windowsのシンボリックリンクのテストは、権限が無ければskipされる。
 
 **実装しながら決めたこと（計画に無かったもの）：**

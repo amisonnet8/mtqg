@@ -82,7 +82,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 ## 未確認事項（実装前に決める・確かめる）
 
 1. ~~Goのモジュールパス。~~ **確定：`github.com/amisonnet8/mtqg`**（コマンドは`github.com/amisonnet8/mtqg/cmd/mtqg`）
-2. **Trivyのライセンス検出がGoの依存で効くか。** `trivy.yaml`は配置済み（脆弱性とライセンス、HIGH・CRITICALで失敗、ライセンスの分類はTrivyの既定＝GPL系は失敗、MIT・BSD・Apache・MPLは通る）。最初の依存を足したとき（`go mod download`後）に、依存のライセンスが実際に検出・表示されることを確かめる
+2. ~~Trivyのライセンス検出がGoの依存で効くか。~~ **確認済み（2026-09-20）：効く。** `golang.org/x/sys`を足した後、閾値を一時的に下げて（`--severity UNKNOWN,LOW,...`、設定ファイルは変更しない）実行すると、`golang.org/x/sys`のBSD-3-Clause（分類はnotice、深刻度はLOW）が検出・表示された。既定の閾値（HIGH・CRITICAL）では通る。依存を足したら同じ手順で確かめること
 3. ~~JSONの書き出しに`encoding/json`と`encoding/json/v2`のどちらを使うか。~~ **確定：`encoding/json/v2`**（2026-09-20）。v1は`SetEscapeHTML(false)`でもU+2028・U+2029を常にエスケープし、不正なUTF-8を黙って置き換える。理由は`docs/design/history.md`。JSONを扱うのは`internal/journal/event.go`だけにして、ゴールデンテストで固定する
 4. **e2eの仕組み。** `testscript`を第一候補として、Step 3〜8の間に決める。決めたら`.claude/rules/testing.md`に追記する
 5. ~~ロックの待ち時間~~ **確定：5秒**（2026-09-20）。ロックを持つのは追記の一瞬か書き直しの間だけなので、5秒待って取れなければ、ロックを持ったまま固まったプロセスがいるとみなす。テストでは短い値に差し替えられるようにする

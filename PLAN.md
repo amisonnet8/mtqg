@@ -63,11 +63,11 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 1（足場固め）：ファイルの作成と手元の動作確認は完了（2026-09-20）。次の3つが済めばStep 1完了。**
+**段階1 Step 1（足場固め）：残りは`PostToolUse`フックの反映だけ（2026-09-20時点）。**
 
-1. **最初のコミット**：`git config user.email`をGitHubのnoreplyに直してから（グローバルの`~/.gitconfig`は個人のGmailのままなので、このリポジトリだけ上書きする）。コミットは、既存の文書一式と、Step 1の足場の2つに分ける
+1. ~~最初のコミット~~ **済み。** `git config user.email`をこのリポジトリだけGitHubのnoreplyに上書きした（グローバルの`~/.gitconfig`は個人のGmailのまま）。コミットは、既存の文書一式（`9e3bc6f`）と、Step 1の足場（`4bc8efd`）の2つ
 2. **`PostToolUse`フックの反映**：提案済み（下記「保留事項」）。`.claude/settings.json`は人間が書き換える
-3. **最初のpushでCIの3OSがgreenになること**：`.github/workflows/ci.yml`の構文は、ローカルにYAMLの検証手段が無く未検証。Windowsでの`choco install make`、macOSの`-race`、Trivyの脆弱性DBの取得（ghcrの取得制限）は、初回のCIで初めて確かめられる
+3. ~~最初のpushでCIの3OSがgreenになること~~ **済み（人間が確認）。** `check`（3OS）・`race`（ubuntu・macOS）・`shellcheck`・`trivy`が通った。annotationが4件（`ubuntu-latest`の移行予告。下記「保留事項」）
 
 手元で確かめたこと：`make build`・`make check`（vet・lint・単体テスト）・`make race`・`make shellcheck`・`make trivy`がすべて通る。`make test`は、e2eがまだ無いので「無い」と表示して終わるだけ（Step 8で中身を入れる）。Trivyは依存が0件のため、ライセンスの検出はまだ確かめられていない（「未確認事項」2）。
 
@@ -90,6 +90,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 ## 保留事項
 
 - **`PostToolUse`フックが未設定（2026-09-20に提案済み、反映待ち）。** `Makefile`ができたので、`.claude/hooks/`にスクリプトを置き、`.go`・`go.mod`・`go.sum`の編集後に`make build`を実行し、失敗時は理由をClaudeへ返す形を提案した。`.claude/settings.json`は人間が管理しているので、設定の変更は提案にとどめる。スクリプトはShellCheckの対象になる（`make shellcheck`）。複数ファイルにまたがる編集の途中は、まだ書いていないファイルを参照してビルドが一時的に失敗し、その通知が出る点に注意
+- **`ubuntu-latest`がUbuntu 26.04に移行する（2026-10-19開始、11-19完了。段階的）。** 今は対応しない：警告だけでCIは通っており、移行期間中にCIが自動で新しいイメージで動く。`ubuntu-latest`を前提にしているのは`.github/workflows/ci.yml`と`.claude/rules/testing.md`。**10月中旬に見直すこと。** 移行期間中にCIが落ちたら、`ubuntu-24.04`に一時的に固定して原因を調べ、直してから戻す。影響を受けそうなのは、`shellcheck`ジョブが使うプリインストールの`shellcheck`と、`race`が使う`gcc`（移行の告知にこれらのバージョン変更の記載は無く、変わらないとも言えない）。`ubuntu-26.04`のラベルは今でも使える。出典：actions/runner-images#14748
 - **devcontainer.json反映待ちリスト**：コンテナをリビルドせずに進める間、手動でインストール・設定したものはここに追記し、区切りでまとめて`.devcontainer/`へ反映する
   - （なし）
 - **サンプルPJの題材は未定**（設計§12.3）。急がない（始めるのはStep 3以降）。選び方の基準：数日〜2週間程度、仕様に迷いどころがある（qaとglossaryが自然に生まれる）、AIエージェントと一緒に作る、少しはブランチ・worktree・別端末で並行して記録する

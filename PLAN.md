@@ -63,15 +63,15 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 2（ジャーナル層）：手元では完了（2026-09-20）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 3（CLI順1）。** Step 1（足場）は完了済み（コミット`9e3bc6f`・`4bc8efd`、CIの3OSがgreen、`PostToolUse`フックの反映）。
+**段階1 Step 2（ジャーナル層）：完了（2026-09-20、CIの3OSがgreen）。次はStep 3（CLI順1）。** Step 1（足場）は完了済み（コミット`9e3bc6f`・`4bc8efd`、CIの3OSがgreen、`PostToolUse`フックの反映）。
 
 **ジャーナル層（`internal/journal/`）にあるもの**（計画は承認済み。JSONは`encoding/json/v2`、ロックの待ち時間は5秒、`golang.org/x/sys`を追加）：`errors.go`（エラーの種類）、`id.go`（UUIDv4）、`event.go`（書き出し・読み取り。JSONを触るのはここだけ）、`read.go`（`Scan`）、`find.go`（`.mtqg/`の探索）、`version.go`、`journal.go`（`Open`・`Read`）、`lock*.go`（`flock`／`LockFileEx`）、`append.go`、`rewrite.go`＋`replace_*.go`。テストは`*_test.go`（ゴールデン、別プロセスの並行、ロックを持つプロセスの`Kill`、シンボリックリンク、ベンチ）。
 
-**手元で確かめたこと：** `make build`・`make check`・`make race`（10回×3の繰り返しでも失敗なし）・`make shellcheck`・`make trivy`が通る。macOS・Windows向けに`go vet`とテストバイナリのコンパイルが通る（**実行はしていない**）。ロックを無効にする変異と、`Rewrite`からロックを外す変異で、それぞれテストが失敗することを手で確かめた（`testing.md`）。Trivyは`golang.org/x/sys`のBSD-3-Clauseを検出し、脆弱性は0件。
+**手元で確かめたこと：** `make build`・`make check`・`make race`（10回×3の繰り返しでも失敗なし）・`make shellcheck`・`make trivy`が通る。macOS・Windows向けに`go vet`とテストバイナリのコンパイルが通る（実行はCIで確認）。ロックを無効にする変異と、`Rewrite`からロックを外す変異で、それぞれテストが失敗することを手で確かめた（`testing.md`）。Trivyは`golang.org/x/sys`のBSD-3-Clauseを検出し、脆弱性は0件。
 
-**CIで見つかった問題（2026-09-20、macOS）：** `TestAppendConcurrentGoroutines`が`openat .local/lock: no such file or directory`で失敗した（`check`と`race`の2件。同じ原因）。`.local/`が無い状態（cloneした直後）で、複数のgoroutineが同時に`MkdirAll`と`OpenFile`をすると起きる。**原因は特定できていない**：Linuxでは、3000回×16並行のストレステストでも再現せず、標準ライブラリの`os.Root`にdarwin向けの特別な処理も見当たらない。対策として、①ロックのファイルを先に開き、`.local/`が無いときだけ作る（通常時は`MkdirAll`を呼ばない）、②`no such file`は上限つきで再試行する（`.local/`は「いつ消えても困らない」ものなので、開く直前に消えた場合にも正しい）、③macOSのCIで競合を毎回検出するテスト（`TestLockWhenManyStartTogetherWithoutTheLocalDirectory`）を足した。**この修正がmacOSで効くかは、次のCIで初めて分かる。** 効かなければ、原因を掘る（macOSのカーネルの挙動か、Goの不具合か）。
+**CIで見つかった問題（2026-09-20、macOS）：** `TestAppendConcurrentGoroutines`が`openat .local/lock: no such file or directory`で失敗した（`check`と`race`の2件。同じ原因）。`.local/`が無い状態（cloneした直後）で、複数のgoroutineが同時に`MkdirAll`と`OpenFile`をすると起きる。**原因は特定できていない**：Linuxでは、3000回×16並行のストレステストでも再現せず、標準ライブラリの`os.Root`にdarwin向けの特別な処理も見当たらない。対策として、①ロックのファイルを先に開き、`.local/`が無いときだけ作る（通常時は`MkdirAll`を呼ばない）、②`no such file`は上限つきで再試行する（`.local/`は「いつ消えても困らない」ものなので、開く直前に消えた場合にも正しい）、③macOSのCIで競合を毎回検出するテスト（`TestLockWhenManyStartTogetherWithoutTheLocalDirectory`）を足した。**この修正でmacOSのCIが通った（人間が確認）。** ただし原因は特定できないまま（macOSのカーネルの挙動か、Goの不具合かは不明）。再発したら、`TestLockWhenManyStartTogetherWithoutTheLocalDirectory`が検出する。
 
-**まだ確かめられていないこと（CIで初めて分かる）：** WindowsでのLockFileEx（別プロセスの排他、`Kill`後の解放）、Windowsでの置き換え（開いているファイルへの再試行）、macOSでのロックとシンボリックリンク（`/var`→`/private/var`）。Windowsのシンボリックリンクのテストは、権限が無ければskipされる。
+**CIで確かめたこと（人間が確認、3OSがgreen）：** WindowsでのLockFileEx（別プロセスの排他、`Kill`後の解放）、Windowsでの置き換え（開いているファイルへの再試行）、macOSでのロックとシンボリックリンク（`/var`→`/private/var`）、`make race`（ubuntu・macOS）。Windowsのシンボリックリンクのテストは、権限が無ければskipされる（skipされたかは未確認）。
 
 **実装しながら決めたこと（計画に無かったもの）：**
 - **`.mtqg/`の中はすべて`os.Root`経由**（`Journal.openRoot`）。外を指すシンボリックリンクに書かない。悪意のあるリポジトリが`journal.jsonl`や`.local`を外へのリンクとしてコミットしていても、cloneした直後に動かされたmtqgがリンク先へ書かない。gosecのG703も、除外を足さずに解消した（`journal-format.md`）

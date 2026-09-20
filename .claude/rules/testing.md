@@ -1,0 +1,99 @@
+# テスト方針
+
+理由は設計§10.10。
+
+## 開発環境の前提
+
+開発者の手元環境は**Linux（devcontainer）のみ**。Windows・macOSでの動作確認は手元では行わず、GitHub Actionsのホステッドランナーに委ねる。
+
+| 対象 | 進め方 |
+| :--- | :--- |
+| コア（ジャーナル層・モデル層） | Linux・Goだけで開発し、ロジックの正しさを固める。フィードバックを最速に保つ |
+| クロスプラットフォーム（Windows・macOS） | 開発初期からGitHub Actionsの3OSマトリクスで回す。**ロックの実装がOSで分かれる**（`flock`と`LockFileEx`）ため、後回しにしない |
+| 依存の脆弱性・ライセンス | `trivy`（下記） |
+| シェルスクリプト | `shellcheck`（下記） |
+
+## 実装後の動作確認
+
+実装したら、ビルド確認に加えて実際の動作確認を行うこと。ロジック上正しそうに見えても、動かして初めて見つかる不具合はある。
+
+- `make check`（fmt・vet・lint・単体テスト）は作業の区切りで必ず通す
+- e2e（`make test`）を走らせる粒度は作業規模で判断する
+  - 小規模な修正（数行、1関数内）は、一連の作業の最後に1回でよい
+  - 複数ファイルにまたがる変更、ジャーナル層・ロック・マージに関わる変更は、各ステップの区切りごとに実行する
+  - 迷ったら実行する側に倒す
+
+## Goのテスト
+
+- コア（ジャーナル層・モデル層）は**表示と切り離して単体でテストする**
+- 一時ファイル・ディレクトリは`t.TempDir()`で作る。作成も後片付けもテストの仕組みに任せ、`rm -rf`で片付けない
+- gitを使うテストは**本物の`git`コマンド**で一時リポジトリを作る。gitの動きを模したものに置き換えない
+- テスト内のgitは、開発者の設定の影響を受けないようにする。`HOME`と`GIT_CONFIG_GLOBAL`を一時ディレクトリに向け、`user.name`・`user.email`はテスト内で設定する（`t.Setenv`）
+- ロックは、複数のgoroutine・複数のプロセスから同時に書いて、行が欠けないこと・混ざらないことを確かめる。書き直し（`undo`・`archive`）と追記を同時に走らせても行が消えないことも確かめる
+
+## mtqg固有の検証項目
+
+単体テストでは確かめにくい、**複数のクローンやブランチをまたぐ動き**がmtqgの設計の芯である。e2eで押さえること。
+
+- 2つのクローン（またはworktree）でそれぞれ記録し、マージして両方の記録が残る（unionマージ）
+- unionマージ後に行順が混ざっても、状態が正しく組み立てられる
+- `.gitattributes`のマージ指定が効かない形で衝突させ、衝突マーカーがある状態で「読み込みは警告、書き込みは拒否」になる
+- 衝突マーカーを消して両側を残せば、正しく読める
+- 同じ`from`から別々に状態を変えると`review`に出る
+- `archive`した後、archive前に分岐していたブランチをマージしても壊れない。`archive/`のファイルを`cat >>`で戻すと元どおりになる
+- worktreeを追加しても、それぞれの`.mtqg/.local/`で排他が分かれ、互いに干渉しない
+- `.mtqg/.local/`を消しても、次のコマンドが正しく動く（ロックと`tmp/`を作り直す）
+- 同じ`.mtqg/`を別のパス（シンボリックリンク経由など）から開いても、同じロックで排他される
+- 前方一致が曖昧なIDを渡すと、候補を完全なIDで並べて止まる
+- `.mtqg/`の探索（リポジトリの外、サブディレクトリ、サブモジュール、既存の`.mtqg/`への`init`）
+- `version`が知らない番号のとき、読み書きとも断る
+
+## lint
+
+- `golangci-lint`（`.golangci.yaml`、v2.13.2で`golangci-lint config verify`済み。devcontainerも同じ版で固定）
+- `depguard`で層の依存の向き（`cli → model → journal`）とgitライブラリ（go-git）の禁止を、`forbidigo`で`internal/cli`・`cmd`以外の`fmt.Print`系を機械的に検査する
+- **ルールを破る指摘が出たら、除外を足すのではなく配置を見直すこと。** 除外（`//nolint`や`exclusions`）を足す必要があるときは、理由を説明して確認を取る。`//nolint`には対象のlinterと理由を必ず書く（`nolintlint`で検査される）
+
+## e2eとdocsの例の確認
+
+- e2eは**シェルではなくGoで書く**。第一候補はGoの`testscript`（`github.com/rogpeppe/go-internal/testscript`）。「このコマンドを打つと、この出力になる」をテキストファイルに書く形で、ビルドした`mtqg`と本物の`git`を組み合わせて動かす
+- `docs/reference/`などに載せるコマンドの実行例と出力例は、**実際に動かして確かめたもの**にする。e2eのテストから例を取る（または突き合わせる）仕組みで機械的に担保する
+- 英語版（記録の中身が英語）と日本語版（記録の中身が日本語）で例の中身が違うので、確認の対象は両方になる。記録の中身が日本語でも表示が崩れない（桁の揃え、切り詰め）ことの確認も兼ねる
+- どこまで作り込むかは実装しながら決める。仕組みを決めたらここに追記すること
+
+## Trivy：既知の脆弱性とライセンス
+
+- `trivy fs`で、依存モジュールの**既知の脆弱性（CVE）**と**ライセンス**を検査する（`make trivy`）
+- mtqgはMITで配布する。**MIT・BSD・Apache-2.0等は許可、GPL・AGPL等の互換性のないライセンスは失敗**にする
+- 何を失敗とみなすか（深刻度、禁止するライセンスの種類）は`trivy.yaml`で固定する。HIGH・CRITICALで失敗し、ライセンスはTrivyの既定の分類に従う（forbidden＝CRITICAL、restricted＝HIGHなのでGPL系は失敗、reciprocal＝MEDIUMのMPLや、notice＝LOWのMIT・BSD・Apacheは通る）。分類を上書きするときは理由を`PLAN.md`に記録する
+- `go get`で依存を足したら、必ずTrivyを通す。**依存は少なく保つ**。依存を足すこと自体が設計の判断なので、足す前に理由を説明して確認を取ること（`go get`は確認が出る設定になっている）
+- Trivyは脆弱性データベースの取得に通信が要る
+- ソースコード自体のコピペ検出は対象外（人間のレビューに委ねる）
+
+## ShellCheck：シェルスクリプト
+
+- シェルスクリプトは最小限にする。込み入った処理はGoで書く
+- `make shellcheck`は`git ls-files '*.sh'`で追跡中の`*.sh`を列挙して`shellcheck`にかける（新しいスクリプトを足してもMakefileの変更が要らない）
+- 対象：`.devcontainer/postCreate.sh`、`.claude/hooks/`のスクリプトなど
+- CIでは`ubuntu-latest`だけの専用ジョブにする（スクリプトの中身はOSで変わらず、Windowsランナーに`shellcheck`がある保証もない）
+
+**シェルスクリプト中のコメントを、行頭が小文字の`# shellcheck`で始まる文にしてはいけない。** ShellCheckがインラインディレクティブとして解釈しようとし、`key=value`形式でないとパースエラー（SC1072/SC1073）になって、以降の行がチェックできなくなる。「ShellCheck」のように大文字を混ぜて書く。
+> **出所:** 別プロジェクト SanDBox で実際に踏んだ事象。
+
+## `-race`の運用
+
+- devcontainerは`CGO_ENABLED=0`（mtqgは純粋なGo・distribution.md）。`-race`はcgoを要するため、`make race`（`CGO_ENABLED=1 go test -race -count=1 ./...`）として`make check`とは別にする
+- ロックまわりは並行性のバグが出やすいので、ジャーナル層を触ったら`make race`も通す
+- CIでは`race`を別ジョブにし、`ubuntu-latest`・`macos-latest`に限る（`windows-latest`には標準でCコンパイラがない）
+> **出所:** 別プロジェクト SanDBox の運用を引き継いだもの。
+
+## GitHub Actions CIの落とし穴
+
+> **出所:** 別プロジェクト（ExecDB・SanDBox）で、初回push後にCI上でのみ顕在化した事象。mtqgも同じ構成（3OSのホステッドランナー）を採るため、あらかじめ対処しておく。
+
+- **`windows-latest`にはGNU Makeがない。** 3OSで`make check`を回すなら、Windowsのジョブにだけ`choco install make -y`を足す（`runner.os == 'Windows'`でガード）。`make`の実行は`shell: bash`を明示する（既定のPowerShellではレシピの構文が合わない）
+- **`/dev/stderr`等のUnix固有のパスはWindows（Git Bash）で壊れる。** `tee /dev/stderr`などを使わず、標準のリダイレクトだけで書く
+- **Windowsのcheckoutで改行がCRLFになると、`gofmt -l`が全ファイルを未整形と誤検知する。** ルートの`.gitattributes`（`* text=auto eol=lf`）で防ぐ。最初のpush前に置く（配置済み）
+- **`uses: owner/repo@TAG`はタグ名と厳密に一致しないと失敗する。** `v`の有無を見落としやすい。書く前に実際のタグ名を確かめる
+- **Windowsには実行ビットの概念がない。** `os.Chmod`後に実行ビットを確かめるテストは、`runtime.GOOS != "windows"`でガードする
+- mtqg固有の注意：**Windowsでは開いているファイルを置き換え（rename）できないことがある。** 一時ファイル経由の置き換え（`undo`・`archive`）は、Windowsランナーで必ず確かめる

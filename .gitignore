@@ -1,0 +1,7 @@
+# Built binary (root only: a bare "mtqg" would also ignore cmd/mtqg/)
+/mtqg
+/mtqg.exe
+/dist/
+
+# Personal Claude Code settings
+/.claude/settings.local.json

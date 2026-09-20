@@ -1,0 +1,95 @@
+# golangci-lint v2 configuration (.claude/rules/testing.md).
+# Check this file with: golangci-lint config verify
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    # Enforce the layer boundaries of the core (.claude/rules/directory-structure.md).
+    - depguard
+    # Keep user-facing text in the CLI layer only (.claude/rules/cli-output.md).
+    - forbidigo
+    # The core returns structured errors; wrapping must use errors.Is/As.
+    - errorlint
+    # mtqg writes files that other people commit and read.
+    - gosec
+    # CLI output and docs examples are in English.
+    - misspell
+    # Every //nolint must name the linter and say why.
+    - nolintlint
+    - nilerr
+    - unconvert
+    - usestdlibvars
+
+  settings:
+    depguard:
+      rules:
+        # Dependency direction is cli -> model -> journal, never the reverse.
+        journal:
+          list-mode: lax
+          files:
+            - "**/internal/journal/**"
+          deny:
+            - pkg: github.com/amisonnet8/mtqg/internal/model
+              desc: the journal layer must not know the meaning of events
+            - pkg: github.com/amisonnet8/mtqg/internal/cli
+              desc: the journal layer must not depend on an entry point
+        model:
+          list-mode: lax
+          files:
+            - "**/internal/model/**"
+          deny:
+            - pkg: github.com/amisonnet8/mtqg/internal/cli
+              desc: the model layer must not depend on an entry point
+        # mtqg asks the real git command; it does not reimplement git
+        # (.claude/rules/git-integration.md).
+        no-git-library:
+          list-mode: lax
+          files:
+            - $all
+          deny:
+            - pkg: github.com/go-git/go-git
+              desc: run the git command instead of reimplementing git
+            - pkg: github.com/go-git/go-git/v5
+              desc: run the git command instead of reimplementing git
+
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: user-facing text belongs to internal/cli; the core returns structured results
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+    misspell:
+      locale: US
+
+  exclusions:
+    rules:
+      # Entry points may print.
+      - path: (^|/)(internal/cli|cmd)/
+        linters:
+          - forbidigo
+      # Opening files by a computed path inside .mtqg/ is the whole job of the
+      # journal layer.
+      - path: (^|/)internal/journal/
+        text: G304
+        linters:
+          - gosec
+      # Tests create temporary files and run git freely.
+      - path: _test\.go$
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/amisonnet8/mtqg

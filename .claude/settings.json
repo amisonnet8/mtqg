@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": ["Bash(git push*)"],
+    "ask": [
+      "Bash(git reset --hard*)",
+      "Bash(git clean*)",
+      "Bash(curl*)",
+      "Bash(wget*)",
+      "Bash(go get*)",
+      "Bash(*sudo*)"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "mtqg",
+  "image": "mcr.microsoft.com/devcontainers/go:1.27-bookworm",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "ms-vscode.makefile-tools",
+        "github.vscode-github-actions",
+        "timonwong.shellcheck"
+      ],
+      "settings": {
+        "go.useLanguageServer": true,
+        "editor.formatOnSave": true,
+        "go.formatTool": "goimports",
+        "makefile.configureOnOpen": false
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "CGO_ENABLED": "0"
+  }
+}

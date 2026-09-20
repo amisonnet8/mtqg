@@ -17,9 +17,9 @@ const SupportedVersion = 0
 const maxVersionDigits = 9
 
 // readVersion reads .mtqg/version: one non-negative integer and a newline.
-func readVersion(dir string) (int, error) {
-	path := filepath.Join(dir, versionName)
-	data, err := os.ReadFile(path)
+func readVersion(root *os.Root) (int, error) {
+	path := filepath.Join(root.Name(), versionName)
+	data, err := root.ReadFile(versionName)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return 0, &VersionFileError{Path: path, Reason: "the file is missing"}

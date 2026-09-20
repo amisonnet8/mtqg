@@ -56,7 +56,12 @@ func Open(start string, opts Options) (*Journal, error) {
 	if err != nil {
 		return nil, err
 	}
-	version, err := readVersion(loc.Dir)
+	root, err := os.OpenRoot(loc.Dir)
+	if err != nil {
+		return nil, fmt.Errorf("journal: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+	version, err := readVersion(root)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +82,23 @@ func (j *Journal) Version() int { return j.version }
 
 func (j *Journal) journalPath() string { return filepath.Join(j.loc.Dir, journalName) }
 
+// openRoot opens .mtqg/ as a root. Everything the journal layer does inside
+// .mtqg/ goes through it, and a root refuses to leave the directory: not with
+// "..", and not through a symbolic link that leads outside. A repository that
+// somebody else made can hold a .mtqg/journal.jsonl that is a link to another
+// file, and mtqg is run inside repositories that were just cloned. Without the
+// root, it would write to whatever the link points at.
+//
+// The caller closes the root when it is done; files opened through it stay open
+// after that.
+func (j *Journal) openRoot() (*os.Root, error) {
+	root, err := os.OpenRoot(j.loc.Dir)
+	if err != nil {
+		return nil, fmt.Errorf("journal: %w", err)
+	}
+	return root, nil
+}
+
 // Read returns the events of journal.jsonl. It does not take the lock: an append
 // is one write, and a rewrite replaces the file in one step, so a reader sees
 // the file either before or after. A line that is still being written shows up
@@ -96,7 +118,12 @@ func (j *Journal) Read() (Result, error) {
 // readLines returns every non-blank line of journal.jsonl. The file is closed
 // before it returns.
 func (j *Journal) readLines() ([]Line, []Warning, error) {
-	f, err := os.Open(j.journalPath())
+	root, err := j.openRoot()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = root.Close() }()
+	f, err := root.Open(journalName)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil, nil

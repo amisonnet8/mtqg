@@ -14,6 +14,7 @@ const (
 	journalName = "journal.jsonl"
 	versionName = "version"
 	localName   = ".local"
+	lockName    = "lock"
 )
 
 // Location says where the .mtqg/ directory of a repository is.

@@ -35,7 +35,12 @@ func TestReadVersion(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			got, err := readVersion(dir)
+			root, err := os.OpenRoot(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = root.Close() }()
+			got, err := readVersion(root)
 			if tt.wantErr {
 				var verr *VersionFileError
 				if !errors.As(err, &verr) || !errors.Is(err, ErrInvalidVersionFile) {

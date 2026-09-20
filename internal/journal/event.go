@@ -18,6 +18,19 @@ const (
 	OpDelete = "delete"
 )
 
+// The kinds of record and the states of the format (docs/reference/schema.md).
+// The journal layer only checks that a written value is one of them; what they
+// mean is the business of the layers above.
+const (
+	TypeMemo     = "memo"
+	TypeTodo     = "todo"
+	TypeQA       = "qa"
+	TypeGlossary = "glossary"
+
+	StatusOpen = "open"
+	StatusDone = "done"
+)
+
 // The kinds of author (docs/reference/schema.md).
 const (
 	AuthorHuman = "human"

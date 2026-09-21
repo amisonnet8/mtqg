@@ -66,8 +66,7 @@ func runAddThread(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	c.println(shortID(written.ID, c.inv.fullID))
-	return exitOK
+	return c.printWritten(written)
 }
 
 // runListThread lists the questions or the bugs that are open, or all of them with
@@ -81,6 +80,20 @@ func runListThread(c *ctx) int {
 	state, err := c.load(j)
 	if err != nil {
 		return c.fail(err)
+	}
+	if c.inv.json {
+		parents := state.Parents(typ, c.inv.all)
+		records := make([]jsonRecord, len(parents))
+		for i, p := range parents {
+			records[i] = threadJSON(state, p)
+		}
+		open := len(state.Parents(typ, false))
+		return c.emit(jsonTodoList{
+			Command: c.inv.cmd.label(),
+			Records: records,
+			Open:    open,
+			Done:    len(state.Parents(typ, true)) - open,
+		})
 	}
 	now := c.env.Now()
 	var rows []listRow

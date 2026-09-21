@@ -26,8 +26,7 @@ func runAddGlossary(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	c.println(shortID(written.ID, c.inv.fullID))
-	return exitOK
+	return c.printWritten(written)
 }
 
 // runListGlossary lists every entry, in the order they were written. Two entries
@@ -43,6 +42,14 @@ func runListGlossary(c *ctx) int {
 	}
 	now := c.env.Now()
 	entries := state.Glossary()
+	if c.inv.json {
+		return c.emit(jsonGlossaryList{
+			Command:        c.inv.cmd.label(),
+			Records:        recordsJSON(entries),
+			Entries:        len(entries),
+			DuplicateWords: len(state.DuplicateWords()),
+		})
+	}
 	rows := make([]listRow, len(entries))
 	for i, r := range entries {
 		rows[i] = listRow{

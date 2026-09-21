@@ -34,6 +34,9 @@ func (c *ctx) changeStatus(status string) int {
 
 	ev, err := model.SetStatus(rec, status)
 	if errors.Is(err, model.ErrNoChange) {
+		if c.inv.json {
+			return c.emit(jsonChangeResult{Command: c.inv.cmd.label(), Record: recordJSON(rec), Changed: false})
+		}
 		c.println(msgAlreadyInState(verb, id, text))
 		return exitOK
 	}
@@ -47,6 +50,17 @@ func (c *ctx) changeStatus(status string) int {
 	}
 	if _, err := w.Append(ev); err != nil {
 		return c.fail(err)
+	}
+	if c.inv.json {
+		// The record as the journal has it now, with the change in it. Reading again
+		// is only for --json: the words above are what the change was.
+		current := rec
+		if result, err := w.Read(); err == nil {
+			if r := model.Build(result.Events).Record(rec.ID); r != nil {
+				current = r
+			}
+		}
+		return c.emit(jsonChangeResult{Command: c.inv.cmd.label(), Record: recordJSON(current), Changed: true})
 	}
 	c.println(msgStatusChanged(verb, id, text))
 	return exitOK

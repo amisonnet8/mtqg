@@ -30,6 +30,17 @@ func (c *ctx) add(create func(text string) (journal.Event, error)) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	c.println(shortID(written.ID, c.inv.fullID))
-	return exitOK
+	return c.printWritten(written)
+}
+
+// printWritten says what was written: the ID of the new record and nothing else,
+// so that writing stays quick; with --json, the record. It does not read the
+// journal: the record is what the one event that was written makes.
+func (c *ctx) printWritten(written journal.Event) int {
+	if !c.inv.json {
+		c.println(shortID(written.ID, c.inv.fullID))
+		return exitOK
+	}
+	rec := model.Build([]journal.Event{written}).Record(written.ID)
+	return c.emit(jsonRecordResult{Command: c.inv.cmd.label(), Record: recordJSON(rec)})
 }

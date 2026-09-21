@@ -38,8 +38,6 @@ func buildVersion() string {
 // of the repository. Where there is no repository the second says so, and it is
 // not an error.
 func runVersion(c *ctx) int {
-	c.println(msgVersion(buildVersion()))
-
 	found, known := 0, false
 	if start, err := c.startDir(); err == nil {
 		j, err := journal.Open(start, journal.Options{})
@@ -51,6 +49,14 @@ func runVersion(c *ctx) int {
 			found, known = tooNew.Found, true
 		}
 	}
+	if c.inv.json {
+		out := jsonVersion{Command: c.inv.cmd.label(), Mtqg: buildVersion(), Format: jsonFormatVersion{Supported: journal.SupportedVersion}}
+		if known {
+			out.Format.Repository = &found
+		}
+		return c.emit(out)
+	}
+	c.println(msgVersion(buildVersion()))
 	c.println(msgFormatVersion(found, journal.SupportedVersion, known))
 	return exitOK
 }

@@ -23,6 +23,18 @@ func runShow(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	if c.inv.json {
+		history := state.History(rec)
+		events := make([]journal.Event, len(history))
+		for i, e := range history {
+			events[i] = e.Event
+		}
+		record := recordJSON(rec)
+		if rec.CanHaveReplies() {
+			record = threadJSON(state, rec)
+		}
+		return c.emit(jsonShow{Command: c.inv.cmd.label(), Record: record, Events: events})
+	}
 	c.printRecord(state, rec)
 	return exitOK
 }

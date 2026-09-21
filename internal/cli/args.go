@@ -166,6 +166,7 @@ type invocation struct {
 	all     bool
 	fullID  bool
 	noColor bool
+	json    bool
 	help    bool
 
 	// values holds the options that take a value, by their names (--limit).
@@ -183,7 +184,7 @@ func (e *usageError) Error() string { return e.msg }
 // parseArgs reads a command line: options, then the command (a kind and a verb,
 // or a command word), then its arguments.
 //
-// Options are -C <path>, --all, --full-id, --no-color and -h or --help. Before
+// Options are -C <path>, --all, --full-id, --no-color, --json and -h or --help. Before
 // the command they may stand anywhere. After it, a command that takes a text
 // (memo add, todo add) reads options only up to the first word of the text: from
 // there on every word is text, even one that starts with -. "--" ends the
@@ -232,6 +233,8 @@ func parseArgs(args []string) (*invocation, error) {
 			inv.fullID = true
 		case arg == "--no-color":
 			inv.noColor = true
+		case arg == "--json":
+			inv.json = true
 		case arg == "-h" || arg == "--help":
 			inv.help = true
 		default:
@@ -315,6 +318,21 @@ func parseArgs(args []string) (*invocation, error) {
 		}
 	}
 	return inv, nil
+}
+
+// wantsJSON says whether --json is among the arguments, up to a "--". It is
+// asked when the command line could not be read, so that the complaint about it
+// is in the form that was asked for.
+func wantsJSON(args []string) bool {
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			return true
+		case "--":
+			return false
+		}
+	}
+	return false
 }
 
 // checkArity says whether a command was given the right number of words.

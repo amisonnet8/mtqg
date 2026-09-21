@@ -52,6 +52,9 @@ func runLog(c *ctx) int {
 		records = records[:limit]
 	}
 
+	if c.inv.json {
+		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total})
+	}
 	now := c.env.Now()
 	rows := make([]tableRow, len(records))
 	for i, r := range records {

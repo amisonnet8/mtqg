@@ -19,7 +19,7 @@ func (c *ctx) inputText(words []string) (string, error) {
 	case len(words) == 1 && words[0] == "-":
 		data, err := io.ReadAll(c.env.Stdin)
 		if err != nil {
-			return "", &failure{msgStdinFailed(err)}
+			return "", &failure{kindInput, msgStdinFailed(err)}
 		}
 		text = string(data)
 	case len(words) == 0:
@@ -33,7 +33,7 @@ func (c *ctx) inputText(words []string) (string, error) {
 	}
 	text = strings.TrimRight(text, "\r\n")
 	if strings.TrimSpace(text) == "" {
-		return "", &failure{msgEmptyText()}
+		return "", &failure{kindEmptyText, msgEmptyText()}
 	}
 	return text, nil
 }
@@ -42,11 +42,11 @@ func (c *ctx) inputText(words []string) (string, error) {
 func (c *ctx) editText() (string, error) {
 	editor := strings.TrimSpace(c.env.Getenv("EDITOR"))
 	if editor == "" {
-		return "", &failure{msgNoEditor()}
+		return "", &failure{kindEditor, msgNoEditor()}
 	}
 	argv, err := splitCommand(editor)
 	if err != nil {
-		return "", &failure{msgBadEditorCommand(err.Error())}
+		return "", &failure{kindEditor, msgBadEditorCommand(err.Error())}
 	}
 
 	file, err := os.CreateTemp("", "mtqg-*.txt")
@@ -60,7 +60,7 @@ func (c *ctx) editText() (string, error) {
 	defer func() { _ = os.Remove(name) }()
 
 	if err := c.env.RunEditor(append(argv, name)); err != nil {
-		return "", &failure{msgEditorFailed(err)}
+		return "", &failure{kindEditor, msgEditorFailed(err)}
 	}
 	// The file is read again by name: many editors save by writing a new file.
 	data, err := os.ReadFile(name)

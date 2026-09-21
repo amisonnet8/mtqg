@@ -17,18 +17,18 @@ func (c *ctx) author(root string) (journal.Author, error) {
 		kind = journal.AuthorHuman
 	}
 	if kind != journal.AuthorHuman && kind != journal.AuthorAI {
-		return journal.Author{}, &failure{msgBadAuthorKind(c.env.Getenv("MTQG_AUTHOR_KIND"))}
+		return journal.Author{}, &failure{kindBadAuthorKind, msgBadAuthorKind(c.env.Getenv("MTQG_AUTHOR_KIND"))}
 	}
 
 	name := strings.TrimSpace(c.env.Getenv("MTQG_AUTHOR_NAME"))
 	if name == "" && kind == journal.AuthorAI {
-		return journal.Author{}, &failure{msgAIneedsName()}
+		return journal.Author{}, &failure{kindNoAuthor, msgAIneedsName()}
 	}
 	if name == "" {
 		fromGit, err := journal.GitUserName(root)
 		switch {
 		case errors.Is(err, journal.ErrNoUserName):
-			return journal.Author{}, &failure{msgNoUserName()}
+			return journal.Author{}, &failure{kindNoAuthor, msgNoUserName()}
 		case err != nil:
 			return journal.Author{}, err
 		}

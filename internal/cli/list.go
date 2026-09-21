@@ -16,9 +16,13 @@ func runListTodos(c *ctx) int {
 	}
 	all := c.inv.all
 	todos := state.Todos(all)
-	c.printRows(todos)
 	open := len(state.Todos(false))
-	c.println(msgOpenFooter(open, len(state.Todos(true))-open, all))
+	done := len(state.Todos(true)) - open
+	if c.inv.json {
+		return c.emit(jsonTodoList{Command: c.inv.cmd.label(), Records: recordsJSON(todos), Open: open, Done: done})
+	}
+	c.printRows(todos)
+	c.println(msgOpenFooter(open, done, all))
 	return exitOK
 }
 
@@ -32,6 +36,9 @@ func runListMemos(c *ctx) int {
 		return c.fail(err)
 	}
 	memos := state.Memos()
+	if c.inv.json {
+		return c.emit(jsonMemoList{Command: c.inv.cmd.label(), Records: recordsJSON(memos), Count: len(memos)})
+	}
 	c.printRows(memos)
 	c.println(msgMemoFooter(len(memos)))
 	return exitOK

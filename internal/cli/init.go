@@ -16,6 +16,9 @@ func runInit(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	if c.inv.json {
+		return c.emit(jsonInit{Command: c.inv.cmd.label(), Root: loc.Root})
+	}
 	for _, line := range msgInitialized(loc.Root) {
 		c.println(line)
 	}

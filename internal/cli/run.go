@@ -17,8 +17,8 @@ type ctx struct {
 }
 
 // failure is a complaint for people that needs no further work: its message is
-// printed as it is, and the exit code is 1.
-type failure struct{ msg string }
+// printed as it is, and the exit code is 1. kind is what --json says it is.
+type failure struct{ kind, msg string }
 
 func (f *failure) Error() string { return f.msg }
 
@@ -42,13 +42,14 @@ const (
 func Run(env Env, args []string) int {
 	inv, err := parseArgs(args)
 	if err != nil {
+		// The command line could not be read, so whether --json was asked for is
+		// found by looking for it.
+		c := &ctx{env: env, inv: &invocation{json: wantsJSON(args)}}
 		var usage *usageError
 		if errors.As(err, &usage) {
-			line(env.Stderr, usage.msg)
-			return exitUsage
+			return c.usageFailure(usage.msg)
 		}
-		line(env.Stderr, err)
-		return exitError
+		return c.fail(err)
 	}
 
 	c := &ctx{env: env, inv: inv, st: style{on: colorOn(env, inv)}}
@@ -56,8 +57,7 @@ func Run(env Env, args []string) int {
 	case inv.help && inv.cmd.name != "help":
 		return c.printCommandHelp()
 	case inv.cmd.run == nil:
-		line(env.Stderr, msgNotYet(inv.cmd.full()))
-		return exitError
+		return c.failWith(errorReport{kind: kindNotAvailable, lines: []string{msgNotYet(inv.cmd.full())}})
 	}
 	return inv.cmd.run(c)
 }
@@ -121,10 +121,10 @@ func (c *ctx) load(j *journal.Journal) (*model.State, error) {
 func (c *ctx) warn(warnings []journal.Warning) {
 	for i, w := range warnings {
 		if i == maxWarnings {
-			c.eprintln(msgMoreWarnings(len(warnings) - maxWarnings))
+			c.warning(warningReport{kind: "more", count: len(warnings) - maxWarnings, message: msgMoreWarnings(len(warnings) - maxWarnings)})
 			return
 		}
-		c.eprintln(msgWarning(w))
+		c.warning(warningReport{kind: warningKind(w.Kind), line: w.Line, message: msgWarning(w)})
 	}
 }
 
@@ -132,99 +132,6 @@ func (c *ctx) warn(warnings []journal.Warning) {
 // could see (it depends on what the words mean), and returns the exit code for
 // one.
 func (c *ctx) usageFailure(msg string) int {
-	c.eprintln(msg)
+	c.printError(errorReport{kind: kindUsage, lines: []string{msg}})
 	return exitUsage
-}
-
-// fail prints what went wrong, in words, and returns the exit code.
-func (c *ctx) fail(err error) int {
-	for _, l := range c.describe(err) {
-		c.eprintln(l)
-	}
-	return exitError
-}
-
-// describe turns an error of the core into the lines to show.
-func (c *ctx) describe(err error) []string {
-	var (
-		failed     *failure
-		notInit    *journal.NotInitializedError
-		already    *journal.AlreadyInitializedError
-		tooNew     *journal.FormatTooNewError
-		lock       *journal.LockTimeoutError
-		invalid    *journal.InvalidEventError
-		ambiguous  *model.AmbiguousError
-		wrongKind  *model.WrongKindError
-		noState    *model.NoStateError
-		noReplies  *model.NoRepliesError
-		notFound   *model.NotFoundError
-		tooShort   *model.TooShortError
-		gitMissing *journal.GitUnavailableError
-	)
-	verb := ""
-	if c.inv != nil && c.inv.cmd != nil {
-		verb = c.inv.cmd.name
-	}
-	switch {
-	case errors.As(err, &failed):
-		return []string{failed.msg}
-	case errors.As(err, &notInit):
-		return []string{msgNotInitialized(notInit.Root)}
-	case errors.Is(err, journal.ErrNotInRepository):
-		return []string{msgNotInRepository()}
-	case errors.As(err, &already):
-		return []string{msgAlreadyInitialized(already.Path)}
-	case errors.As(err, &tooNew):
-		return []string{msgFormatTooNew(tooNew.Found, tooNew.Supported)}
-	case errors.Is(err, journal.ErrConflictMarkers):
-		return []string{msgConflictMarkers()}
-	case errors.As(err, &lock):
-		return []string{msgLockTimeout(lock.Waited.Round(100_000_000).String())}
-	case errors.As(err, &invalid) && invalid.Field == "text":
-		return []string{msgTextNotUTF8()}
-	case errors.As(err, &ambiguous):
-		return c.describeAmbiguous(ambiguous)
-	case errors.As(err, &wrongKind):
-		return []string{msgWrongKind(wrongKind, verb)}
-	case errors.As(err, &noState):
-		return []string{msgNoState(noState, verb)}
-	case errors.As(err, &noReplies):
-		return []string{msgNoReplies(noReplies)}
-	case errors.As(err, &notFound):
-		return []string{msgNotFound(notFound.Prefix)}
-	case errors.As(err, &tooShort):
-		return []string{msgIDTooShort(tooShort.Prefix)}
-	case errors.Is(err, model.ErrEmptyWord):
-		return []string{msgEmptyWord()}
-	case errors.As(err, &gitMissing):
-		return []string{msgGitUnavailable(gitMissing.Err)}
-	default:
-		return []string{err.Error()}
-	}
-}
-
-// describeAmbiguous lists the records an ID could mean, with their full IDs so
-// that any length of them can be typed again.
-func (c *ctx) describeAmbiguous(e *model.AmbiguousError) []string {
-	lines := []string{msgAmbiguousHeader(e.Prefix, len(e.Candidates))}
-	var idW, kindW, textW, authorW int
-	for _, r := range e.Candidates {
-		idW = max(idW, displayWidth(r.ID))
-		kindW = max(kindW, displayWidth(r.Kind()))
-		textW = max(textW, displayWidth(oneLine(r.Text)))
-		authorW = max(authorW, displayWidth(oneLine(r.Author.Name)))
-	}
-	if w := c.env.StdoutWidth; w > 0 {
-		fixed := 2 + idW + len(gap) + kindW + len(gap) + authorW + len(gap) + len("2006-01-02")
-		textW = min(textW, max(w-1-fixed, minTextWidth))
-	}
-	now := c.env.Now()
-	for _, r := range e.Candidates {
-		lines = append(lines, "  "+
-			padRight(r.ID, idW)+gap+padRight(r.Kind(), kindW)+gap+
-			padRight(truncate(oneLine(r.Text), textW), textW)+gap+
-			padRight(oneLine(r.Author.Name), authorW)+gap+
-			formatTime(r.Created, now, c.env.Location))
-	}
-	return lines
 }

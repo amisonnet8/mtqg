@@ -31,8 +31,8 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg delete <id>` | 記録を隠す。質問を消すと、その回答も隠れる |
 | `mtqg undo` | この端末から書いた最後の行を消す |
 | `mtqg status` | 未完了の項目と未コミットの記録の概況 |
-| `mtqg log [--limit N] [--kind K]` | 全種類を時系列で |
-| `mtqg show <id>` | 1件の記録と、その全履歴 |
+| `mtqg log [--limit N] [--kind K]` | 全種類の記録を、新しいものから |
+| `mtqg show <id>` | 1件の記録を、全文と履歴とともに |
 | `mtqg search <語>` | 本文の部分一致で探す |
 | `mtqg review` | 並行した状態変更と、用語の重複定義 |
 | `mtqg context [--max-tokens N]` | AIエージェント向けの要約 |
@@ -121,10 +121,16 @@ mtqg g add トークン 字句解析で切り出す最小単位
 ```
 
 - 残りの引数は空白でつないで1つの本文にする。シェルの特殊文字（`#` `*` `(` `)` `&` `|` `<` `>`）を含む場合を除き、引用符は要らない
-- glossaryは、最初の引数が用語、残りが定義
+- glossaryは、最初の引数が用語、残りが定義。複数の語でできた用語は引用符が要る：
+  `mtqg g add "block comment" /* と */ で囲むコメント`
+- `mtqg q add <質問id> <本文>`は、質問ではなく回答を足す（[質問と回答](#質問と回答)）
 - 本文の代わりに`-`を渡すと、標準入力を最後まで読む。末尾の改行は落とす：`git log -1 --format=%s | mtqg m add -`
-- 本文がなければ、空のファイルで`$EDITOR`が開き、保存した内容が本文になる（末尾の改行は落とす）。`$EDITOR`には
-  引数や引用符を含められる（`code --wait`）。シェルは通さない。`$EDITOR`が設定されていなければ、止まってそう伝える
+- 引数がまったくなければ（`mtqg m add`、`mtqg t add`、`mtqg q add`）、空のファイルで`$EDITOR`が開き、保存した
+  内容が本文になる（末尾の改行は落とす）。`$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは
+  通さない。`$EDITOR`が設定されていなければ、止まってそう伝える
+- エディタが開くのはこの場合だけ。足りない部分があるのはコマンドラインの誤りで、何も書かない：
+  `mtqg q add <質問id>`（回答がない）、`mtqg g add`（用語がない）、`mtqg g add <用語>`（定義がない）。
+  回答や定義の本文は`-`にでき、標準入力から読む
 - 本文は複数行でもよい（標準入力かエディタから）。`list`は1行目だけを表示する
 - 本文が空、または空白だけのときはエラー（`Aborting: the text is empty`）。何も書かない
 - 出力は、作られた記録のIDだけ
@@ -148,15 +154,46 @@ Reopened: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
 - 1行を出す：何をしたか、ID、本文の1行目。打ったIDが意図した記録だったと確かめられる
 - すでにその状態のtodoには何も書かず、その旨を出す（`Already done: ...`、`Already open: ...`）。
   終了コードは0：同じ変更の繰り返しはエラーではない
+- `mtqg q done`と`mtqg q reopen`は、質問に対して同じことをする
 - 状態を持つのはtodoと質問だけ。それ以外の記録のIDには、止まって、それが何かを伝える。
   正しいコマンドが別にあるときは、それを示す：
   `81e74ef5e8 is a memo, not a todo`、`2217beaddb is a question, not a todo; use `mtqg qa done 2217beaddb``
 
 ## 質問と回答
 
-- `mtqg q add <本文>`で質問を足す。`mtqg q add <質問id> <本文>`で、その質問に回答を足す。回答は独自のIDを持つ
-- 回答することと閉じることは別。`mtqg q done <質問id>`で質問を閉じる。回答はいくつでも足せて、どれも他を置き換えない
+- `mtqg q add <本文>`で質問を足す。`mtqg q add <質問id> <本文>`で、その質問に回答を足す。回答は独自のIDを持ち、
+  その`re`には質問の完全なIDが入る
+- 回答することと閉じることは別。`mtqg q done <質問id>`で質問を閉じる。回答はいくつでも足せて、どれも他を置き換えない。
+  閉じた質問にも回答は足せる
 - 回答を持てるのは質問だけ。回答に回答は付けられない
+
+### 質問か、回答か
+
+`q add`は、最初の引数だけで両者を見分ける。最初の引数が**16進数の4桁以上で、それだけでできている**
+（`0-9`、`a-f`。大文字は小文字として読む）なら、それは回答先の質問のIDで、残りが回答の本文になる。
+それ以外の最初の引数なら、全体が新しい質問の本文になる。
+
+| 16進数4桁以上の最初の引数が当てはまるもの | 結果 |
+|---|---|
+| 質問1件 | 残りを、その質問への回答として足す |
+| 質問でない記録1件 | エラー。それが何かを伝える |
+| 複数の記録 | エラー。候補を完全なIDで並べる |
+| 記録がない | エラー。何も書かない |
+
+```
+$ mtqg q add a8ec はどういう意味ですか？
+No record matches "a8ec". A first word of 4 or more hex digits is read as the ID of the question to answer.
+To ask a question that starts with it, put the whole text in quotes: mtqg qa add "a8ec ..."
+```
+
+- 引用符で括った本文は1つの引数になる。中に空白があれば16進数だけではないので、IDとは読まれない：
+  `mtqg q add "a8ec はどういう意味ですか？"`は質問、`mtqg q add a8ec 見つからない場合のエラーコードです`は
+  質問`a8ec`への回答
+- 当てはまる記録がないときは、質問にせずエラーにする。打ち間違えたIDが、黙って新しい質問になることがないように
+  するため。最初の語が16進数の文字だけでできた英語の質問（`Face detection is slow. Why?`、
+  `Dead code: remove it?`）も同じように止まる。本文全体を引用符で括る。そのような語1つだけの質問は、
+  標準入力から渡せる
+- IDだけで、後ろに本文がないときはエラー。何も書かない
 
 質問は4つの状態のどれかにある。
 
@@ -176,7 +213,10 @@ Reopened: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
 
 - どの記録も完全なIDを持つ：小文字の16進32桁（ハイフンを除いたUUIDv4）。例：`81e74ef5e8e24d949ed904759531985d`
 - mtqgは**先頭の10桁**を表示する（`81e74ef5e8`）。`--full-id`で完全なIDを表示する
-- gitのコミットハッシュと同じく、一意に決まる前方一致を入力として受け付ける：`81e74ef5e8`、一意なら`81e7`でもよい
+- gitのコミットハッシュと同じく、**4桁以上**で一意に決まる前方一致を入力として受け付ける：`81e74ef5e8`、
+  一意なら`81e7`でもよい。それより短いものはエラー
+  （`The ID "81e" is too short: give at least 4 digits`）。`add`や`bad`のような語がIDと間違われないように
+  するため
 - 前方一致が複数の記録に当てはまるときは、止まって、候補を完全なIDで並べる
 
 ```
@@ -230,7 +270,9 @@ Conflicts           1  -> mtqg review
 Uncommitted records 3
 ```
 
-- 各行は件数。`Uncommitted records`は、`journal.jsonl`の中に、最後のコミット（`HEAD`）にない行を
+- 各行は件数。`Open questions`は閉じていない質問の数で、`awaiting confirmation`はそのうち回答のあるもの。
+  `Glossary`は用語の項目の数で、`with duplicate definitions`は2回以上定義された用語（文字まで同じもの）の数。
+  `Uncommitted records`は、`journal.jsonl`の中に、最後のコミット（`HEAD`）にない行を
   1つ以上持つ記録の数：それ以降に作った・変えた記録。1つの記録は、行がいくつあっても1と数える。
   ステージしただけでコミットしていない行も、未コミットに数える。まだコミットがない、または
   `.mtqg/journal.jsonl`が追跡されていないときは、すべての記録を数える。gitを実行できないときは、
@@ -258,7 +300,27 @@ $ mtqg qa list
 2 open (show all: --all)
 ```
 
-`qa list`は、最新の回答と回答の件数を表示する。
+`qa list`は、質問の末尾に状態を表示し、その下に最新の回答を、字下げして、記録者と時刻とともに表示する。
+
+| 状態 | 意味 |
+|---|---|
+| `unanswered` | 未クローズで、回答なし |
+| `N answers, awaiting confirmation` | 未クローズで、回答あり |
+| `N answers, done` | 閉じていて、回答あり（`--all`） |
+| `done without answers` | 閉じていて、回答なし（`--all`） |
+
+質問がジャーナルにない回答は、表示しない。
+
+```
+$ mtqg glossary list
+f28c105d1f  トークン        字句解析で切り出す最小単位  yamada       09:00
+0cb1e29c65  ブロックコメント  複数行にわたって書けるコメント  claude-code  09:30
+4 terms
+```
+
+`glossary list`は、すべての項目を表示する：ID、用語、定義、記録者、時刻。同じ用語の項目は、書かれた順に2行
+並び、フッターが2回以上定義された用語の数を伝える（`4 terms (1 with duplicate definitions)`）。
+mtqgはどちらかを選ばない。
 
 一覧の表示のしかた：
 
@@ -276,18 +338,51 @@ $ mtqg qa list
 
 ```
 $ mtqg show 1012f037b6
-qa  1012f037b6  open
-  Q ブロックコメントの入れ子に対応する？        claude-code  09:10
+question  1012f037b6  open
+by claude-code (ai), 2026-09-17 09:10
 
-  Answers (2)
-  ae2eb1547f  一般的には対応するのが望ましい      claude-code  09:15  ai
-  95e761d177  初版では非対応。需要が出たら再検討  yamada       09:41  human
+  ブロックコメントの入れ子に対応する？
 
-  Events
-    09:10  create  claude-code
-    09:15  create  claude-code  → ae2eb1547f
-    09:41  create  yamada       → 95e761d177
+Answers (2)
+  ae2eb1547f  claude-code (ai)  2026-09-17 09:15
+    一般的には対応するのが望ましい
+  95e761d177  yamada (human)    2026-09-17 09:41
+    初版では非対応。需要が出たら再検討
+
+Events
+  2026-09-17 09:10  create  claude-code (ai)
+  2026-09-17 09:15  create  claude-code (ai)  answer ae2eb1547f
+  2026-09-17 09:41  create  yamada (human)    answer 95e761d177
 ```
+
+- 1行目は、種類（`memo`、`todo`、`question`、`answer`、`glossary`）、ID、todoと質問なら状態。2行目は、誰がいつ
+  書いたか（記録者の種別つき）
+- 本文は、どう読まれる出力でも、すべての行を全文で表示する。制御文字は一覧と同じように置き換える。glossaryの
+  項目は、定義の前に`Word: <用語>`を表示する。回答は、属する質問を表示する
+- 質問は、回答を古いものから、記録者と時刻とともに並べる
+- `Events`は、その記録に起きたことを、古いものから、ローカル時間の日付と時刻つきで並べる：その記録自身の
+  イベント（`create`、`status`は`open -> done`の形、`edit`、`delete`）と、質問なら各回答の作成
+
+### log
+
+```
+$ mtqg log --limit 4
+11:24  glossary  f28c105d1f  字句解析  ソースを読み、トークンの並びに変換する処理  yamada
+10:32  memo      81e74ef5e8  エラーメッセージは英語で統一する方針  yamada
+09:41  answer    95e761d177  (to 1012f037b6) 初版では非対応  yamada
+09:10  question  1012f037b6  ブロックコメントの入れ子に対応する？  claude-code  done
+4 of 137 records (--limit 0 for all)
+```
+
+- 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、
+  `question`、`answer`、`glossary`）、ID、本文、記録者。glossaryの項目は、用語のあとに定義を表示する。回答は、
+  属する質問の`(to <id>)`で始まる。終わったtodoと質問は、末尾に`done`が付く
+- 時刻は、今日なら`HH:MM`、それ以外の日は`YYYY-MM-DD`で、記録を作った時刻。本文は一覧の決まりに従う（1行目だけ、
+  端末に出すときだけ切る、制御文字は置き換える）
+- `--limit N`は新しい方から`N`件を表示する。既定は20で、`0`は全件。`--kind K`は1つの種類だけを表示する：
+  `memo`、`todo`、`qa`（質問と回答）、`glossary`、またはその1文字。どちらも`--limit=N`の形でも書ける。0以上の
+  整数でない値や、存在しない種類は、コマンドラインの誤り
+- 最後の行が件数を伝える：`N records`。省いたものがあるときは`N of M records (--limit 0 for all)`
 
 ### review
 

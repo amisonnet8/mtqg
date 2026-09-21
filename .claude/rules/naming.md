@@ -28,6 +28,10 @@
 | 形式のバージョン | format version | `.mtqg/version`と各行の`v`。mtqg本体のバージョンと混同しない |
 | 経緯、過程 | process, history | 「成果物に残らない過程」 |
 
+## 表示する種類の名前
+
+`show`・`log`・エラー文言に出す種類の名前は、`memo`・`todo`・`question`・`answer`・`glossary`（モデル層の`Record.Kind()`。文の中では`glossary entry`）。JSONの`type`は`qa`のままで、質問と回答は`re`の有無で見分ける。`log --kind`の値は`type`と同じ`memo`・`todo`・`qa`・`glossary`（1文字も可）で、`qa`は質問と回答の両方。
+
 ## コマンド
 
 - 体系は`mtqg <種類> <動詞>`。種類は1文字に略せる（`m`・`t`・`q`・`g`）。**動詞は省略しない。例外規則を作らない**

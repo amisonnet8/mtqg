@@ -32,8 +32,8 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg delete <id>` | Hide a record. Deleting a question also hides its answers |
 | `mtqg undo` | Remove the last line written from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
-| `mtqg log [--limit N] [--kind K]` | All kinds in time order |
-| `mtqg show <id>` | One record with its full history |
+| `mtqg log [--limit N] [--kind K]` | Records of all kinds, newest first |
+| `mtqg show <id>` | One record with its full text and history |
 | `mtqg search <text>` | Substring search in record text |
 | `mtqg review` | Concurrent status changes and duplicate glossary definitions |
 | `mtqg context [--max-tokens N]` | Summary for AI agents |
@@ -135,12 +135,20 @@ mtqg g add token The smallest unit produced by lexing
 - The remaining arguments are joined with spaces. Quotes are not needed, except
   around shell special characters (`#` `*` `(` `)` `&` `|` `<` `>`).
 - For glossary, the first argument is the word and the rest is the definition.
+  A word of several words needs quotes:
+  `mtqg g add "block comment" A comment enclosed in /* and */`
+- `mtqg q add <question-id> <text>` adds an answer instead of a question (see
+  [Questions and answers](#questions-and-answers)).
 - `-` instead of the text reads it from standard input, to its end. Trailing
   line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
-- No text opens `$EDITOR` on an empty file, and what is saved is the text
-  (trailing line breaks dropped). `$EDITOR` may hold arguments and quotes
-  (`code --wait`); it is not run through a shell. If `$EDITOR` is not set, mtqg
-  stops and says so.
+- No arguments at all (`mtqg m add`, `mtqg t add`, `mtqg q add`) opens
+  `$EDITOR` on an empty file, and what is saved is the text (trailing line
+  breaks dropped). `$EDITOR` may hold arguments and quotes (`code --wait`); it
+  is not run through a shell. If `$EDITOR` is not set, mtqg stops and says so.
+- Only that case opens the editor. A part that is missing is a mistake in the
+  command line, and nothing is written: `mtqg q add <question-id>` (no answer),
+  `mtqg g add` (no word) and `mtqg g add <word>` (no definition). The text of
+  an answer or a definition can be `-`, to read it from standard input.
 - A text can have several lines (from standard input or the editor). `list`
   shows the first line only.
 - A text that is empty, or only white space, is an error
@@ -168,6 +176,7 @@ Reopened: 6cad4a268d  Skip block comments /* */
 - If the todo is already in that state, nothing is written and the line says so
   (`Already done: ...`, `Already open: ...`). The exit code is 0: repeating a
   change is not an error.
+- `mtqg q done` and `mtqg q reopen` do the same for a question.
 - Only todos and questions have a state. For the ID of any other record, mtqg
   stops and says what it is. If another command is the right one, it names it:
   `81e74ef5e8 is a memo, not a todo`, and
@@ -176,10 +185,43 @@ Reopened: 6cad4a268d  Skip block comments /* */
 ## Questions and answers
 
 - `mtqg q add <text>` adds a question. `mtqg q add <question-id> <text>` adds an
-  answer to that question. An answer has its own ID.
+  answer to that question. An answer has its own ID, and its `re` holds the full
+  ID of the question.
 - Answering and closing are separate: `mtqg q done <question-id>` closes the
-  question. Any number of answers can be added; none replaces another.
+  question. Any number of answers can be added; none replaces another. A closed
+  question can still be answered.
 - Only questions can have answers. Answers cannot be answered.
+
+### Question or answer?
+
+`q add` tells them apart by its first argument alone. If the first argument is
+**4 or more hex digits and nothing else** (`0-9`, `a-f`; upper case is read as
+lower case), it is the ID of the question to answer, and the rest is the text of
+the answer. Any other first argument makes the whole text a new question.
+
+| The first argument, made of 4 or more hex digits, matches | Result |
+|---|---|
+| one question | the rest is added as an answer to it |
+| one record that is not a question | error that says what it is |
+| more than one record | error that lists the candidates with their full IDs |
+| no record | error, and nothing is written |
+
+```
+$ mtqg q add a8ec What does this mean?
+No record matches "a8ec". A first word of 4 or more hex digits is read as the ID of the question to answer.
+To ask a question that starts with it, put the whole text in quotes: mtqg qa add "a8ec ..."
+```
+
+- A text in quotes is one argument. With a space in it, it is not hex digits
+  only, so it is never an ID: `mtqg q add "a8ec What does this mean?"` asks a
+  question, and `mtqg q add a8ec Not found error code` answers the question
+  `a8ec`.
+- No record matching is an error, not a question, so that a mistyped ID never
+  turns into a new question without a word. A question in English whose first
+  word is made of hex digits (`Face detection is slow. Why?`, `Dead code: remove
+  it?`) stops the same way; quote the whole text. A question of one such word
+  can be given on standard input.
+- The ID with no text after it is an error, and nothing is written.
 
 A question is in one of four states:
 
@@ -200,8 +242,10 @@ A question is in one of four states:
 - Every record has a full ID: 32 lowercase hex digits (a UUIDv4 without
   hyphens), e.g. `81e74ef5e8e24d949ed904759531985d`.
 - mtqg shows the **first 10 digits** (`81e74ef5e8`). `--full-id` shows full IDs.
-- Any unique prefix is accepted as input, like git commit hashes: `81e74ef5e8`,
-  or `81e7` if unique.
+- Any unique prefix of **4 or more digits** is accepted as input, like git
+  commit hashes: `81e74ef5e8`, or `81e7` if unique. A shorter one is an error
+  (`The ID "81e" is too short: give at least 4 digits`), so that a word such as
+  `add` or `bad` is never taken for an ID.
 - If a prefix matches more than one record, mtqg stops and lists the candidates
   with their full IDs:
 
@@ -263,7 +307,11 @@ Conflicts           1  -> mtqg review
 Uncommitted records 3
 ```
 
-- Each line is a count. `Uncommitted records` is the number of records that have
+- Each line is a count. `Open questions` counts the questions that are not
+  closed, and `awaiting confirmation` those of them that have an answer.
+  `Glossary` counts the entries, and `with duplicate definitions` the words that
+  are defined more than once (the same word, character for character).
+  `Uncommitted records` is the number of records that have
   at least one line in `journal.jsonl` that is not in the last commit (`HEAD`):
   records created or changed since then. A record counts once however many lines
   it has. Lines that are staged but not committed count as uncommitted. With no
@@ -292,7 +340,29 @@ $ mtqg qa list
 2 open (show all: --all)
 ```
 
-`qa list` shows the latest answer and the number of answers.
+`qa list` ends each question with its state, and shows the latest answer under
+it, indented, with its author and time:
+
+| State | Meaning |
+|---|---|
+| `unanswered` | open, no answers |
+| `N answers, awaiting confirmation` | open, with answers |
+| `N answers, done` | closed, with answers (`--all`) |
+| `done without answers` | closed, no answers (`--all`) |
+
+An answer whose question is not in the journal is not listed.
+
+```
+$ mtqg glossary list
+f28c105d1f  token          The smallest unit produced by lexing  yamada       09:00
+0cb1e29c65  block comment  A comment that can span lines         claude-code  09:30
+4 terms
+```
+
+`glossary list` shows every entry: the ID, the word, the definition, the author
+and the time. Two entries for the same word are two lines, in the order they were
+written, and the footer says how many words are defined more than once
+(`4 terms (1 with duplicate definitions)`). mtqg does not choose between them.
 
 How a list is shown:
 
@@ -314,18 +384,61 @@ How a list is shown:
 
 ```
 $ mtqg show 1012f037b6
-qa  1012f037b6  open
-  Q Should nested block comments be supported?                     claude-code  09:10
+question  1012f037b6  open
+by claude-code (ai), 2026-09-17 09:10
 
-  Answers (2)
-  ae2eb1547f  Supporting them is generally preferable                claude-code  09:15  ai
-  95e761d177  Not in the first version. Revisit if there is demand   yamada       09:41  human
+  Should nested block comments be supported?
 
-  Events
-    09:10  create  claude-code
-    09:15  create  claude-code  → ae2eb1547f
-    09:41  create  yamada       → 95e761d177
+Answers (2)
+  ae2eb1547f  claude-code (ai)  2026-09-17 09:15
+    Supporting them is generally preferable
+  95e761d177  yamada (human)    2026-09-17 09:41
+    Not in the first version. Revisit if there is demand
+
+Events
+  2026-09-17 09:10  create  claude-code (ai)
+  2026-09-17 09:15  create  claude-code (ai)  answer ae2eb1547f
+  2026-09-17 09:41  create  yamada (human)    answer 95e761d177
 ```
+
+- The first line names the kind (`memo`, `todo`, `question`, `answer` or
+  `glossary`), the ID and, for a todo or a question, its state. The second line
+  says who wrote it and when, with the kind of author.
+- The text is shown in full, with every line of it, however the output is
+  read. Control characters are replaced as in a list. A glossary entry shows
+  `Word: <word>` before its definition. An answer shows the question it belongs
+  to.
+- A question lists its answers, oldest first, each with its author and time.
+- `Events` lists what happened to the record, oldest first, with the full local
+  date and time: its own events (`create`, `status` as `open -> done`, `edit`,
+  `delete`) and, for a question, the creation of each answer.
+
+### log
+
+```
+$ mtqg log --limit 4
+11:24  glossary  f28c105d1f  lexing  Reading source and turning it into tokens  yamada
+10:32  memo      81e74ef5e8  Policy: use English for all error messages  yamada
+09:41  answer     95e761d177  (to 1012f037b6) Not in the first version  yamada
+09:10  question   1012f037b6  Should nested block comments be supported?  claude-code  done
+4 of 137 records (--limit 0 for all)
+```
+
+- Every record that is not hidden, of every kind, one line each, **newest
+  first**: the time, the kind (`memo`, `todo`, `question`, `answer`,
+  `glossary`), the ID, the text and the author. A glossary entry shows its word
+  and then its definition. An answer starts with `(to <id>)`, the question it
+  belongs to. A finished todo or question ends with `done`.
+- The time is `HH:MM` for today and `YYYY-MM-DD` for any other day, the time the
+  record was created. The text follows the rules of a list (first line only, cut
+  only on a terminal, control characters replaced).
+- `--limit N` shows the newest `N` records; the default is 20, and `0` shows all.
+  `--kind K` shows one kind only: `memo`, `todo`, `qa` (questions and answers) or
+  `glossary`, or the letter. Both may be written `--limit=N`. A value that is not
+  a whole number of 0 or more, or a kind that does not exist, is a mistake in the
+  command line.
+- The last line counts the records: `N records`, or `N of M records (--limit 0
+  for all)` when some are left out.
 
 ### review
 

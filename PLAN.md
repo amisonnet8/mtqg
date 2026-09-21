@@ -63,7 +63,11 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 3（CLI順1）：手元では完了（2026-09-21）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 4（qa・glossary・`show`・`log`）。** これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）は、CIが通ったら始められる。
+**段階1 Step 4（CLI順2）：進行中（2026-09-21）。** 4種類（memo・todo・qa・glossary）を揃え、`show`・`log`を作る。計画は承認済み（区切り6つ：仕様→モデル層→オプションの表→qa・glossary→`show`・`log`→e2eと実測）。**今は区切り1（仕様）が済んだところ**：`cli.md`・`cli_ja.md`（IDの4桁以上、`q add`の質問と回答の見分け、`qa list`・`glossary list`・`show`・`log`・`status`の形）、`cli-output.md`・`naming.md`、`history.md`。**仕様の出力例のうち、`qa list`・`glossary list`・`show`・`log`・`q add`のエラーは、まだ実際に動かしたものではない**（区切り6で、本物のバイナリの出力に差し替える。`status`の例の`Conflicts`行はStep 6まで出ないので、その時に外す）。
+
+**Step 4で決めたこと（この会話で確認済み）：** IDは**4桁以上**で受け付ける（今までは下限なし）。`q add`は**最初の引数が16進数の4桁以上だけでできていれば回答先のID**（当てはまる記録がなければエラーにして、引用符で括るよう案内する）。IDだけで本文がなければエラー（結果、`$EDITOR`が開くのは引数がまったくないときだけ）。`log`は**新しい順・20件**（暫定。サンプルPJで判断する）。glossaryの重複は`word`の完全一致。理由は`docs/design/history.md`。
+
+**（前の状態）段階1 Step 3（CLI順1）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。** Windowsで見つかった`Init`の後片付けの不具合（開いたままの`os.Root`が`RemoveAll`を妨げる）は、閉じてから消すよう直した（`testing.md`）。これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）を始められる。
 
 **できたもの：** ジャーナル層に`Init`と`git.go`（`user.name`、コミット済みの`journal.jsonl`）、モデル層（`Build`・`Resolve`・`ResolveKind`・`MemoCreate`・`TodoCreate`・`SetStatus`。qa・glossaryも表せる形）、CLIの層（`internal/cli/`。文法を表でデータとして持つ。`messages.go`に英語の文言をすべて置く）、`e2e/`（本物のバイナリと本物のgit。`merge=union`で2つのブランチの記録が両方残ることも確認）、`make test`、CIの`check`ジョブに`make test`。
 
@@ -77,7 +81,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 - `mtqg version`の表示は、`go build`が疑似バージョン（`v0.0.0-<時刻>-<ハッシュ>+dirty`）を作ることを確かめてから決めた（`-ldflags`の値 → ビルドのモジュールのバージョン → `dev`）
 - `init`が作る`.mtqg/`は`0750`、中のファイルは`os.Root.Create`（`0666`からumaskを引いたもの。普通のファイル）
 
-**まだ確かめられていないこと（CIで初めて分かる）：** Windowsでの色（`SetConsoleMode`）と端末の幅（`x/term`）は、CIでは端末が無いので**確かめられない**（手元にWindowsも無い）。`$EDITOR`の起動と引用符（`"C:\Program Files\..."`）はe2eが確かめる。macOSの`/var`→`/private/var`、`-C`とパスの表示。
+**CIで確かめられないこと：** Windowsでの色（`SetConsoleMode`）と端末の幅（`x/term`）は、CIでは端末が無いので**確かめられない**（手元にWindowsも無い）。`$EDITOR`の起動と引用符（`"C:\Program Files\..."`）はe2eが確かめる。macOSの`/var`→`/private/var`、`-C`とパスの表示。
 
 **Step 3に含めなかったもの：** `--json`（Step 5）、qa・glossary（Step 4）、`status`のqa・glossary・Conflictsの行（Step 4・6）、端末識別子`tty`と`undo`（Step 6。今は`tty`を書かない）、シェル補完（Step 9）。**AIの記録者は環境変数で名乗る**（`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`）。指示ファイルに書く運用は、Step 5・段階4で整える。それまで、環境変数の無いAIの記録は人間の名前になる。
 

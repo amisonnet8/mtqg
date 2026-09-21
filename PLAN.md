@@ -64,7 +64,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 8（e2eとdocsの例の確認）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
+**段階1 Step 8（e2eとdocsの例の確認）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
 
 **できたもの：**
 - **docsの例の確認**（`e2e/examples_test.go`）。`docs/reference/cli.md`・`cli_ja.md`の`$`で始まるコードブロックは、直前のHTMLコメント`<!-- mtqg:example repo=parser -->`の指定で、`e2e/testdata/examples/`のフィクスチャ（`parser`・`parser_ja`・`years`・`ambiguous`・`refuse`・`broken`。`none`・`empty`は特別）から作ったリポジトリのコピーで動かし、出力を文書と比べる。**`Run`を直接、`Env.Now`（2026-09-21 12:00 UTC）と`Env.Location`を固定して呼ぶ**（時計の裏口を製品に作らない）。`binary`の印のブロック（`archive`・`format`）は、本物のバイナリでも同じ出力になることを確かめる。`make docs-examples`が実際の出力を文書に書き戻す（**例は手で書かない**）。例が28個（うち1つは`skip=`）、英語版・日本語版とも。取りこぼしを止めるテスト（印なし、理由なしの`skip=`、フィクスチャの言語違い、2言語で例の数が違う）。
@@ -76,7 +76,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **作り直しで見えたこと：** 例は28個（うち1つは`skip=`で、`mtqg version`）。食い違っていたのは、英語版が1つのブロック（`todo list`の2つの例。Step 3のフィクスチャのまま「3 open」だったが、同じ文書の`status`は5）、日本語版が2つのブロック（同じ例と、`undo`の拒否の例のID。英語版と別の値）だけで、残りは最初から実際の出力と一致していた。実装の不具合は見つからなかった。
 
-**CIで確かめること（人間のpush後）：** 例の確認がWindows・macOSで通るか（出力に出るパスの置き換え、`git show HEAD`の出力、`format`が相対パスのファイルを読むこと、フィクスチャのコピー。`.git`の読み取り専用のファイルを含む）。新しいe2eのうち`lock_unix_test.go`はWindowsでは走らない。
+**CIで見つかったこと：** 最初のpushで、例の確認のうち`path=`を使う4つ（`init`と`No .mtqg/ found`の例、英日）がmacOSとWindowsだけで落ちた。mtqgはリンクと短縮名を解決したパス（`/private/var`、Windowsの長い名前）を出すのに、例を動かす一時ディレクトリを解決していなかった。`EvalSymlinks`で解決して直り、CIの3OSがgreenになった（`testing.md`。手元では`TMPDIR`をリンクにすると再現する）。**CIで確かめられたこと：** 例の確認（`git show HEAD`の出力、`format`が相対パスのファイルを読むこと、`.git`の読み取り専用のファイルを含むコピー）と新しいe2eが、Windows・macOSで通る。**確かめられないこと：** `lock_unix_test.go`はWindowsでは走らない（ジャーナル層のテストが担当）。
 
 **Step 8に含めなかったもの：** シェル補完（Step 9）、`docs/tour/`・`docs/examples/`（実装完了後）、`schema.md`の例（コマンドの出力ではないので対象外）。
 

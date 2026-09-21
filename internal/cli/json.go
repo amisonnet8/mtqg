@@ -188,6 +188,44 @@ type jsonUndo struct {
 	Record  *jsonRecord   `json:"record,omitempty"`
 }
 
+// jsonArchive is the report of archive: how the range was read, where the lines go
+// (or would go, with dry_run), and what moved and what stayed. It counts and does
+// not list.
+type jsonArchive struct {
+	Command  string             `json:"command"`
+	Range    jsonArchiveRange   `json:"range"`
+	File     string             `json:"file"`
+	DryRun   bool               `json:"dry_run"`
+	Archived jsonArchiveCounts  `json:"archived"`
+	Skipped  jsonArchiveSkipped `json:"skipped"`
+}
+
+type jsonArchiveRange struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
+// jsonArchiveCounts is what moved, by kind of record. Records is all of them.
+type jsonArchiveCounts struct {
+	Memos           int `json:"memos"`
+	Todos           int `json:"todos"`
+	Questions       int `json:"questions"`
+	Answers         int `json:"answers"`
+	Bugs            int `json:"bugs"`
+	Replies         int `json:"replies"`
+	GlossaryEntries int `json:"glossary_entries"`
+	Records         int `json:"records"`
+}
+
+// jsonArchiveSkipped is what has its last event in the range and stays.
+type jsonArchiveSkipped struct {
+	OpenTodos       int `json:"open_todos"`
+	OpenQuestions   int `json:"open_questions"`
+	OpenBugs        int `json:"open_bugs"`
+	GlossaryEntries int `json:"glossary_entries"`
+	Records         int `json:"records"`
+}
+
 type jsonMemoList struct {
 	Command string       `json:"command"`
 	Records []jsonRecord `json:"records"`

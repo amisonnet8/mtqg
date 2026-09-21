@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // binary is the mtqg that TestMain built.
@@ -277,7 +278,6 @@ func TestExitCodesAndStreams(t *testing.T) {
 		{"an unknown option", []string{"t", "add", "-x"}, 2, "Unknown option -x"},
 		{"no command", nil, 2, "No command given"},
 		{"an ID that matches nothing", []string{"t", "done", "ffff"}, 1, `No record matches "ffff"`},
-		{"a command that is not built yet", []string{"archive", "2021..2023"}, 1, "not available yet"},
 		{"an ID that is too short", []string{"t", "done", "ffa"}, 1, "too short"},
 		{"an option that takes no value", []string{"log", "--limit"}, 2, "needs a value"},
 	}
@@ -819,5 +819,240 @@ func TestTwoBranchesCloseTheSameTodoAndReviewShowsIt(t *testing.T) {
 	// The todo is done, whichever change is looked at: both say done.
 	if out := r.mtqg("t", "list", "--all"); !strings.Contains(out, "done") || !strings.HasSuffix(out, "0 open, 1 done\n") {
 		t.Errorf("t list --all =\n%s", out)
+	}
+}
+
+// oldLine is the line of a memo written on a day long ago, for a journal that has
+// something old to archive (what mtqg writes is always dated now).
+func oldLine(id, ts, text string) string {
+	return fmt.Sprintf(`{"id":"%s","op":"create","type":"memo","text":"%s","v":0,"ts":"%s","author":{"kind":"human","name":"yamada"}}`, id, text, ts)
+}
+
+// appendToJournal adds lines to journal.jsonl by hand, as another tool or a merge
+// would.
+func (r *repo) appendToJournal(lines ...string) {
+	r.t.Helper()
+	f, err := os.OpenFile(filepath.Join(r.dir, ".mtqg", "journal.jsonl"), os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+		r.t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		r.t.Fatal(err)
+	}
+}
+
+func (r *repo) journal() string { return readFile(r.t, filepath.Join(r.dir, ".mtqg", "journal.jsonl")) }
+
+func (r *repo) commitAll(message string) {
+	r.t.Helper()
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", message)
+}
+
+const (
+	oldA = "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
+	oldB = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+	oldC = "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+)
+
+// archive moves lines into a file that git treats like any other, and putting the
+// file back with cat restores the journal.
+func TestArchiveMovesLinesAndCatPutsThemBack(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	closed := strings.TrimSpace(r.mtqg("t", "add", "Add tests for comment handling"))
+	r.mtqg("t", "add", "Support nested comments")
+	r.mtqg("t", "done", closed)
+	r.mtqg("m", "add", "Policy: use English for all error messages")
+	r.commitAll("records")
+	statusBefore := r.mtqg("status")
+	year := fmt.Sprintf("%d", time.Now().UTC().Year())
+
+	// A dry run says what would move, and moves nothing.
+	res := r.run(nil, "", "archive", "-n", year+".."+year)
+	if res.code != 0 || !strings.HasPrefix(res.stdout, "Range: "+year+"-01-01.."+year+"-12-31 (dry run)\nArchived: 1 memo, 1 todo -> .mtqg/archive/") ||
+		!strings.HasSuffix(res.stdout, "Skipped: 1 open todo\n") {
+		t.Errorf("dry run: %+v", res)
+	}
+	if got := r.git("status", "--porcelain"); got != "" {
+		t.Errorf("a dry run changed the repository:\n%s", got)
+	}
+
+	res = r.run(nil, "", "archive", year+".."+year)
+	name := year + "-01-01.." + year + "-12-31.jsonl"
+	if res.code != 0 || res.stderr != "" || !strings.HasPrefix(res.stdout, "Range: "+year+"-01-01.."+year+"-12-31\nArchived: 1 memo, 1 todo -> .mtqg/archive/"+name+"\n") {
+		t.Fatalf("archive: %+v", res)
+	}
+	// What is left is the open todo, and the archived ones are not found.
+	if out := r.mtqg("t", "list", "--all"); !strings.Contains(out, "Support nested comments") || strings.Contains(out, "Add tests for comment handling") || !strings.HasSuffix(out, "1 open, 0 done\n") {
+		t.Errorf("t list --all after archiving:\n%s", out)
+	}
+	if res := r.run(nil, "", "show", closed); res.code != 1 || !strings.Contains(res.stderr, "No record matches") {
+		t.Errorf("show of an archived record: %+v", res)
+	}
+
+	// git sees the archive as a new file and the journal as changed: nothing is
+	// ignored, so committing shares it.
+	status := r.git("status", "--porcelain", "-uall")
+	if !strings.Contains(status, ".mtqg/archive/"+name) || !strings.Contains(status, "M .mtqg/journal.jsonl") {
+		t.Errorf("git status:\n%s", status)
+	}
+	// What a diff of it shows can be read: the removed lines are marked.
+	res = r.run(nil, r.git("diff", "-U0", "HEAD"), "format")
+	// The todo's creation and its done, and the memo: three lines, all marked as removed.
+	if res.code != 0 || strings.Count(res.stdout, "\n") != 3 || strings.Count(res.stdout, "-  2") != 3 {
+		t.Errorf("git diff | format:\n%s (%d)", res.stdout, res.code)
+	}
+	r.commitAll("archive")
+
+	// The archive file is read by format.
+	res = r.run(nil, "", "format", filepath.Join(".mtqg", "archive", name))
+	if res.code != 0 || strings.Count(res.stdout, "\n") != 3 || !strings.Contains(res.stdout, "Add tests for comment handling") || !strings.Contains(res.stdout, "Policy: use English") {
+		t.Errorf("format of the archive:\n%s (%d)", res.stdout, res.code)
+	}
+
+	// Restoring is the spec's cat and rm.
+	archive := filepath.Join(r.dir, ".mtqg", "archive", name)
+	r.appendToJournal(strings.TrimSuffix(readFile(t, archive), "\n"))
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	// The same commit as before the archive, so that status compares alike.
+	r.commitAll("restore")
+	if got := r.mtqg("status"); got != statusBefore {
+		t.Errorf("status after restoring:\n%s\nbefore:\n%s", got, statusBefore)
+	}
+}
+
+// A branch that was made before an archive, and is merged after it, must not break
+// anything. The union merge may bring some archived lines back into the journal
+// (when the other branch changed the same place); they are then in view again, and
+// archiving again puts them away. What never happens is that a line is lost.
+func TestArchiveThenMergeABranchFromBefore(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	r.appendToJournal(
+		oldLine(oldA, "2021-03-01T09:00:00Z", "Old memo one"),
+		oldLine(oldB, "2021-04-01T09:00:00Z", "Old memo two"),
+	)
+	r.commitAll("old records")
+
+	r.git("checkout", "-q", "-b", "feature")
+	r.mtqg("m", "add", "Written on the feature branch")
+	r.commitAll("feature")
+
+	r.git("checkout", "-q", "main")
+	if out := r.mtqg("archive", "2021..2021"); !strings.Contains(out, "Archived: 2 memos -> .mtqg/archive/2021-01-01..2021-12-31.jsonl") {
+		t.Fatalf("archive:\n%s", out)
+	}
+	r.commitAll("archive 2021")
+	r.git("merge", "-q", "--no-edit", "feature")
+
+	if strings.Contains(r.journal(), "<<<<<<<") {
+		t.Fatalf("the merge left conflict markers:\n%s", r.journal())
+	}
+	archived := readFile(t, filepath.Join(r.dir, ".mtqg", "archive", "2021-01-01..2021-12-31.jsonl"))
+	for _, line := range []string{oldLine(oldA, "2021-03-01T09:00:00Z", "Old memo one"), oldLine(oldB, "2021-04-01T09:00:00Z", "Old memo two")} {
+		if !strings.Contains(archived, line) {
+			t.Errorf("the archive lost a line: %s", line)
+		}
+	}
+	if res := r.run(nil, "", "log"); res.code != 0 || res.stderr != "" || !strings.Contains(res.stdout, "Written on the feature branch") {
+		t.Errorf("log after the merge: %+v", res)
+	}
+
+	// Whatever came back is put away by archiving again, and what is written now stays.
+	if res := r.run(nil, "", "archive", "2021..2021"); res.code != 0 {
+		t.Fatalf("archive again: %+v", res)
+	}
+	if got := r.journal(); strings.Contains(got, oldA) || strings.Contains(got, oldB) || !strings.Contains(got, "Written on the feature branch") {
+		t.Errorf("journal.jsonl after archiving again:\n%s", got)
+	}
+}
+
+// Two branches archive different ranges. The files have different names, so the
+// archives do not collide; only journal.jsonl is merged. The two ranges are next to
+// each other in it, so the merge brings the lines of both back (they are in the
+// archives too), which is what schema.md says can happen.
+func TestTwoBranchesArchiveDifferentRanges(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	lines := []string{
+		oldLine(oldA, "2021-03-01T09:00:00Z", "Memo of 2021"),
+		oldLine(oldB, "2022-03-01T09:00:00Z", "Memo of 2022"),
+		oldLine(oldC, "2023-03-01T09:00:00Z", "Memo of 2023"),
+	}
+	r.appendToJournal(lines...)
+	r.commitAll("old records")
+
+	r.git("checkout", "-q", "-b", "feature")
+	r.mtqg("archive", "2022..2022")
+	r.commitAll("archive 2022")
+
+	r.git("checkout", "-q", "main")
+	r.mtqg("archive", "2021..2021")
+	r.commitAll("archive 2021")
+
+	r.git("merge", "-q", "--no-edit", "feature")
+	if strings.Contains(r.journal(), "<<<<<<<") {
+		t.Fatalf("the merge left conflict markers:\n%s", r.journal())
+	}
+	dir := filepath.Join(r.dir, ".mtqg", "archive")
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("archive/ holds %v (%v), want the file of each branch", entries, err)
+	}
+	// Every line is somewhere.
+	everything := r.journal()
+	for _, e := range entries {
+		everything += readFile(t, filepath.Join(dir, e.Name()))
+	}
+	for _, line := range lines {
+		if !strings.Contains(everything, line) {
+			t.Errorf("a line was lost: %s", line)
+		}
+	}
+	// And what is in view reads without a complaint. Archiving both again leaves the
+	// journal with none of the old lines, whatever the merge did.
+	for _, rng := range []string{"2021..2021", "2022..2022"} {
+		if res := r.run(nil, "", "archive", rng); res.code != 0 || res.stderr != "" {
+			t.Fatalf("archive %s: %+v", rng, res)
+		}
+	}
+	if got := r.journal(); strings.Contains(got, oldA) || strings.Contains(got, oldB) || !strings.Contains(got, oldC) {
+		t.Errorf("journal.jsonl:\n%s", got)
+	}
+}
+
+func TestArchiveJSONAndMistakes(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	r.appendToJournal(oldLine(oldA, "2021-03-01T09:00:00Z", "Old memo"))
+
+	var report struct {
+		Command  string `json:"command"`
+		DryRun   bool   `json:"dry_run"`
+		File     string `json:"file"`
+		Archived struct {
+			Memos   int `json:"memos"`
+			Records int `json:"records"`
+		} `json:"archived"`
+	}
+	out := r.mtqg("archive", "--json", "2021-01..2021-12")
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	if report.Command != "archive" || report.DryRun || report.File != ".mtqg/archive/2021-01-01..2021-12-31.jsonl" || report.Archived.Memos != 1 || report.Archived.Records != 1 {
+		t.Errorf("report: %+v", report)
+	}
+
+	// A mistake in the range: exit code 2, nothing on standard output.
+	for _, rng := range []string{"2021", "2022..2021", "2021..2022-01", "last-year..now"} {
+		if res := r.run(nil, "", "archive", rng); res.code != 2 || res.stdout != "" || res.stderr == "" {
+			t.Errorf("archive %s: %+v", rng, res)
+		}
 	}
 }

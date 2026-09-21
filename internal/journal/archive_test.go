@@ -356,58 +356,76 @@ func TestArchiveNeverLosesALineWhenAWriteFails(t *testing.T) {
 
 // A line whose Append returned must still be there after any number of archives,
 // in journal.jsonl or in the archive: an archive takes the lock of an append.
+//
+// The appenders go on until the archives have run wantArchives times, so every
+// archive runs while lines are being appended, however the lock (which is not fair,
+// see TestRewriteWhileGoroutinesAppend) is shared out.
 func TestArchiveWhileGoroutinesAppend(t *testing.T) {
-	const writers, perWriter = 3, 15
+	const writers, wantArchives = 3, 5
 	j := newJournal(t, nil)
 
+	var stop atomic.Bool
+	written := make([]int, writers) // how many lines each writer got in; read after they stop
 	var appenders sync.WaitGroup
-	errs := make(chan error, writers*perWriter+1)
+	errs := make(chan error, writers+1)
 	for w := range writers {
 		appenders.Add(1)
 		go func() {
 			defer appenders.Done()
-			for i := range perWriter {
+			for i := 0; !stop.Load(); i++ {
 				if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: fmt.Sprintf("w%d-%d", w, i)}); err != nil {
 					errs <- err
 					return
 				}
-				time.Sleep(time.Millisecond) // the lock is not fair; see TestRewriteWhileGoroutinesAppend
+				written[w] = i + 1
+				time.Sleep(time.Millisecond)
 			}
 		}()
 	}
 
-	var done atomic.Bool
-	result := make(chan [2]int, 1) // archives run, lines that were sent to be archived
-	go func() {
-		runs, seeded := 0, 0
-		for !done.Load() {
-			if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: fmt.Sprintf("drop-%d", seeded)}); err != nil {
-				errs <- err
-				break
-			}
-			seeded++
-			if err := j.Archive("a.jsonl", moveMatching("drop-")); err != nil {
-				errs <- err
-				break
-			}
-			runs++
-			time.Sleep(2 * time.Millisecond)
+	seeded := 0
+	for runs := 0; runs < wantArchives; runs++ {
+		if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: fmt.Sprintf("drop-%d", seeded)}); err != nil {
+			errs <- err
+			break
 		}
-		result <- [2]int{runs, seeded}
-	}()
-
+		seeded++
+		if err := j.Archive("a.jsonl", moveMatching("drop-")); err != nil {
+			errs <- err
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	stop.Store(true)
 	appenders.Wait()
-	done.Store(true)
-	got := <-result
 	close(errs)
 	for err := range errs {
 		t.Fatal(err)
 	}
-	if got[0] < 3 {
-		t.Fatalf("only %d archives ran while appending: the test proves nothing", got[0])
+
+	read, err := j.Read()
+	if err != nil || len(read.Warnings) != 0 {
+		t.Fatalf("reading: %v, warnings %+v", err, read.Warnings)
 	}
-	checkAllWritten(t, j, writers, perWriter, "w")
-	if n := strings.Count(readArchive(t, j, "a.jsonl"), "\n"); n != got[1] {
-		t.Errorf("the archive holds %d lines, want the %d that were sent to it", n, got[1])
+	total := 0
+	for _, n := range written {
+		total += n
+	}
+	if len(read.Events) != total {
+		t.Fatalf("journal.jsonl holds %d events, want the %d that were appended: lines were lost", len(read.Events), total)
+	}
+	next := make([]int, writers)
+	for _, ev := range read.Events {
+		var w, i int
+		if _, err := fmt.Sscanf(ev.Text, "w%d-%d", &w, &i); err != nil || w >= writers {
+			t.Fatalf("unexpected text %q", ev.Text)
+		}
+		if i != next[w] {
+			t.Fatalf("writer %d: got number %d, want %d: its lines are out of order", w, i, next[w])
+		}
+		next[w]++
+	}
+	if n := strings.Count(readArchive(t, j, "a.jsonl"), "\n"); n != seeded {
+		t.Errorf("the archive holds %d lines, want the %d that were sent to it", n, seeded)
 	}
 }

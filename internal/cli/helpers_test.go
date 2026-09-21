@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -90,7 +91,9 @@ func (h *harness) runIn(dir string, args ...string) (code int, stdout, stderr st
 	env.Getenv = func(k string) string { return h.vars[k] }
 	env.Getwd = func() (string, error) { return dir, nil }
 	env.Now = func() time.Time { return h.now }
-	env.Location = time.UTC
+	if env.Location == nil {
+		env.Location = time.UTC
+	}
 	if env.RunEditor == nil {
 		env.RunEditor = func([]string) error { return io.EOF }
 	}
@@ -163,3 +166,14 @@ const (
 	idM = "81e74ef5e8e24d949ed904759531985d"
 	idQ = "2217beaddb1f4b6e9c0d1e2f3a4b5c66"
 )
+
+// withUnbuiltCommand adds a command that is known but has no run function, for the
+// rest of the test: what is said about one that is not built. Every real command is
+// built, so the tests cannot use one. The tests of this package do not run in
+// parallel, so changing the table is safe.
+func withUnbuiltCommand(t *testing.T) {
+	t.Helper()
+	saved := commands
+	commands = append(slices.Clone(commands), &command{name: "unbuilt", usage: "mtqg unbuilt", summary: "A command that is not built", args: argsNone})
+	t.Cleanup(func() { commands = saved })
+}

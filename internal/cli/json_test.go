@@ -476,6 +476,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 	})
 
 	t.Run("help lists the kinds and every command, and says which are built", func(t *testing.T) {
+		withUnbuiltCommand(t)
 		obj := jsonObject(t, mustRun(h, "--json", "help"))
 		kinds := records(t, obj, "kinds")
 		if len(kinds) != 5 || kinds[3]["name"] != "bug" || kinds[3]["short"] != "b" {
@@ -485,7 +486,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 		for _, c := range records(t, obj, "commands") {
 			available[c["command"].(string)] = c["available"]
 		}
-		if available["bug done"] != true || available["context"] != true || available["edit"] != true || available["undo"] != true || available["archive"] != false {
+		if available["bug done"] != true || available["context"] != true || available["edit"] != true || available["undo"] != true || available["archive"] != true || available["unbuilt"] != false {
 			t.Errorf("available %v", available)
 		}
 	})
@@ -506,6 +507,7 @@ func oneLineOfJSON(t *testing.T, errOut string) map[string]any {
 
 func TestJSONErrors(t *testing.T) {
 	h := initialized(t)
+	withUnbuiltCommand(t)
 	jsonFixture(h)
 	before := h.readJournal()
 
@@ -542,7 +544,7 @@ func TestJSONErrors(t *testing.T) {
 		{"an unknown option", []string{"todo", "list", "--frobnicate"}, 2, "usage", nil},
 		{"a missing argument", []string{"todo", "done"}, 2, "usage", nil},
 		{"a wrong limit", []string{"log", "--limit", "many"}, 2, "usage", nil},
-		{"a command that is not built", []string{"archive", "2021..2023"}, 1, "not_available", nil},
+		{"a command that is not built", []string{"unbuilt"}, 1, "not_available", nil},
 		{"an empty text", []string{"todo", "add", " "}, 1, "empty_text", nil},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

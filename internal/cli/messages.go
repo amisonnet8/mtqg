@@ -595,3 +595,54 @@ func msgContextWord(word string, definitions int) string {
 func msgBadMaxTokens(value string) string {
 	return fmt.Sprintf("Option --max-tokens needs a whole number of 0 or more, not %q. Use 0 for no limit.", value)
 }
+
+// archive
+
+func msgArchiveRangeLine(rng string, dryRun bool) string {
+	if dryRun {
+		return "Range: " + rng + " (dry run)"
+	}
+	return "Range: " + rng
+}
+
+const msgArchivedNothing = "Archived: nothing"
+
+// msgArchivedLine says what moved and where to. parts is what is counted, as "12
+// bugs".
+func msgArchivedLine(parts []string, file string) string {
+	return "Archived: " + strings.Join(parts, ", ") + " -> " + file
+}
+
+func msgSkippedLine(parts []string) string { return "Skipped: " + strings.Join(parts, ", ") }
+
+// msgCount says how many of a thing there are, with the singular for one.
+func msgCount(n int, singular, plural string) string {
+	if n == 1 {
+		return "1 " + singular
+	}
+	return fmt.Sprintf("%d %s", n, plural)
+}
+
+func msgRangeNotARange(arg string) string {
+	return fmt.Sprintf("%q is not a range. Write <start>..<end>, for example 2021-01-01..2024-09-18. %s", arg, hintHelp)
+}
+
+func msgRangeBadCharacter(arg string) string {
+	return fmt.Sprintf("%q is not a range: only digits, - and . are allowed", arg)
+}
+
+func msgRangeBadSide(side string) string {
+	return fmt.Sprintf("%q is not a date, a month or a year: give 8, 6 or 4 digits (2024-09-18, 2024-09, 2024)", side)
+}
+
+// msgRangeMixedUnits complains that one side of a range is a year, a month or a
+// day and the other is not; leftUnit and rightUnit are those words.
+func msgRangeMixedUnits(left, leftUnit, right, rightUnit string) string {
+	return fmt.Sprintf("The two sides of the range are not the same kind: %q is a %s and %q is a %s", left, leftUnit, right, rightUnit)
+}
+
+func msgRangeNoSuchDate(date string) string { return fmt.Sprintf("%s is not a date", date) }
+
+func msgRangeBackwards(start, end string) string {
+	return fmt.Sprintf("The range starts after it ends: %s..%s", start, end)
+}

@@ -56,6 +56,7 @@ type command struct {
 	args    argMode
 	all     bool // accepts --all
 	mark    bool // accepts --mark
+	dryRun  bool // accepts -n and --dry-run
 
 	// values are the options that take a value, as --limit 5 or --limit=5.
 	values []string
@@ -135,7 +136,7 @@ func init() {
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes, duplicate definitions and answers with no parent", args: argsNone, run: runReview},
 		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsNone, values: []string{"--max-tokens"}, run: runContext},
 		{name: "format", usage: "mtqg format [--mark] [file]", summary: "Show the event lines found in any text", args: argsAny, mark: true, run: runFormat},
-		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move finished items of a date range out of view", args: argsAny},
+		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move the items of a date range out of view (-n: only report)", args: argsAny, dryRun: true, run: runArchive},
 	}
 }
 
@@ -169,6 +170,7 @@ type invocation struct {
 	noColor bool
 	json    bool
 	mark    bool
+	dryRun  bool
 	help    bool
 
 	// values holds the options that take a value, by their names (--limit).
@@ -186,8 +188,8 @@ func (e *usageError) Error() string { return e.msg }
 // parseArgs reads a command line: options, then the command (a kind and a verb,
 // or a command word), then its arguments.
 //
-// Options are -C <path>, --all, --mark, --full-id, --no-color, --json and -h or --help. Before
-// the command they may stand anywhere. After it, a command that takes a text
+// Options are -C <path>, --all, --mark, -n or --dry-run, --full-id, --no-color,
+// --json and -h or --help. Before the command they may stand anywhere. After it, a command that takes a text
 // (memo add, todo add) reads options only up to the first word of the text: from
 // there on every word is text, even one that starts with -. "--" ends the
 // options. Other commands read options anywhere. A single "-" is a word (it
@@ -239,6 +241,8 @@ func parseArgs(args []string) (*invocation, error) {
 			inv.json = true
 		case arg == "--mark":
 			inv.mark = true
+		case arg == "-n" || arg == "--dry-run":
+			inv.dryRun = true
 		case arg == "-h" || arg == "--help":
 			inv.help = true
 		default:
@@ -318,6 +322,9 @@ func parseArgs(args []string) (*invocation, error) {
 	}
 	if inv.mark && !inv.cmd.mark && !inv.help {
 		return nil, &usageError{msgUnknownOption("--mark", inv.cmd.usage)}
+	}
+	if inv.dryRun && !inv.cmd.dryRun && !inv.help {
+		return nil, &usageError{msgUnknownOption("--dry-run", inv.cmd.usage)}
 	}
 	if !inv.help {
 		if err := checkArity(inv.cmd, inv.words); err != nil {

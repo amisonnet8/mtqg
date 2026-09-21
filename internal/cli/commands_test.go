@@ -670,6 +670,7 @@ func TestVersion(t *testing.T) {
 
 func TestHelpAndMistakes(t *testing.T) {
 	h := newHarness(t)
+	withUnbuiltCommand(t)
 
 	code, out, errOut := h.run("help")
 	wantExit(t, code, 0, out, errOut)
@@ -678,7 +679,10 @@ func TestHelpAndMistakes(t *testing.T) {
 			t.Errorf("help does not mention %q:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, "mtqg archive") {
+	if !strings.Contains(out, "mtqg archive <start>..<end> [-n]") {
+		t.Error("help does not list archive")
+	}
+	if strings.Contains(out, "mtqg unbuilt") {
 		t.Error("help lists a command that is not available yet")
 	}
 
@@ -707,9 +711,9 @@ func TestHelpAndMistakes(t *testing.T) {
 	}
 
 	// A command that exists but is not built yet says so.
-	code, out, errOut = h.run("archive", "2021..2023")
+	code, out, errOut = h.run("unbuilt")
 	wantExit(t, code, 1, out, errOut)
-	if !strings.Contains(errOut, "`mtqg archive` is not available yet") {
+	if !strings.Contains(errOut, "`mtqg unbuilt` is not available yet") {
 		t.Errorf("stderr %q", errOut)
 	}
 }

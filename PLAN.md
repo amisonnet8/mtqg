@@ -53,7 +53,7 @@ mtqgの実装計画・進捗管理ドキュメント。実装が進むにつれ�
 5. **Step 5: CLI順3** — `context`、全コマンドの`--json`。AIに渡せる
 6. **Step 6: CLI順4** — `edit`、`delete`、`undo`、`search`、`review`、`format`
 7. **Step 7: CLI順5** — `archive`（`-n`を含む）
-8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5・5・6・7で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を6回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。ここで、フィクスチャをGoのテストの側に置き、文書の例と突き合わせる仕組みにする（`testing.md`「e2eとdocsの例の確認」）
+8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5・5・6・7で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を6回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。**完了（2026-09-21）：**フィクスチャを`e2e/testdata/examples/`に置き、文書の例をHTMLコメントの印で`Run`（時計を固定）と本物のバイナリに突き合わせる仕組みにした。`make docs-examples`が文書に書き戻す（`testing.md`「e2eとdocsの例の確認」）。一覧の未実施のe2eもすべて足した
 9. **Step 9: シェル補完**
 
 Step 3が動いた時点でサンプルPJ（段階2）を始められる。
@@ -64,7 +64,25 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 7（`archive`）：完了（2026-09-21、CIの3OSがgreen。人間が確認。Step 5・6の分も同時に確認済み）。次はStep 8（e2eとdocsの例の仕組み）。** これで**段階1のコマンドはすべてそろった**（残りはStep 8の検証の仕組みとStep 9のシェル補完）。
+**段階1 Step 8（e2eとdocsの例の確認）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
+
+**できたもの：**
+- **docsの例の確認**（`e2e/examples_test.go`）。`docs/reference/cli.md`・`cli_ja.md`の`$`で始まるコードブロックは、直前のHTMLコメント`<!-- mtqg:example repo=parser -->`の指定で、`e2e/testdata/examples/`のフィクスチャ（`parser`・`parser_ja`・`years`・`ambiguous`・`refuse`・`broken`。`none`・`empty`は特別）から作ったリポジトリのコピーで動かし、出力を文書と比べる。**`Run`を直接、`Env.Now`（2026-09-21 12:00 UTC）と`Env.Location`を固定して呼ぶ**（時計の裏口を製品に作らない）。`binary`の印のブロック（`archive`・`format`）は、本物のバイナリでも同じ出力になることを確かめる。`make docs-examples`が実際の出力を文書に書き戻す（**例は手で書かない**）。例が28個、英語版・日本語版とも。取りこぼしを止めるテスト（印なし、理由なしの`skip=`、フィクスチャの言語違い、2言語で例の数が違う）。
+- **e2eの残り**（`.claude/rules/testing.md`の一覧はすべてe2eにある）：`boundaries_test.go`（衝突マーカー、知らない`version`、`.local/`を消した後、submoduleと既存`.mtqg/`への`init`）、`lock_unix_test.go`（worktreeとシンボリックリンクのロック。**LinuxとmacOSだけ**）、`records_test.go`（曖昧なID、種類の取り違え、`edit`・`delete`・`search`）。
+
+**Step 8で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** ①`Run`を時計を固定して直接呼ぶ（`MTQG_NOW`は作らない）。②印はフェンスの直前のHTMLコメント。③今ある例は、1つの整合したフィクスチャから作り直して差分を確認する。④e2eは一覧の未実施をすべて足す。**`testscript`は要らないと結論した**（未確認事項4）。
+
+**手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`（`-tags e2e`）とテストのコンパイルが通る（**実行はCI**）。仕組みを壊して確かめた（すべてテストが検出）：例を1文字変える、印を外す、理由のない`skip=`、`ids=any`を外す、英語版が日本語のフィクスチャを使う、残った印、本物のバイナリの出力を変える。`make docs-examples`を続けて2回実行しても差分が出ない。新しいe2eは、製品側を壊して確かめた（すべてe2eが検出）：追記が衝突マーカーを無視する、新しい形式を受け入れる、`.local/`を作り直さない、ロックが待たない、曖昧な前方一致が最初の1件を選ぶ、質問を消しても回答が残る、3桁のIDを受け入れる。
+
+**作り直しで見えたこと：** 例の26個は最初から実際の出力と一致していた。食い違っていたのは、`todo list`の2つの例（Step 3のフィクスチャのまま。「3 open」だったが、同じ文書の`status`は5）と、日本語版の`undo`の拒否の例のID（英語版と別の値）だけ。実装の不具合は見つからなかった。
+
+**CIで確かめること（人間のpush後）：** 例の確認がWindows・macOSで通るか（出力に出るパスの置き換え、`git show HEAD`の出力、`format`が相対パスのファイルを読むこと、フィクスチャのコピー。`.git`の読み取り専用のファイルを含む）。新しいe2eのうち`lock_unix_test.go`はWindowsでは走らない。
+
+**Step 8に含めなかったもの：** シェル補完（Step 9）、`docs/tour/`・`docs/examples/`（実装完了後）、`schema.md`の例（コマンドの出力ではないので対象外）。
+
+**提案（作っていない）：** 「例のブロックを足すときは、印を付けて`make docs-examples`」という手順は`.claude/rules/testing.md`に書いた。Skillにするほどの繰り返しではない。
+
+**（前の状態）** **段階1 Step 7（`archive`）：完了（2026-09-21、CIの3OSがgreen。人間が確認。Step 5・6の分も同時に確認済み）。次はStep 8（e2eとdocsの例の仕組み）。** これで**段階1のコマンドはすべてそろった**（残りはStep 8の検証の仕組みとStep 9のシェル補完）。
 
 **できたもの：** ジャーナル層の`Archive`（アーカイブへ追記して`fsync`→`journal.jsonl`を置き換え。移す行＋残す行が読んだ行と合わなければ何も書かない。`Rewrite`と読み込み・置き換えを共有）。モデル層の`ArchiveTargets`（項目＝記録＋従う回答・返信。最後のイベントで期間を判定）。CLIの`archive`（範囲の解釈`parseRange`、`-n`／`--dry-run`、`--json`は件数だけ、記録者は要らない）。未実装のコマンドが無くなったので、`not_available`のテストは`withUnbuiltCommand`（テストの中で仮のコマンドを足す）に直した（e2eは該当のケースを外した）。
 
@@ -182,7 +200,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 1. ~~Goのモジュールパス。~~ **確定：`github.com/amisonnet8/mtqg`**（コマンドは`github.com/amisonnet8/mtqg/cmd/mtqg`）
 2. ~~Trivyのライセンス検出がGoの依存で効くか。~~ **確認済み（2026-09-20）：効く。** `golang.org/x/sys`を足した後、閾値を一時的に下げて（`--severity UNKNOWN,LOW,...`、設定ファイルは変更しない）実行すると、`golang.org/x/sys`のBSD-3-Clause（分類はnotice、深刻度はLOW）が検出・表示された。既定の閾値（HIGH・CRITICAL）では通る。依存を足したら同じ手順で確かめること
 3. ~~JSONの書き出しに`encoding/json`と`encoding/json/v2`のどちらを使うか。~~ **確定：`encoding/json/v2`**（2026-09-20）。v1は`SetEscapeHTML(false)`でもU+2028・U+2029を常にエスケープし、不正なUTF-8を黙って置き換える。理由は`docs/design/history.md`。JSONを扱うのは`internal/journal/event.go`だけにして、ゴールデンテストで固定する
-4. **e2eの仕組み。** **決定（2026-09-21）：`e2e/`に、ビルドタグ`e2e`のGoのテスト。ビルドした本物のバイナリと本物のgitを`exec`で動かす。** `testscript`は`golang.org/x/`ではないので使わない（依存の基準）。Step 8で、docsの例の確認に「どうしても必要か」を再評価する（`.claude/rules/testing.md`に記録済み）
+4. **e2eの仕組み。** **決定（2026-09-21）：`e2e/`に、ビルドタグ`e2e`のGoのテスト。ビルドした本物のバイナリと本物のgitを`exec`で動かす。** `testscript`は`golang.org/x/`ではないので使わない（依存の基準）。**Step 8で再評価し、`testscript`は要らないと確定した**（2026-09-21。文書の印と`-update`で足りた。`.claude/rules/testing.md`）
 5. ~~ロックの待ち時間~~ **確定：5秒**（2026-09-20）。ロックを持つのは追記の一瞬か書き直しの間だけなので、5秒待って取れなければ、ロックを持ったまま固まったプロセスがいるとみなす。テストでは短い値に差し替えられるようにする
 
 ## 保留事項

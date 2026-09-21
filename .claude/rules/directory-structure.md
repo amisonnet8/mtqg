@@ -35,17 +35,17 @@ mtqg/
 ## 配置の判断基準
 
 - **`.mtqg/`の中のファイル（`journal.jsonl`・`archive/`・`version`・`.local/`）に触れるコード** → `internal/journal/`
-  - `.mtqg/`の探索（設計§4.4）と`init`での作成、`version`の確認、行の読み込み、追記、書き直し（`undo`・`archive`用の汎用操作）、ロック、IDの生成
+  - `.mtqg/`の探索（設計§4.4）と`init`での作成、`version`の確認、行の読み込み、追記、書き直し（`undo`用の汎用操作`Rewrite`）、アーカイブへの移動（`archive.go`。追記と置き換えを1回のロックで）、ロック、IDの生成
   - **gitを読むコード**（`git config user.name`、コミット済みの`journal.jsonl`）は`internal/journal/git.go`に置く。`exec`で本物の`git`を呼ぶだけで、gitへは書かない（git-integration.md）。`.mtqg/`とその置かれたリポジトリの状況を読む部分なので、この層に属する
   - イベントが「todoの完了」か「用語の定義」かは**知らない**。1行のイベントとして扱うだけ
 - **イベントの意味を扱うコード** → `internal/model/`
-  - 状態の組み立て、検証（memoは完了にできない等）、`undo`・`archive`の対象の選び方（`undo.go`）、並行した状態変更・用語の重複定義・親のない返信の検出（`review.go`）、検索（`search.go`）、`context`の中身の組み立てと削る順序（`context.go`。測ること・文章にすることはCLI）
+  - 状態の組み立て、検証（memoは完了にできない等）、`undo`・`archive`の対象の選び方（`undo.go`）、並行した状態変更・用語の重複定義・親のない返信の検出（`review.go`）、`archive`の対象の選び方（`archive.go`。期間は時刻で受け取り、日付の解釈はCLI）、検索（`search.go`）、`context`の中身の組み立てと削る順序（`context.go`。測ること・文章にすることはCLI）
   - ファイルを直接開かない。必ずジャーナル層を通す
 - **利用者とのやり取り** → `internal/cli/`
   - 種類・動詞・オプションの**表をデータとして持つ**（`args.go`。`help`とシェル補完が同じ表から作れる）、英語の文言は`messages.go`に1か所、表示（`render.go`）、本文の入力（引数・標準入力・`$EDITOR`）、環境変数（記録者）
   - 標準入出力・環境変数・現在時刻・端末・ファイルの読み込み（`format`の引数）を`Env`で注入し、`Run(env, args)`をテストから直接呼べるようにする
   - OSで分かれる小さな部分（色の有効化`ansi_*.go`、端末の識別`tty_*.go`）は、ファイルを`_windows.go`と`!windows`で分ける
-  - 引数の解釈（`archive`の期間の解釈を含む）、英語の文言、表の整形、`--json`の出力（形は`json.go`に1か所）、`context`を文章にすること（`context.go`）
+  - 引数の解釈（`archive`の期間の解釈を含む。`archive.go`）、英語の文言、表の整形、`--json`の出力（形は`json.go`に1か所）、`context`を文章にすること（`context.go`）
   - コアは**構造化された結果とエラーの種類**を返す。文言にするのはここだけ（cli-output.md）
 - 依存の向きは `cli → model → journal` の一方向。逆向きのimportを作らない
 

@@ -41,7 +41,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg review` | Concurrent status changes, duplicate glossary definitions, and answers or replies with no parent |
 | `mtqg context [--max-tokens N]` | Summary for AI agents |
 | `mtqg format [--mark] [file]` | Pretty-print event lines found in any text |
-| `mtqg archive <start>..<end> [-n]` | Move finished items of a date range out of view |
+| `mtqg archive <start>..<end> [-n]` | Move the items of a date range out of view (`-n`: only report) |
 | `mtqg init` | Create `.mtqg/` |
 | `mtqg version` | Show the mtqg version and the repository's format version |
 | `mtqg help` | List the commands (`-h` and `--help` do the same) |
@@ -143,6 +143,7 @@ What each command prints, after `command`:
 | `undo` | `event`: the line that was removed, in the form of [schema.md](schema.md), and `record`: the record it belongs to as it was before, if it is in the journal |
 | `search` | `query`, `records` (newest first), `count` |
 | `review` | `concurrent_status_changes`: `{"record", "changes"}` for each record, with `changes` as lines of `journal.jsonl`; `duplicate_words`: `{"word", "records"}`; `unattached_replies`: `{"record", "re_record"}`, with `re_record` left out if the `re` names nothing in the journal. Each is `[]` if there is nothing |
+| `archive` | `range`: `{"start", "end"}` (as read, `YYYY-MM-DD`); `file`: the archive file, relative to the repository; `dry_run`; `archived`: counts `memos`, `todos`, `questions`, `answers`, `bugs`, `replies`, `glossary_entries` (deleted ones), `records` and `lines` (the lines moved); `skipped`: counts `open_todos`, `open_questions`, `open_bugs`, `glossary_entries`, `records`. When `archived.records` is 0 no file is made |
 | `format` | `events` (in time order, as lines of `journal.jsonl`; a line that has a mark in the input has `mark`, `+` or `-`), `count` |
 | `memo list` | `records`, `count` |
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
@@ -975,10 +976,11 @@ $ mtqg archive 2021..2023
 $ mtqg archive 202404..2024-09 -n
 ```
 
-Moves finished items whose last event falls in the range from `journal.jsonl`
-to `.mtqg/archive/<start>..<end>.jsonl` (see [schema.md](schema.md#archive)
-for what is archived). No command reads `archive/` by itself; archived IDs are
-simply not found. To read an archive file, pass it to `mtqg format`.
+Moves the items whose last event falls in the range from `journal.jsonl` to
+`.mtqg/archive/<start>..<end>.jsonl` (see [schema.md](schema.md#archive) for
+which items move: finished todos, questions and bugs, memos, and anything that
+was deleted). No command reads `archive/` by itself; archived IDs are simply not
+found. To read an archive file, pass it to `mtqg format`.
 
 The range is one argument, `<start>..<end>`:
 
@@ -998,22 +1000,38 @@ The range is one argument, `<start>..<end>`:
 2023..2023                → 2023-01-01..2023-12-31
 ```
 
-Errors: no `..`; a side that is not 8, 6 or 4 digits; different units on the
-two sides; a date that does not exist; start after end; any character other
-than digits, `-` and `.`.
+Errors (exit code 2, like any mistake in the command line): no `..`; a side that
+is not 8, 6 or 4 digits; different units on the two sides; a date that does not
+exist; start after end; any character other than digits, `-` and `.`.
 
 ```
 $ mtqg archive 2021-0101..202409-18
 Range: 2021-01-01..2024-09-18
-Archived: 412 memos, 138 todos, 57 questions, 12 bugs -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
+Archived: 412 memos, 138 todos, 57 questions, 81 answers, 12 bugs, 20 replies -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
 Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
 ```
 
 - The first line always shows how the range was read.
+- `Archived:` counts what moved, by kind (a kind that has none is left out); a
+  deleted record counts under its kind. `-> ` names the file. When nothing moves
+  it says `Archived: nothing`, and no file is made.
+- `Skipped:` counts what has its last event in the range but stays: todos,
+  questions and bugs that are open, and glossary entries. It is left out when
+  there are none.
 - The file name is always the normalized range. Archiving the same range again
   appends to the same file.
-- `-n` (`--dry-run`) prints the same report without moving anything.
+- `-n` (`--dry-run`) prints the same report without moving anything, and does not
+  make `archive/`. The first line ends with `(dry run)`, so that a report of what
+  would move is not taken for one of what moved.
 - Relative dates ("2 years ago") are not accepted.
+- `archive` writes no event, so it needs no author (`git config user.name` may be
+  unset).
+- With `--json` the report is one object (see [JSON output](#json-output)); it
+  counts and does not list the records. To see what an archive holds, pass its
+  file to `mtqg format`.
+
+To bring a range back, append its file to `journal.jsonl` and delete it (see
+[schema.md](schema.md#archive)). There is no `unarchive` command.
 
 ## version
 

@@ -39,7 +39,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg review` | 並行した状態変更、用語の重複定義、親のない回答・返信 |
 | `mtqg context [--max-tokens N]` | AIエージェント向けの要約 |
 | `mtqg format [--mark] [ファイル]` | 任意のテキストに含まれるイベント行を整形して表示する |
-| `mtqg archive <開始>..<終了> [-n]` | 期間内の終わった項目を視界から外す |
+| `mtqg archive <開始>..<終了> [-n]` | 期間内の項目を視界から外す（`-n`：報告だけ） |
 | `mtqg init` | `.mtqg/`を作る |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
 | `mtqg help` | コマンドの一覧を表示する（`-h`、`--help`も同じ） |
@@ -126,6 +126,7 @@ $ mtqg memo list --json
 | `undo` | `event`：消した行を[schema_ja.md](schema_ja.md)の形で、`record`：その行が属する記録の、消す前の姿（ジャーナルにあれば） |
 | `search` | `query`、`records`（新しい順）、`count` |
 | `review` | `concurrent_status_changes`：記録ごとの`{"record", "changes"}`（`changes`は`journal.jsonl`の行）、`duplicate_words`：`{"word", "records"}`、`unattached_replies`：`{"record", "re_record"}`（`re`がジャーナルの何も指さないときは`re_record`を出さない）。どれも、なければ`[]` |
+| `archive` | `range`：`{"start", "end"}`（読んだとおりの`YYYY-MM-DD`）、`file`：アーカイブのファイル（リポジトリからの相対）、`dry_run`、`archived`：件数`memos`・`todos`・`questions`・`answers`・`bugs`・`replies`・`glossary_entries`（削除したもの）・`records`・`lines`（移した行数）、`skipped`：件数`open_todos`・`open_questions`・`open_bugs`・`glossary_entries`・`records`。`archived.records`が0のときファイルは作らない |
 | `format` | `events`（時刻順。`journal.jsonl`の行として。入力で印があった行は`mark`（`+`か`-`）を持つ）、`count` |
 | `memo list` | `records`、`count` |
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
@@ -794,7 +795,7 @@ $ mtqg archive 2021..2023
 $ mtqg archive 202404..2024-09 -n
 ```
 
-終わった項目のうち、最後のイベントが期間に入るものを、`journal.jsonl`から`.mtqg/archive/<開始>..<終了>.jsonl`に移す（何がアーカイブされるかは[schema_ja.md](schema_ja.md#アーカイブ)）。どのコマンドも`archive/`を自分から読むことはなく、アーカイブ済みのIDは単に見つからない。アーカイブのファイルを読むときは、`mtqg format`に渡す。
+最後のイベントが期間に入る項目を、`journal.jsonl`から`.mtqg/archive/<開始>..<終了>.jsonl`に移す（どの項目が移るかは[schema_ja.md](schema_ja.md#アーカイブ)：終わったtodo・質問・bug、memo、削除した記録）。どのコマンドも`archive/`を自分から読むことはなく、アーカイブ済みのIDは単に見つからない。アーカイブのファイルを読むときは、`mtqg format`に渡す。
 
 期間は1つの引数`<開始>..<終了>`で書く。
 
@@ -813,19 +814,25 @@ $ mtqg archive 202404..2024-09 -n
 2023..2023                → 2023-01-01..2023-12-31
 ```
 
-エラーになるもの：`..`がない、8・6・4桁でない側がある、左右の単位が違う、存在しない日付、開始が終了より後、数字・`-`・`.`以外の文字がある。
+エラーになるもの（終了コード2。コマンドラインの誤りと同じ）：`..`がない、8・6・4桁でない側がある、左右の単位が違う、存在しない日付、開始が終了より後、数字・`-`・`.`以外の文字がある。
 
 ```
 $ mtqg archive 2021-0101..202409-18
 Range: 2021-01-01..2024-09-18
-Archived: 412 memos, 138 todos, 57 questions, 12 bugs -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
+Archived: 412 memos, 138 todos, 57 questions, 81 answers, 12 bugs, 20 replies -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
 Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
 ```
 
 - 1行目に、期間をどう読んだかを必ず表示する
+- `Archived:`は移したものを種類ごとに数える（1つもない種類は出さない）。削除した記録は、その種類として数える。`-> `はファイルの名前。何も移さないときは`Archived: nothing`と言い、ファイルは作らない
+- `Skipped:`は、最後のイベントが期間に入るのに残るものを数える：未完了のtodo・質問・bugと、glossaryの項目。なければ行ごと出さない
 - ファイル名は常に正規化した期間。同じ期間をもう一度アーカイブすると、同じファイルに追記する
-- `-n`（`--dry-run`）は、何も移さずに同じ報告を表示する
+- `-n`（`--dry-run`）は、何も移さずに同じ報告を表示し、`archive/`も作らない。1行目の終わりに`(dry run)`が付き、「移す予定」の報告を「移した」報告と取り違えないようにする
 - 相対的な日付（「2年前」など）は受け付けない
+- `archive`はイベントを書かないので、記録者は要らない（`git config user.name`が未設定でもよい）
+- `--json`のときは、報告は1つのオブジェクトになる（[JSON出力](#json出力)）。数えるだけで、記録の一覧は出さない。アーカイブの中身は、そのファイルを`mtqg format`に渡して見る
+
+期間を戻すには、そのファイルを`journal.jsonl`の末尾に結合して消す（[schema_ja.md](schema_ja.md#アーカイブ)）。`unarchive`コマンドはない。
 
 ## version
 

@@ -64,7 +64,13 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 6（`edit`・`delete`・`undo`・`search`・`review`・`format`、`tty`）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認。Step 5の分も未確認）。次はStep 7（`archive`）。** これで、記録を書く・読む・直す・消す・取り消す・探す・食い違いを見る、が一通りそろった。
+**段階1 Step 7（`archive`）：仕様を先に直した段階（2026-09-21）。実装はこれから。Step 6までのCIの3OSの確認は、まだ（人間がpushして確認。Step 5・6の分も未確認）。**
+
+**Step 7で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** ①削除した記録は種類も状態も問わず対象。②質問・バグの「最後のイベント」は回答・返信（削除したものを含む）まで含めたスレッド全体。③親のない回答・返信はmemoと同じ1項目。④`--json`は件数だけ。実装前に決めたこと：`Archived:`に回答・返信の件数を足す、`-n`は1行目に`(dry run)`、何も移さないときは`Archived: nothing`でファイルを作らない、順序は「アーカイブへ追記して`fsync`→`journal.jsonl`を置き換え」、移す行＋残す行の合計が合わなければ何も書かない。
+
+**Step 7の進め方：** ①仕様（済）→②ジャーナル層`Archive`→③モデル層`ArchiveTargets`→④CLI（範囲の解釈、`-n`、`--json`）→⑤`not_available`のテストを仮コマンド方式に直す（`archive`で未実装のコマンドが無くなるため）→⑥e2e、例の実出力、全検証。
+
+**（前の状態）** **段階1 Step 6（`edit`・`delete`・`undo`・`search`・`review`・`format`、`tty`）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認。Step 5の分も未確認）。次はStep 7（`archive`）。** これで、記録を書く・読む・直す・消す・取り消す・探す・食い違いを見る、が一通りそろった。
 
 **できたもの：** `tty`（端末のデバイス番号か`MTQG_TTY`のsha256の先頭8桁。`Env.TTY`と`tty_unix.go`／`tty_windows.go`）。`edit`（今の本文を入れて`$EDITOR`が開く。同じ本文なら`Unchanged:`）、`delete`（一緒に隠れた回答・返信の件数と記録者を言う）、`$EDITOR`は書く本文が無いときすべて（`q add <id>`・`b add <id>`・`g add <word>`）で開く。`undo`（モデル層の`UndoTarget`・`Orphaned`・`CanUndo`。CLIは`Rewrite`の中で行を返すか、断って何も書かない）。`search`（`Search`。`log`と同じ行）。`format`（`.mtqg/`を要らない。順序はモデル層の`EventOrder`と共有。diffの文脈行は表に出さない）。`review`（`ConcurrentStatusChanges`・`UnattachedReplies`）。`status`の`Conflicts`の行、`context`のAttentionの並行した状態変更、`show`の`re`の文言（`to bug <id>`と言い切らない）。
 

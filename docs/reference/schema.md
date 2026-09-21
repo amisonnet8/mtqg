@@ -189,20 +189,33 @@ archived again.
 
 ## Archive
 
-`mtqg archive <start>..<end>` moves the lines of finished items whose **last
-event** falls in the date range from `journal.jsonl` to
-`archive/<start>..<end>.jsonl`:
+`mtqg archive <start>..<end>` moves the lines of items whose **last event**
+falls in the date range (local dates, both ends inclusive) from `journal.jsonl`
+to `archive/<start>..<end>.jsonl`:
 
 | Kind | Archived when |
 |---|---|
 | `todo` | state is `done` |
 | `qa` question | state is `done`; its answers move with it |
 | `bug` | state is `done`; its replies move with it |
-| `memo` | always (answers and replies follow their question or bug instead) |
+| `memo` | always |
 | `glossary` | never |
 
-All events of an item move together. To restore, append the archive file to
-`journal.jsonl` and delete it:
+- **The last event of a question or a bug is the latest of its own events and
+  those of its answers or replies** (deleted ones included). A question closed in
+  2023 that was answered in 2025 is not archived by a range that ends in 2023, so
+  that every line that moves is dated within the range.
+- **A deleted record is archived whatever its kind and state**, when its last
+  event (the `delete`, or a later one) is in the range. It is out of view already.
+- An answer or a reply follows its question or bug when that is in
+  `journal.jsonl`. One without it (its `re` names nothing there, or a record of
+  another type) is an item of its own, like a memo.
+- All lines of an item move together, byte for byte. Lines that cannot be read,
+  and events of an `id` that has no `create` in `journal.jsonl`, stay.
+- The archive file is made when there is a line to put in it. Archiving the same
+  range again appends to it; the lines end in LF like those of `journal.jsonl`.
+
+To restore, append the archive file to `journal.jsonl` and delete it:
 
 ```
 cat .mtqg/archive/2021-01-01..2024-09-18.jsonl >> .mtqg/journal.jsonl

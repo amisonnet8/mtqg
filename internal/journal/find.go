@@ -39,43 +39,58 @@ type Location struct {
 // start is made physical first (symbolic links are resolved), like git does, so
 // that the same .mtqg/ is found whichever path leads to it.
 func Find(start string) (Location, error) {
+	root, hasMtqg, err := locate(start)
+	if err != nil {
+		return Location{}, err
+	}
+	if !hasMtqg {
+		return Location{}, &NotInitializedError{Root: root}
+	}
+	return Location{Root: root, Dir: filepath.Join(root, mtqgDirName)}, nil
+}
+
+// locate walks up from start the way Find describes. It returns the directory it
+// stopped at, and whether that directory has a .mtqg/: true when it found one,
+// false when it met the .git of a repository that has none. Find and Init share
+// it, so that they always agree on where .mtqg/ is or would be.
+func locate(start string) (root string, hasMtqg bool, err error) {
 	abs, err := filepath.Abs(start)
 	if err != nil {
-		return Location{}, fmt.Errorf("journal: %w", err)
+		return "", false, fmt.Errorf("journal: %w", err)
 	}
 	dir, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return Location{}, fmt.Errorf("journal: %w", err)
+		return "", false, fmt.Errorf("journal: %w", err)
 	}
 	info, err := os.Stat(dir)
 	if err != nil {
-		return Location{}, fmt.Errorf("journal: %w", err)
+		return "", false, fmt.Errorf("journal: %w", err)
 	}
 	if !info.IsDir() {
-		return Location{}, fmt.Errorf("journal: %s is not a directory", dir)
+		return "", false, fmt.Errorf("journal: %s is not a directory", dir)
 	}
 
 	for {
 		mtqg := filepath.Join(dir, mtqgDirName)
 		switch info, err := os.Stat(mtqg); {
 		case err == nil && info.IsDir():
-			return Location{Root: dir, Dir: mtqg}, nil
+			return dir, true, nil
 		case err == nil:
-			return Location{}, fmt.Errorf("journal: %s is not a directory", mtqg)
+			return "", false, fmt.Errorf("journal: %s is not a directory", mtqg)
 		case !errors.Is(err, fs.ErrNotExist):
-			return Location{}, fmt.Errorf("journal: %w", err)
+			return "", false, fmt.Errorf("journal: %w", err)
 		}
 
 		switch _, err := os.Lstat(filepath.Join(dir, ".git")); {
 		case err == nil:
-			return Location{}, &NotInitializedError{Root: dir}
+			return dir, false, nil
 		case !errors.Is(err, fs.ErrNotExist):
-			return Location{}, fmt.Errorf("journal: %w", err)
+			return "", false, fmt.Errorf("journal: %w", err)
 		}
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return Location{}, ErrNotInRepository
+			return "", false, ErrNotInRepository
 		}
 		dir = parent
 	}

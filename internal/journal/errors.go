@@ -87,3 +87,39 @@ func (e *LockTimeoutError) Error() string {
 
 // Is makes errors.Is(err, ErrLockTimeout) true.
 func (e *LockTimeoutError) Is(target error) bool { return target == ErrLockTimeout }
+
+// ErrAlreadyInitialized means Init found a .mtqg/ where it was to make one.
+var ErrAlreadyInitialized = errors.New("journal: .mtqg/ already exists")
+
+// AlreadyInitializedError names the .mtqg/ that Init found.
+type AlreadyInitializedError struct {
+	Path string
+}
+
+func (e *AlreadyInitializedError) Error() string {
+	return fmt.Sprintf("journal: .mtqg/ already exists: %s", e.Path)
+}
+
+// Is makes errors.Is(err, ErrAlreadyInitialized) true.
+func (e *AlreadyInitializedError) Is(target error) bool { return target == ErrAlreadyInitialized }
+
+// ErrNoUserName means git has no user.name for the repository.
+var ErrNoUserName = errors.New("journal: git has no user.name")
+
+// ErrGitUnavailable means the git command could not be run (it is not
+// installed, or it did not answer in time).
+var ErrGitUnavailable = errors.New("journal: git cannot be run")
+
+// GitUnavailableError says why git could not be run.
+type GitUnavailableError struct {
+	Err error
+}
+
+func (e *GitUnavailableError) Error() string {
+	return fmt.Sprintf("journal: git cannot be run: %v", e.Err)
+}
+
+func (e *GitUnavailableError) Unwrap() error { return e.Err }
+
+// Is makes errors.Is(err, ErrGitUnavailable) true.
+func (e *GitUnavailableError) Is(target error) bool { return target == ErrGitUnavailable }

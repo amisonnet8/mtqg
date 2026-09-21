@@ -29,16 +29,16 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 
 | コマンド | 内容 |
 |---|---|
-| `mtqg edit <id> <本文>` | 記録の本文を置き換える。glossaryは定義を置き換え、用語は変えられない |
+| `mtqg edit <id> [<本文>]` | 記録の本文を置き換える。glossaryは定義を置き換え、用語は変えられない。本文がなければ`$EDITOR`が開く |
 | `mtqg delete <id>` | 記録を隠す。質問やバグを消すと、その回答や返信も隠れる |
-| `mtqg undo` | この端末から書いた最後の行を消す |
+| `mtqg undo` | この記録者がこの端末から書いた最後の行を消す |
 | `mtqg status` | 未完了の項目と未コミットの記録の概況 |
 | `mtqg log [--limit N] [--kind K]` | 全種類の記録を、新しいものから |
 | `mtqg show <id>` | 1件の記録を、全文と履歴とともに |
-| `mtqg search <語>` | 本文の部分一致で探す |
-| `mtqg review` | 並行した状態変更と、用語の重複定義 |
+| `mtqg search <語>` | 本文に`<語>`を含む記録を、新しいものから |
+| `mtqg review` | 並行した状態変更、用語の重複定義、親のない回答・返信 |
 | `mtqg context [--max-tokens N]` | AIエージェント向けの要約 |
-| `mtqg format [ファイル]` | 任意のテキストに含まれるイベント行を整形して表示する |
+| `mtqg format [--mark] [ファイル]` | 任意のテキストに含まれるイベント行を整形して表示する |
 | `mtqg archive <開始>..<終了> [-n]` | 期間内の終わった項目を視界から外す |
 | `mtqg init` | `.mtqg/`を作る |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
@@ -121,13 +121,19 @@ $ mtqg memo list --json
 |---|---|
 | `memo add`、`todo add`、`qa add`、`bug add`、`glossary add` | `record`：書いた記録 |
 | `todo done`、`todo reopen`、`qa done`、... | `record`と`changed`（すでにその状態で、何も書かなかったときは`false`） |
+| `edit` | `record`（新しい本文で）と`changed`（本文が同じで、何も書かなかったときは`false`） |
+| `delete` | `record`：隠した記録、`hidden_replies`：一緒に隠れた回答・返信を、記録として（なければ`[]`） |
+| `undo` | `event`：消した行を[schema_ja.md](schema_ja.md)の形で、`record`：その行が属する記録の、消す前の姿（ジャーナルにあれば） |
+| `search` | `query`、`records`（新しい順）、`count` |
+| `review` | `concurrent_status_changes`：記録ごとの`{"record", "changes"}`（`changes`は`journal.jsonl`の行）、`duplicate_words`：`{"word", "records"}`、`unattached_replies`：`{"record", "re_record"}`（`re`がジャーナルの何も指さないときは`re_record`を出さない）。どれも、なければ`[]` |
+| `format` | `events`（時刻順。`journal.jsonl`の行として。入力で印があった行は`mark`（`+`か`-`）を持つ）、`count` |
 | `memo list` | `records`、`count` |
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
 | `log` | `records`（新しい順）、`shown`、`total` |
 | `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む） |
-| `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`uncommitted_records`（gitを実行できなければ`null`） |
+| `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
 | `help`、またはコマンドへの`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
@@ -153,6 +159,8 @@ $ mtqg show zzzz --json
 | `ambiguous` | 1 | `prefix`、`candidates`：IDが指しうる記録 |
 | `wrong_kind` | 1 | `record`：IDが実際に指すもの、`wanted`：コマンドが対象とする種類 |
 | `no_state`、`no_replies` | 1 | `record` |
+| `nothing_to_undo` | 1 | |
+| `has_later_events`（`undo`すると、記録のないイベントが残る） | 1 | `record` |
 | `unknown`（それ以外） | 1 | |
 
 **警告**（飛ばした行、衝突マーカー、実行できないgit）も、1件ずつ1行で標準エラー出力に出し、終了コードは変えない。
@@ -225,12 +233,13 @@ mtqg g add トークン 字句解析で切り出す最小単位
 - `mtqg q add <質問id> <本文>`は、質問ではなく回答を足し、`mtqg b add <バグid> <本文>`は、バグではなく返信を足す
   （[質問、回答、バグ、返信](#質問回答バグ返信)）
 - 本文の代わりに`-`を渡すと、標準入力を最後まで読む。末尾の改行は落とす：`git log -1 --format=%s | mtqg m add -`
-- 引数がまったくなければ（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`）、空のファイルで`$EDITOR`が開き、保存した
-  内容が本文になる（末尾の改行は落とす）。`$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは
-  通さない。`$EDITOR`が設定されていなければ、止まってそう伝える
-- エディタが開くのはこの場合だけ。足りない部分があるのはコマンドラインの誤りで、何も書かない：
-  `mtqg q add <質問id>`（回答がない）、`mtqg b add <バグid>`（返信がない）、`mtqg g add`（用語がない）、
-  `mtqg g add <用語>`（定義がない）。回答・返信・定義の本文は`-`にでき、標準入力から読む
+- **書く本文がないときは、`$EDITOR`が開く**。空のファイルが開き、保存した内容が本文になる（末尾の改行は落とす）：
+  引数がまったくないとき（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`）、IDのあとの回答・返信がないとき
+  （`mtqg q add <質問id>`、`mtqg b add <バグid>`）、用語のあとの定義がないとき（`mtqg g add <用語>`）。
+  `$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは通さない。`$EDITOR`が設定されていなければ、止まって
+  そう伝える。どの記録にも当てはまらないIDは、エディタが開く前に止まる
+- 足りない語があるのはコマンドラインの誤りで、何も書かない：`mtqg g add`（用語がない）。回答・返信・定義の本文は`-`にでき、
+  標準入力から読む
 - 本文は複数行でもよい（標準入力かエディタから）。`list`は1行目だけを表示する
 - 本文が空、または空白だけのときはエラー（`Aborting: the text is empty`）。何も書かない
 - 出力は、作られた記録のIDだけ
@@ -303,7 +312,7 @@ To ask a question that starts with it, put the whole text in quotes: mtqg qa add
   ないようにするため。最初の語が16進数の文字だけでできた英語の本文（`Face detection is slow. Why?`、
   `Dead code: remove it?`）も同じように止まる。本文全体を引用符で括る。そのような語1つだけの本文は、
   標準入力から渡せる
-- IDだけで、後ろに本文がないときはエラー。何も書かない
+- IDだけで、後ろに本文がないときは、`$EDITOR`が開いて本文を書く（[記録を足す](#記録を足す)）
 
 質問とバグは、4つの状態のどれかにある。
 
@@ -343,17 +352,32 @@ Ambiguous ID "70430f77ff" matches 2 records:
 ## edit、delete
 
 ```
+$ mtqg edit 6cad4a268d ブロックコメント /* */ と行コメント // の読み飛ばし
+Edited: 6cad4a268d  ブロックコメント /* */ と行コメント // の読み飛ばし
+$ mtqg edit 6cad4a268d ブロックコメント /* */ と行コメント // の読み飛ばし
+Unchanged: 6cad4a268d  ブロックコメント /* */ と行コメント // の読み飛ばし
+
 $ mtqg delete 1012f037b6
-Deleted: "ブロックコメントの入れ子に対応する？"
+Deleted: 1012f037b6  ブロックコメントの入れ子に対応する？
 2 answers are also hidden (claude-code, yamada)
-They remain in git history
+The lines remain in the journal and in git history
 ```
 
 どちらもイベントを追記する。ファイルからもgitの履歴からも何も消えない。
 
+- `edit`はどの記録の本文でも置き換える：memo、todo、質問、回答、バグ、返信、glossaryの項目の定義。変わるのは本文だけ。
+  glossaryの用語は変えられず、todo・質問・バグの状態も変わらない。出す行は、IDと新しい本文の1行目
+- 本文は記録を足すときと同じ渡し方：IDのあとの語を空白でつなぐか、標準入力なら`-`。**本文がなければ、その記録の今の本文を
+  入れた`$EDITOR`が開き**、保存した内容が新しい本文になる（[記録を足す](#記録を足す)）
+- 新しい本文が今の本文と同じなら、何も書かず、`Unchanged: ...`と言う。終了コードは0。本文が空、または空白だけのときは
+  エラーで、何も書かない
+- `delete`はどの記録でも隠す：どの一覧、`show`、`search`にも出ず、そのIDは何にも当てはまらなくなる。質問やバグを消すと、
+  その回答や返信も隠れ、出力は何件が誰のものかを言う。回答や返信を消すと、その1件だけが隠れ、質問やバグの状態は変わらない。
+  最後の行は、行がジャーナルにもgitの履歴にも残ることを、必ず言う
+
 ## undo
 
-**今の端末から書いた最後の行**を消す。直前のミス（たとえば、質問IDを付け忘れて、回答を新しい質問として足してしまった）のためのもの。
+**今の記録者が今の端末から書いた最後の行**を消す。直前のミス（たとえば、質問IDを付け忘れて、回答を新しい質問として足してしまった）のためのもの。
 
 ```
 $ mtqg q add 初版では非対応。需要が出たら再検討
@@ -362,9 +386,29 @@ $ mtqg undo
 Undone: qa add "初版では非対応。需要が出たら再検討" (301850c5a3)
 ```
 
-- 対象：`journal.jsonl`の中で（`ts`の順で）、この記録者と、この端末の`tty`の値を持つ最後の行。端末を見分けられないときは、`tty`のない行を同じ端末とみなす
-- 1段だけ。`undo`は繰り返せない
-- コミット済みかどうかは見ない。すでに共有したものには`delete`を使う。他のブランチに届いた行を消すと、次のマージで戻ってくることがある
+- 対象：`journal.jsonl`の行のうち、この記録者（種別と名前。記録を書くときと同じ決め方）と、この端末の`tty`の値を持つものの
+  中で`ts`が最後のもの。同じ秒のものは、ファイルの中で最後に書かれたもの。どの行でもよい：`add`、`done`、`reopen`、
+  `edit`、`delete`が書いた行。`Undone:`の後には、記録の`type`、その行がしたこと（`add`、`done`、`reopen`、`edit`、
+  `delete`）、本文、IDを出す
+- **端末。** `tty`は、ハッシュの16進8桁で、端末を見分けるだけで、ほかのことは分からない。`MTQG_TTY`があればそれから作る
+  （どんな文字列でもよい：2つのセッションを分けたければ違う値を、同じにしたければ同じ値を渡す）。なければ、LinuxとmacOSでは、
+  標準入力・標準出力・標準エラー出力のうち端末につながっているものから作る。Windowsと、どれも端末でないとき（パイプで
+  コマンドを走らせるエージェント）は、その行に`tty`がなく、`tty`のない行は同じ端末とみなす。つまり、AIエージェントが
+  パイプ越しに書いた行と、人が端末で書いた行は、同じ名前でも互いの対象にならない
+- 1段だけ。`undo`は繰り返せない。何を消したかは必ず出す
+- **記録がなくなってイベントだけが残るときは、断る。** 消す行が、ほかのイベント（状態変更、`edit`、`delete`、または
+  その記録への回答・返信）を持つ記録の`create`なら、何も消さず、いくつあるかを言って、`mtqg delete`を案内する。`status`・`edit`・
+  `delete`の行は、その後に何があっても消す
+
+```
+$ mtqg undo
+Cannot undo: todo 6cad4a268d has 2 other events, and undoing its creation would leave them without a record
+To hide it instead: mtqg delete 6cad4a268d
+```
+
+- 対象の行がなければ、`Nothing to undo: ...`。終了コードは1
+- コミット済みかどうかは見ない。すでに共有したものには`delete`を使う。他のブランチに届いた行を消すと、次のマージで戻ってくることがある。
+  ほかの行は、1バイトも変えずに残る
 
 ## 読む
 
@@ -376,12 +420,14 @@ Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
+Conflicts           1  (concurrent status changes; see mtqg review)
 
 Uncommitted records 3
 ```
 
 - 各行は件数。`Open questions`は閉じていない質問の数で、`awaiting confirmation`はそのうち回答のあるもの。
   `Open bugs`は閉じていないバグの数（`awaiting confirmation`はそのうち返信のあるもの）。`Glossary`は用語の項目の数で、`with duplicate definitions`は2回以上定義された用語（文字まで同じもの）の数。
+  `Conflicts`は並行した状態変更のある記録の数（[review](#review)）で、なければこの行は出さない。
   `Uncommitted records`は、`journal.jsonl`の中に、最後のコミット（`HEAD`）にない行を
   1つ以上持つ記録の数：それ以降に作った・変えた記録。1つの記録は、行がいくつあっても1と数える。
   ステージしただけでコミットしていない行も、未コミットに数える。まだコミットがない、または
@@ -505,7 +551,9 @@ Events
 - 1行目は、種類（`memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`）、ID、todo・質問・バグなら状態。2行目は、誰がいつ
   書いたか（記録者の種別つき）
 - 本文は、どう読まれる出力でも、すべての行を全文で表示する。制御文字は一覧と同じように置き換える。glossaryの
-  項目は、定義の前に`Word: <用語>`を表示する。回答は属する質問を、返信は属するバグを表示する
+  項目は、定義の前に`Word: <用語>`を表示する。回答は属する質問を、返信は属するバグを表示する。`re`が指す記録がなかったり
+  （`to bug 7f3a2b1c09  (no such record)`）、別の種類だったり（`to 1012f037b6  (a question, not a bug)`）するときは、
+  親の名前は出さず、そのことを言う：そのような記録は、それへの返信ではない（[review](#review)）
 - 質問は回答を、バグは返信を（`Replies (2)`）、古いものから、記録者と時刻とともに並べる
 - `Events`は、その記録に起きたことを、古いものから、ローカル時間の日付と時刻つきで並べる：その記録自身の
   イベント（`create`、`status`は`open -> done`の形、`edit`、`delete`）と、質問やバグなら各回答・各返信の作成
@@ -549,22 +597,53 @@ $ mtqg log --kind bug
   整数でない値や、存在しない種類は、コマンドラインの誤り
 - 最後の行が件数を伝える：`N records`。省いたものがあるときは`N of M records (--limit 0 for all)`
 
+### search
+
+```
+$ mtqg search コメント
+11:32  todo      2e44158bae  コメント処理のテストケースを追加      claude-code
+10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし   claude-code
+4 records contain "コメント"
+```
+
+- `mtqg search <語>`は、本文に`<語>`を含む記録を出す：見える記録すべての本文（種類を問わない）と、glossaryの項目ではその
+  用語も。`search`のあとの語は、記録のときと同じく空白でつなぐ
+- 大文字と小文字は区別しない。ほかには何もない：パターンも、語の境界も、絞り込み（種類、記録者、期間）もない
+- 行は[log](#log)と同じで、**新しいものから**、当てはまるものをすべて出す。行に出す本文は記録の1行目なので、本文の2行目以降で
+  当たったものは、見つかっても見えない：`show`を使う。最後の行が件数を言う：`N records contain "<語>"`。当たるものがなければ
+  `No records contain "<語>"`で、終了コードは0
+- 削除した記録は探さない。`archive/`も探さない
+
 ### review
+
+人の目が要るところ：ジャーナルに、食い違う事実があるところ。mtqgはそれを見せるだけで、どれが正しいかは決めない。
+中身のない区画は出さず、何もなければ`Nothing to review`。終了コードはどちらでも0。
 
 ```
 $ mtqg review
 Concurrent status changes (1)
-  6b0d549b6f "行コメント // の読み飛ばし"
-    10:15  claude-code  open -> done
-    14:30  yamada       open -> done
+  todo 6b0d549b6f "行コメント // の読み飛ばし"
+    2026-09-21 10:15  claude-code  open -> done
+    2026-09-21 14:30  yamada       open -> done
 
 Duplicate glossary definitions (1)
   ブロックコメント
     f29d0da995  yamada       /* と */ で囲むコメント
     0cb1e29c65  claude-code  複数行にわたって書けるコメント
+
+Answers and replies with no parent (1)
+  3d8e4a0b12  reply  claude-code  macOSでも再現した
+    re 1012f037b6: a question, not a bug
 ```
 
-並行した状態変更とは、同じ`from`の状態からの2つ以上の状態変更のこと。mtqgはどれが正しいかを決めない。
+- **並行した状態変更。** 1つの記録の状態変更を、形式の順（`ts`、次に`id`）に取り、記録が作られたときの状態から追う。`from`が、その時点の
+  記録の状態と違う変更は、その前の変更を見ていない人が書いたもの（同じtodoをそれぞれ閉じた2つのブランチを、あとでマージした、など）。
+  その記録は、状態変更を**すべて**、古いものから、時刻・記録者・変更とともに並べる。`from`のない変更は判定しない。同じ行の繰り返しは
+  1つのイベントで、食い違いではない。一覧が出す状態は、最後の変更が残した状態
+- **用語の重複定義。** 2回以上定義された用語（文字まで同じもの）ごとに、その項目すべてを、書かれた順に
+- **親のない回答・返信。** 回答・返信が質問・バグに結び付くのは、`re`が、同じ`type`の、返信を付けられる記録を指すときだけ。
+  ジャーナルにない記録や、別の種類の記録を指す`re`は、どの質問・バグの下にも出ず、ここで見つかる（`log`と、IDを渡した`show`にも出る）。
+  各行は、`re`が指すものを言う：`not in the journal`、または、それが何で、何であるべきか
 
 ### context
 
@@ -582,6 +661,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -637,6 +717,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -667,31 +748,38 @@ Read full entries with mtqg show <id>.
 
 - 区画はこの順：Attention、Open todos、Open questions、Open bugs、Recent records、Glossary。空の区画は出さない
 - 最初の行はリポジトリ（`.mtqg/`のあるディレクトリの名前）とブランチ（`git branch --show-current`。detached HEADなどで無いときは出さない）。次に読み手への指示、区画、続きの読み方の行が並ぶ
-- **Attention**は、行動が要るものを名指しする：定義が2つ以上ある用語（先頭の5つ。残りは件数）と、コミットされていない記録の数（gitを実行できないときは、この行は出さない）
+- **Attention**は、行動が要るものを名指しする：定義が2つ以上ある用語と、並行した状態変更のある記録（[review](#review)。それぞれ先頭の5つ。残りは件数）と、コミットされていない記録の数（gitを実行できないときは、この行は出さない）
 - 未完了のtodo・質問・バグは古い順で、ID、記録者、時刻（今日は`HH:MM`、別の日は日付。ローカル時間）を持つ。質問とバグは`unanswered`（バグは`no replies`）または`awaiting confirmation`（回答・返信があり、閉じていない）と書き、その下に最新の回答・返信を、記録者と記録者の種別とともに出す
 - 最近の記録は、`log`と同じく、全種類の新しい記録を新しい順に、種類とIDとともに出す。回答・返信の終わりに、向かう質問・バグを書く。Glossaryは全項目を、IDとともに出す
 - 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える
 - **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のことは見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ、なくなるまで）。それでも収まらないときは、そのまま出す
 - 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 older; see mtqg todo list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
-- `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`と`{"kind": "uncommitted", "count": N}`
-- 並行した状態変更（`mtqg review`）は、まだAttentionに出ない
+- `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`、`{"kind": "concurrent_status_change", "id": ..., "text": ...}`（完全なIDと全文）、`{"kind": "uncommitted", "count": N}`
 
 ## format
 
-任意のテキストからイベント行を拾い、時刻順の1つの表にして、ローカル時間で表示する。
+任意のテキストからイベント行を拾い、時刻順の1つの表にして、ローカル時間で表示する。ファイルか標準入力を読み、
+`.mtqg/`は要らない：どこでも動く。
 
 ```
 $ git show 3f9a1c0 | mtqg format
-10:18  todo    6cad4a268d  ブロックコメント /* */ の読み飛ばし   claude-code
-10:32  memo    81e74ef5e8  エラーメッセージは英語で統一する方針   yamada
-11:05  qa      2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code
-11:32  todo    2e44158bae  コメント処理のテストケースを追加      claude-code
+2026-09-21 10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし   claude-code
+2026-09-21 10:32  memo      81e74ef5e8  エラーメッセージは英語で統一する方針   yamada
+2026-09-21 11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code
+2026-09-21 11:32  todo      2e44158bae  コメント処理のテストケースを追加      claude-code
 ```
 
+- 列は、ローカルの日付と時刻、その行がしたこと、ID、本文、記録者。記録を作る行なら、したことは種類：`memo`、`todo`、
+  `question`、`answer`、`bug`、`reply`、`glossary`（回答・返信の本文は`(to <id>)`で、glossaryの項目は用語とコロンで
+  始まる）。それ以外の行は、`done`か`reopen`（状態の変更）、`edit`、`delete`。`edit`は新しい本文を出す。状態の変更と
+  `delete`は、その記録を作った行が同じ入力にあれば、その記録の本文を出し、なければ何も出さない
+- 行は時刻順（`ts`、次に`id`。同じ記録では作成が変更より先）で、入力での順番によらない
 - 先頭の`+`・`-`（unified diff）は、読む前に取り除く
-- JSONのイベントでない行は黙って飛ばす。`git show`や`git diff`の出力を丸ごと渡せる
+- JSONのイベントでない行は黙って飛ばす。`git show`や`git diff`の出力を丸ごと渡せる。警告は出さない
 - どこから来た行でもよい：`git diff`、`git diff main...feature`、`cat .mtqg/journal.jsonl`、`grep ... .mtqg/journal.jsonl`、引数で渡したファイル（`.mtqg/archive/`のファイルを含む）
-- `+`・`-`の印は表示しない。ただし消えた行には常に印を付ける。`--mark`で全行に印を付ける
+- `+`・`-`の印は表示しない。ただし消えた行（`-`）には常に印を付ける。`--mark`で全行の印を出す。印は、ほかの列の前の、独立した列で、
+  出す印があるときだけ付く
+- 本文は一覧の決まりに従う（1行目だけ、端末に出すときだけ切る、制御文字は置き換える）
 
 ## archive
 
@@ -757,6 +845,7 @@ Repository format version: 0 (this mtqg supports up to 0)
 |---|---|
 | 記録者名 | `MTQG_AUTHOR_NAME`、なければ`git config user.name` |
 | 記録者の種別 | `MTQG_AUTHOR_KIND`（`human`か`ai`）、なければ`human` |
+| 端末 | `MTQG_TTY`、なければ標準入力・標準出力・標準エラー出力がつながっている端末。なければなし |
 | エディタ | `$EDITOR` |
 
 - コマンドラインから記録するAIエージェントは、2つの変数で名乗る：
@@ -765,5 +854,6 @@ Repository format version: 0 (this mtqg supports up to 0)
 - `git config user.name`は、そのリポジトリについて読む（`git -C <ルート> config user.name`）ので、
   そのリポジトリの設定が効く。どちらからも名前が得られなければ、止まって、設定の方法を伝える。
   `MTQG_AUTHOR_KIND`が`human`でも`ai`でもなければエラー
+- 端末は、すべての行に`tty`として、ハッシュの16進8桁で書く（[undo](#undo)）。見分ける端末がないときは書かない
 
 変数は設定ファイルではない。設定ファイルはない。

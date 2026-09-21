@@ -31,16 +31,16 @@ any language. The storage format is described in [schema.md](schema.md).
 
 | Command | Description |
 |---|---|
-| `mtqg edit <id> <text>` | Replace the text of a record. For glossary, the definition; the word cannot change |
+| `mtqg edit <id> [<text>]` | Replace the text of a record. For glossary, the definition; the word cannot change. Without the text, `$EDITOR` opens |
 | `mtqg delete <id>` | Hide a record. Deleting a question or a bug also hides its answers or replies |
-| `mtqg undo` | Remove the last line written from this terminal |
+| `mtqg undo` | Remove the last line this author wrote from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
 | `mtqg log [--limit N] [--kind K]` | Records of all kinds, newest first |
 | `mtqg show <id>` | One record with its full text and history |
-| `mtqg search <text>` | Substring search in record text |
-| `mtqg review` | Concurrent status changes and duplicate glossary definitions |
+| `mtqg search <text>` | Records whose text contains `<text>`, newest first |
+| `mtqg review` | Concurrent status changes, duplicate glossary definitions, and answers or replies with no parent |
 | `mtqg context [--max-tokens N]` | Summary for AI agents |
-| `mtqg format [file]` | Pretty-print event lines found in any text |
+| `mtqg format [--mark] [file]` | Pretty-print event lines found in any text |
 | `mtqg archive <start>..<end> [-n]` | Move finished items of a date range out of view |
 | `mtqg init` | Create `.mtqg/` |
 | `mtqg version` | Show the mtqg version and the repository's format version |
@@ -138,13 +138,19 @@ What each command prints, after `command`:
 |---|---|
 | `memo add`, `todo add`, `qa add`, `bug add`, `glossary add` | `record`: the record that was written |
 | `todo done`, `todo reopen`, `qa done`, ... | `record`, and `changed`: `false` if the record was in that state already and nothing was written |
+| `edit` | `record` (with the new text), and `changed`: `false` if the text was the same and nothing was written |
+| `delete` | `record`: what was hidden, and `hidden_replies`: the answers or replies that were hidden with it, as records (`[]` if none) |
+| `undo` | `event`: the line that was removed, in the form of [schema.md](schema.md), and `record`: the record it belongs to as it was before, if it is in the journal |
+| `search` | `query`, `records` (newest first), `count` |
+| `review` | `concurrent_status_changes`: `{"record", "changes"}` for each record, with `changes` as lines of `journal.jsonl`; `duplicate_words`: `{"word", "records"}`; `unattached_replies`: `{"record", "re_record"}`, with `re_record` left out if the `re` names nothing in the journal. Each is `[]` if there is nothing |
+| `format` | `events` (in time order, as lines of `journal.jsonl`; a line that has a mark in the input has `mark`, `+` or `-`), `count` |
 | `memo list` | `records`, `count` |
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
 | `log` | `records` (newest first), `shown`, `total` |
 | `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply) |
-| `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `uncommitted_records` (`null` if git cannot be run) |
+| `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
 | `help`, or `-h` on a command | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}`. `available` is `false` for a command that is known and not yet built |
@@ -172,6 +178,8 @@ $ mtqg show zzzz --json
 | `ambiguous` | 1 | `prefix`, `candidates`: the records the ID could mean |
 | `wrong_kind` | 1 | `record`: what the ID is, `wanted`: the kind the command is for |
 | `no_state`, `no_replies` | 1 | `record` |
+| `nothing_to_undo` | 1 | |
+| `has_later_events` (`undo` would leave events without their record) | 1 | `record` |
 | `unknown` (anything else) | 1 | |
 
 **Warnings** (a line that was skipped, a conflict marker, git that cannot be run)
@@ -261,14 +269,16 @@ mtqg g add token The smallest unit produced by lexing
   [Questions, answers, bugs and replies](#questions-answers-bugs-and-replies)).
 - `-` instead of the text reads it from standard input, to its end. Trailing
   line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
-- No arguments at all (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`)
-  opens `$EDITOR` on an empty file, and what is saved is the text (trailing line
-  breaks dropped). `$EDITOR` may hold arguments and quotes (`code --wait`); it
-  is not run through a shell. If `$EDITOR` is not set, mtqg stops and says so.
-- Only that case opens the editor. A part that is missing is a mistake in the
-  command line, and nothing is written: `mtqg q add <question-id>` (no answer),
-  `mtqg b add <bug-id>` (no reply), `mtqg g add` (no word) and
-  `mtqg g add <word>` (no definition). The text of an answer, a reply or a
+- **When there is no text to write, `$EDITOR` opens** on an empty file, and what is
+  saved is the text (trailing line breaks dropped): with no arguments at all
+  (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`), for the answer or
+  the reply that follows an ID (`mtqg q add <question-id>`,
+  `mtqg b add <bug-id>`) and for the definition that follows a word
+  (`mtqg g add <word>`). `$EDITOR` may hold arguments and quotes (`code --wait`);
+  it is not run through a shell. If `$EDITOR` is not set, mtqg stops and says so.
+  An ID that matches no record stops before the editor opens.
+- A word that is missing is a mistake in the command line, and nothing is
+  written: `mtqg g add` (no word). The text of an answer, a reply or a
   definition can be `-`, to read it from standard input.
 - A text can have several lines (from standard input or the editor). `list`
   shows the first line only.
@@ -359,7 +369,8 @@ For `b add` the same error reads `... the ID of the bug to reply to.` and
   word is made of hex digits (`Face detection is slow. Why?`, `Dead code: remove
   it?`) stops the same way; quote the whole text. A text of one such word can be
   given on standard input.
-- The ID with no text after it is an error, and nothing is written.
+- The ID with no text after it opens `$EDITOR` for the text (see
+  [Adding records](#adding-records)).
 
 A question or a bug is in one of four states:
 
@@ -402,19 +413,42 @@ Ambiguous ID "70430f77ff" matches 2 records:
 ## edit, delete
 
 ```
+$ mtqg edit 6cad4a268d Skip block comments /* */ and line comments //
+Edited: 6cad4a268d  Skip block comments /* */ and line comments //
+$ mtqg edit 6cad4a268d Skip block comments /* */ and line comments //
+Unchanged: 6cad4a268d  Skip block comments /* */ and line comments //
+
 $ mtqg delete 1012f037b6
-Deleted: "Should nested block comments be supported?"
+Deleted: 1012f037b6  Should nested block comments be supported?
 2 answers are also hidden (claude-code, yamada)
-They remain in git history
+The lines remain in the journal and in git history
 ```
 
 Both append an event. Nothing is removed from the file or from git history.
 
+- `edit` replaces the text of any record: a memo, a todo, a question, an answer, a
+  bug, a reply, or the definition of a glossary entry. Only the text changes. The
+  word of a glossary entry cannot, and neither can the state of a todo, a
+  question or a bug. The line printed is the ID and the first line of the new text.
+- The text is given as when adding a record: the words after the ID, joined with
+  spaces, or `-` for standard input. **Without a text, `$EDITOR` opens on the text
+  the record has now**, and what is saved is the new text (see
+  [Adding records](#adding-records)).
+- If the new text is the same as the text now, nothing is written and the line
+  says `Unchanged: ...`. The exit code is 0. A text that is empty, or only white
+  space, is an error, and nothing is written.
+- `delete` hides any record: no list, `show` or `search` shows it, and its ID
+  matches nothing any more. Deleting a question or a bug hides its answers or
+  replies too, and the output says how many and who wrote them. Deleting an answer
+  or a reply hides that one only; the state of the question or the bug does not
+  change. The last line always says that the lines remain in the journal and in
+  git history.
+
 ## undo
 
-Removes the **last line written from the current terminal**, for a mistake just
-made (for example an answer added as a new question because the question ID was
-left out).
+Removes the **last line the current author wrote from the current terminal**, for a
+mistake just made (for example an answer added as a new question because the
+question ID was left out).
 
 ```
 $ mtqg q add Not in the first version. Revisit if there is demand
@@ -423,13 +457,39 @@ $ mtqg undo
 Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a3)
 ```
 
-- Target: the last line in `journal.jsonl` (by `ts`) with this author and this
-  terminal's `tty` value. When no terminal can be identified, lines without
-  `tty` count as the same terminal.
-- One step only; `undo` does not repeat.
+- Target: of the lines in `journal.jsonl` with this author (kind and name, as for
+  writing a record) and this terminal's `tty` value, the one with the latest
+  `ts`; among lines of the same second, the one written last in the file. Any
+  line counts: what `add`, `done`, `reopen`, `edit` and `delete` wrote. The
+  words after `Undone:` are the type of the record, what the line did (`add`,
+  `done`, `reopen`, `edit`, `delete`), the text and the ID.
+- **The terminal.** `tty` is 8 hex digits of a hash, so that the terminal can be
+  told apart and nothing else is learned from it. It comes from `MTQG_TTY` if that
+  is set (any text: give two sessions different values to keep them apart, or one
+  value to make them the same). Otherwise, on Linux and macOS, it comes from the
+  terminal that standard input, output or error is connected to. On Windows, and
+  where none of them is a terminal (an agent that runs commands through pipes),
+  the line has no `tty`, and lines without one count as one terminal. So the
+  lines an AI agent wrote through pipes and the lines a person wrote at a terminal
+  are never each other's target, even under the same name.
+- One step only; `undo` does not repeat. What it removed is always printed.
+- **It refuses when it would leave events without their record.** If the line is
+  the `create` of a record that has other events (a status change, an edit, a
+  delete, or answers or replies to it), nothing is removed, and the output says
+  how many there are and points to `mtqg delete`. A line of `status`, `edit` or
+  `delete` is removed whatever follows it.
+
+```
+$ mtqg undo
+Cannot undo: todo 6cad4a268d has 2 other events, and undoing its creation would leave them without a record
+To hide it instead: mtqg delete 6cad4a268d
+```
+
+- If there is no such line: `Nothing to undo: ...`. The exit code is 1.
 - It does not check whether the line was committed. For something already
   shared, use `delete`: a removed line that already reached another branch can
-  come back with the next merge.
+  come back with the next merge. Every other line of the file stays as it is,
+  byte for byte.
 
 ## Reading
 
@@ -441,6 +501,7 @@ Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
+Conflicts           1  (concurrent status changes; see mtqg review)
 
 Uncommitted records 3
 ```
@@ -450,6 +511,8 @@ Uncommitted records 3
   bugs` counts the bugs that are not closed the same way (`awaiting
   confirmation` are those that have a reply). `Glossary` counts the entries, and `with duplicate definitions` the words that
   are defined more than once (the same word, character for character).
+  `Conflicts` counts the records that have concurrent status changes (see
+  [review](#review)); the line is left out when there are none.
   `Uncommitted records` is the number of records that have
   at least one line in `journal.jsonl` that is not in the last commit (`HEAD`):
   records created or changed since then. A record counts once however many lines
@@ -585,7 +648,10 @@ Events
 - The text is shown in full, with every line of it, however the output is
   read. Control characters are replaced as in a list. A glossary entry shows
   `Word: <word>` before its definition. An answer shows the question it belongs
-  to, and a reply the bug.
+  to, and a reply the bug. If the record its `re` names is not there
+  (`to bug 7f3a2b1c09  (no such record)`) or is of another kind
+  (`to 1012f037b6  (a question, not a bug)`), the line says so instead of naming
+  a parent: such a record is not a reply to it (see [review](#review)).
 - A question lists its answers, and a bug its replies (`Replies (2)`), oldest
   first, each with its author and time.
 - `Events` lists what happened to the record, oldest first, with the full local
@@ -638,23 +704,68 @@ $ mtqg log --kind bug
 - The last line counts the records: `N records`, or `N of M records (--limit 0
   for all)` when some are left out.
 
+### search
+
+```
+$ mtqg search comment
+11:32  todo      2e44158bae  Add test cases for comment handling  claude-code
+10:18  todo      6cad4a268d  Skip block comments /* */            claude-code
+4 records contain "comment"
+```
+
+- `mtqg search <text>` lists the records whose text contains `<text>`: the text of
+  every record that is in view, of every kind, and for a glossary entry its word
+  as well. The words after `search` are joined with spaces, as for a record.
+- Case is ignored. Nothing else is: there are no patterns, no word boundaries and
+  no filters (by kind, author or date).
+- The lines are those of [log](#log), **newest first**, and all of the matches are
+  shown. The text on the line is the first line of the record, so a match in a
+  later line of a text is found without being visible: use `show`. The last line
+  counts them: `N records contain "<text>"`. With no match it says
+  `No records contain "<text>"`, and the exit code is still 0.
+- Deleted records are not searched, and neither is `archive/`.
+
 ### review
+
+What needs a person's eye: places where the journal holds facts that do not agree.
+mtqg shows them and does not decide which one is right. A section with nothing in
+it is left out; with nothing at all the output is `Nothing to review`. The exit code
+is 0 either way.
 
 ```
 $ mtqg review
 Concurrent status changes (1)
-  6b0d549b6f "Skip line comments //"
-    10:15  claude-code  open -> done
-    14:30  yamada       open -> done
+  todo 6b0d549b6f "Skip line comments //"
+    2026-09-21 10:15  claude-code  open -> done
+    2026-09-21 14:30  yamada       open -> done
 
 Duplicate glossary definitions (1)
   block comment
     f29d0da995  yamada       A comment enclosed in /* and */
     0cb1e29c65  claude-code  A comment that can span multiple lines
+
+Answers and replies with no parent (1)
+  3d8e4a0b12  reply  claude-code  Reproduced on macOS too
+    re 1012f037b6: a question, not a bug
 ```
 
-A concurrent status change is two or more status changes from the same `from`
-state. mtqg does not decide which one is right.
+- **Concurrent status changes.** The status changes of one record are taken in the
+  order of the format (`ts`, then `id`) and followed from the state the record was
+  created in. A change whose `from` is not the state the record is in at that
+  point was written by someone who had not seen the change before it (two branches
+  that each closed the same todo, merged later). The record is listed with **all**
+  of its status changes, oldest first, each with its time, author and change. A
+  change with no `from` is not judged. The same line repeated is one event and is
+  not a conflict. The state the lists show is the one the last change leaves.
+- **Duplicate glossary definitions.** Each word that is defined more than once
+  (character for character), with all of its entries in the order they were written.
+- **Answers and replies with no parent.** An answer or a reply is bound to its
+  question or bug only if its `re` names a record of the same `type` that can be
+  replied to. One that names a record that is not in the journal, or a record of
+  another kind, is not shown under any question or bug, and this is where it is
+  found (`log` shows it, and so does `show` with its ID). Each line says what
+  the `re` names: `not in the journal`, or the kind it is, and the kind it should
+  be.
 
 ### context
 
@@ -675,6 +786,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
+- todo 6b0d549b6f "Skip line comments //" has concurrent status changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -730,6 +842,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
+- todo 6b0d549b6f "Skip line comments //" has concurrent status changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -768,8 +881,9 @@ Read full entries with mtqg show <id>.
   none, as on a detached HEAD). Then come the instructions for the reader, then
   the sections, then a line on how to read more.
 - **Attention** names what needs action: each glossary word with more than one
-  definition (the first five; then how many more) and how many records are not
-  committed (`git` cannot be run: this line is left out).
+  definition, and each record with concurrent status changes (see
+  [review](#review); for each, the first five, then how many more), and how many
+  records are not committed (`git` cannot be run: this line is left out).
 - Open todos, questions and bugs are oldest first, each with its ID, its author
   and the time (`HH:MM` for today, a date for another day, in local time). A
   question or a bug says `unanswered` (`no replies`) or `awaiting confirmation`
@@ -804,31 +918,45 @@ Read full entries with mtqg show <id>.
   `total` and `records`. In `open_questions` and `open_bugs` a record has
   `reply_count` and, if it was not left out, `latest_reply`. A glossary record has
   `definitions` (how many the word has) and, if the definitions were left out,
-  no `id` and no `text`. `attention` holds `{"kind": "duplicate_word", "word": ...}`
-  and `{"kind": "uncommitted", "count": N}`.
-- Concurrent status changes (`mtqg review`) are not in Attention yet.
+  no `id` and no `text`. `attention` holds `{"kind": "duplicate_word", "word": ...}`,
+  `{"kind": "concurrent_status_change", "id": ..., "text": ...}` (the full ID and the
+  full text) and `{"kind": "uncommitted", "count": N}`.
 
 ## format
 
 Picks event lines out of any text and prints them as one table in time order,
-with local times.
+with local times. It reads a file, or standard input, and does not need `.mtqg/`:
+it can run anywhere.
 
 ```
 $ git show 3f9a1c0 | mtqg format
-10:18  todo    6cad4a268d  Skip block comments /* */                            claude-code
-10:32  memo    81e74ef5e8  Policy: use English for all error messages           yamada
-11:05  qa      2217beaddb  Should error positions show both line and column?    claude-code
-11:32  todo    2e44158bae  Add test cases for comment handling                  claude-code
+2026-09-21 10:18  todo      6cad4a268d  Skip block comments /* */                          claude-code
+2026-09-21 10:32  memo      81e74ef5e8  Policy: use English for all error messages         yamada
+2026-09-21 11:05  question  2217beaddb  Should error positions show both line and column?  claude-code
+2026-09-21 11:32  todo      2e44158bae  Add test cases for comment handling                claude-code
 ```
 
+- The columns are the local date and time, what the line did, the ID, the text
+  and the author. For a line that creates a record, what it did is the kind:
+  `memo`, `todo`, `question`, `answer`, `bug`, `reply` or `glossary` (an answer or
+  a reply starts its text with `(to <id>)`, and a glossary entry with its word and
+  a colon). For the other lines it is `done` or `reopen` (a change of state),
+  `edit` or `delete`. An `edit` shows the new text. A change of state or a delete
+  shows the text of the record if the line that created it is in the same input,
+  and nothing otherwise.
+- Lines are in time order (`ts`, then `id`, a creation before the changes of the
+  same record), whatever order they were in.
 - A leading `+` or `-` (unified diff) is removed before parsing.
-- Lines that are not JSON events are skipped silently, so whole `git show` /
-  `git diff` output can be passed.
+- A line that is not a JSON event is skipped silently, so whole `git show` /
+  `git diff` output can be passed. There are no warnings.
 - Lines from any source work: `git diff`, `git diff main...feature`,
   `cat .mtqg/journal.jsonl`, `grep ... .mtqg/journal.jsonl`, or a file given as
   an argument (including files in `.mtqg/archive/`).
-- `+`/`-` marks are not shown, except that removed lines are always marked.
-  `--mark` shows marks on every line.
+- `+`/`-` marks are not shown, except that removed lines (`-`) are always marked.
+  `--mark` shows the mark of every line. The marks are a column of their own in
+  front of the others, and only when there is a mark to show.
+- Text follows the rules of a list (first line only, cut only on a terminal,
+  control characters replaced).
 
 ## archive
 
@@ -908,6 +1036,7 @@ One will be added when a format `1` or later exists (see
 |---|---|
 | author name | `MTQG_AUTHOR_NAME`, else `git config user.name` |
 | author kind | `MTQG_AUTHOR_KIND` (`human` or `ai`), else `human` |
+| terminal | `MTQG_TTY`, else the terminal that standard input, output or error is connected to; none if there is none |
 | editor | `$EDITOR` |
 
 - An AI agent that records through the command line says so with the two
@@ -917,5 +1046,7 @@ One will be added when a format `1` or later exists (see
   user.name`), so a setting of that repository applies. If no name comes from
   either place, mtqg stops and says how to set one. A `MTQG_AUTHOR_KIND` other
   than `human` or `ai` is an error.
+- The terminal is written to every line as `tty`, 8 hex digits of a hash (see
+  [undo](#undo)). It is left out where there is no terminal to identify.
 
 The variables are not a configuration file. There is no configuration file.

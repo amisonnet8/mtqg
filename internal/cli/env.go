@@ -33,6 +33,15 @@ type Env struct {
 	// ANSI says that the terminal understands color codes.
 	ANSI bool
 
+	// TTY names the terminal that the command was typed at, for undo to tell one
+	// terminal from another: "dev:" and the device number of the first of standard
+	// input, output and error that is a terminal. Empty when there is none, and
+	// always on Windows. It is never written as it is: terminalID hashes it.
+	TTY string
+
+	// ReadFile reads a file. It is what format is given as an argument.
+	ReadFile func(name string) ([]byte, error)
+
 	// RunEditor runs an editor, given as the command and its arguments, with the
 	// terminal attached, and returns when the editor has exited.
 	RunEditor func(argv []string) error

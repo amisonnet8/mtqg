@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/amisonnet8/mtqg/internal/journal"
 	"github.com/amisonnet8/mtqg/internal/model"
@@ -87,21 +90,49 @@ func (c *ctx) reader() (*journal.Journal, error) {
 }
 
 // writer opens the journal for writing, as the author that MTQG_AUTHOR_* and git
-// say it is.
+// say it is, from the terminal that the command was typed at.
 func (c *ctx) writer() (*journal.Journal, error) {
+	j, _, _, err := c.writerAs()
+	return j, err
+}
+
+// writerAs is writer, and says who and where it writes as: undo looks for the
+// lines of that author and that terminal.
+func (c *ctx) writerAs() (j *journal.Journal, author journal.Author, tty string, err error) {
 	start, err := c.startDir()
 	if err != nil {
-		return nil, err
+		return nil, journal.Author{}, "", err
 	}
 	loc, err := journal.Find(start)
 	if err != nil {
-		return nil, err
+		return nil, journal.Author{}, "", err
 	}
-	author, err := c.author(loc.Root)
+	author, err = c.author(loc.Root)
 	if err != nil {
-		return nil, err
+		return nil, journal.Author{}, "", err
 	}
-	return journal.Open(loc.Root, journal.Options{Author: author})
+	tty = c.terminalID()
+	j, err = journal.Open(loc.Root, journal.Options{Author: author, TTY: tty})
+	return j, author, tty, err
+}
+
+// terminalID is the tty of the lines this run writes: 8 hex digits of a hash of
+// MTQG_TTY if that is set, else of the terminal the command was typed at, and
+// empty if there is none. Only the hash is written, so that the device number and
+// the text of the variable stay on this machine, and a record that is committed
+// says no more than that two lines came from one terminal.
+func (c *ctx) terminalID() string {
+	raw := ""
+	if v := strings.TrimSpace(c.env.Getenv("MTQG_TTY")); v != "" {
+		raw = "env:" + v
+	} else {
+		raw = c.env.TTY
+	}
+	if raw == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:4])
 }
 
 // load reads the journal and builds the state of the records. Lines that could

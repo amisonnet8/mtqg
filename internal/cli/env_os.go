@@ -33,6 +33,8 @@ func OSEnv() Env {
 		StdoutIsTerminal: isTerminal,
 		StdoutWidth:      cols,
 		ANSI:             isTerminal && enableANSI(),
+		TTY:              terminalDevice(),
+		ReadFile:         os.ReadFile,
 		RunEditor:        runEditor,
 	}
 }

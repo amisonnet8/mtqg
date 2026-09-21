@@ -64,11 +64,15 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4.5（5つ目の種類`bug`）：着手（2026-09-21）。** ユーザーの決定で`bug`を足す（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。計画は承認済み。次はStep 5（`context`と全コマンドの`--json`）。
+**段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、手元の検証まで。CIは未確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
 
 **決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** 返信の呼び名は`reply`（`show`・`log`の種類の列は memo / todo / question / answer / bug / reply / glossary）。Step 4.5として独立させ、CIを通してからStep 5に入る。仕様書でのbugは「不具合そのもの」（不具合の報告と、そのやり取り。`done`は、直った／もう追わない）。**名前は`mtqg`のまま**（設計§3の「要判断」を「改名しない」と決定）。課題管理への線引きは設計§2.7に足した：bugはqaと同じ形（親＋返信、open/doneだけ）に留め、重要度・担当者・再現手順・影響バージョンの欄は持たない。
 
-**進み具合：** 仕様（`schema.md`・`cli.md`とその日本語版、ルール類、設計文書）を更新済み。次にモデル層（`Parents`・`Replies`・`ParentCreate`・`ReplyCreate`、種類をまたぐ`re`は結び付けない）、CLIの層（`kindSpec`の表、`thread.go`）、e2e、実際の出力での例の差し替え、の順。
+**できたもの：** ジャーナル層に`TypeBug`（`append.go`の許可リストを含む）。モデル層は、qaとbugを1つの「親と返信」の形にまとめた：`Parents(typ)`・`Replies(parentID)`・`HasParent`・`ParentKind`・`ReplyKind`・`ParentCreate`・`ReplyCreate`・`CanHaveReplies`・`IsReply`・`NoRepliesError`。**返信は親と同じ`type`を持つ**：`re`が別の`type`の記録（や回答）を指していても、返信にならず、エラーにもならない。CLIの層は、`kindSpec`の表に`type`を持たせ、`qa.go`を`thread.go`にして両方の種類が同じコードを使う。種類違いの案内（`mtqg qa done`が要る記録に`mtqg t done`を打った、など）は、種類の表から作る（今まで2つの`if`で書いていた）。
+
+**手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`とテストのコンパイルが通る（**実行はCI**）。モデル層の4つの変異（返信が親の`type`を見ない、`parentOf`が`type`を見ない、bugを消しても返信が残る、返信が常に`qa`で書かれる）とCLIの3つの変異（bugの一覧が質問を出す、案内が常に`qa`、打ち間違えたIDが新しいbugになる）を、テストが検出した。`cli.md`・`cli_ja.md`の新しい例（`status`・`bug list`・`show`・`log --kind bug`）と、文章中のエラー文言は、**日時とIDを固定した記録を本物のバイナリで動かした実際の出力**（英語版は中身も英語、日本語版は日本語）。
+
+**Step 4.5に含めなかったもの：** `--json`と`context`のbugの区画（Step 5。`cli.md`の`context`の下書きには`## Open bugs`を足してある）、`review`と`status`の`Conflicts`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`・`bug`・`reply`に揃える。**人間がすること：** GitHubのDescriptionを`(q)a & bugs`の版に変える（`PLAN.md`「READMEとGitHubの看板」）。
 
 **（前の状態）段階1 Step 4（CLI順2）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
 

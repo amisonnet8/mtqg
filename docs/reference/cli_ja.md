@@ -278,7 +278,7 @@ Undone: qa add "初版では非対応。需要が出たら再検討" (301850c5a3
 $ mtqg status
 Open todos          5
 Open questions      2  (1 awaiting confirmation)
-Open bugs           1
+Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
 
 Uncommitted records 3
@@ -320,6 +320,18 @@ c3b1f0d2e4  ライセンスは何にしますか？              yamada       20
           └ 初版では非対応。需要が出たら再検討      yamada       09:41
 2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code  11:05       unanswered
 2 open, 1 done
+
+$ mtqg bug list
+7f3a2b1c09  空の入力でパーサーが落ちる  yamada       10:41  1 reply, awaiting confirmation
+          └ macOSでも再現した           claude-code  10:45
+1 open (show done: --all)
+
+$ mtqg bug list --all
+b2c3d4e5f6  タブ文字でリンターが落ちる       yamada       2026-09-19  1 reply, done
+          └ タブを1桁として数えるよう直した  claude-code  2026-09-19
+7f3a2b1c09  空の入力でパーサーが落ちる       yamada       10:41       1 reply, awaiting confirmation
+          └ macOSでも再現した                claude-code  10:45
+1 open, 1 done
 ```
 
 `qa list`と`bug list`は同じ配置で表示する。質問やバグの末尾に状態を表示し、その下に最新の回答または返信を、
@@ -378,6 +390,20 @@ Events
   2026-09-21 09:10  create  claude-code (ai)
   2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
   2026-09-21 09:41  create  yamada (human)    answer 95e761d177
+
+$ mtqg show 7f3a2b1c09
+bug  7f3a2b1c09  open
+by yamada (human), 2026-09-21 10:41
+
+  空の入力でパーサーが落ちる
+
+Replies (1)
+  3d8e4a0b12  claude-code (ai)  2026-09-21 10:45
+    macOSでも再現した
+
+Events
+  2026-09-21 10:41  create  yamada (human)
+  2026-09-21 10:45  create  claude-code (ai)  reply 3d8e4a0b12
 ```
 
 - 1行目は、種類（`memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`）、ID、todo・質問・バグなら状態。2行目は、誰がいつ
@@ -398,7 +424,7 @@ $ mtqg log --limit 6
 11:06  todo      1e27a1c08a  エラー位置を行と列で表示する                          claude-code
 11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？                claude-code
 10:52  todo      6513270e26  文字列リテラル中の // を無視する                      yamada
-6 of 16 records (--limit 0 for all)
+6 of 20 records (--limit 0 for all)
 
 $ mtqg log --kind qa
 11:05       question  2217beaddb  エラー位置は行と列の両方を出しますか？              claude-code
@@ -408,6 +434,13 @@ $ mtqg log --kind qa
 2026-09-19  answer    d4c2a1e3f5  (to c3b1f0d2e4) MITが一番単純です                   claude-code
 2026-09-19  question  c3b1f0d2e4  ライセンスは何にしますか？                          yamada       done
 6 records
+
+$ mtqg log --kind bug
+10:45       reply  3d8e4a0b12  (to 7f3a2b1c09) macOSでも再現した                claude-code
+10:41       bug    7f3a2b1c09  空の入力でパーサーが落ちる                       yamada
+2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) タブを1桁として数えるよう直した  claude-code
+2026-09-19  bug    b2c3d4e5f6  タブ文字でリンターが落ちる                       yamada       done
+4 records
 ```
 
 - 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、

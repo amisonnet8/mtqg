@@ -324,7 +324,7 @@ Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a
 $ mtqg status
 Open todos          5
 Open questions      2  (1 awaiting confirmation)
-Open bugs           1
+Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
 
 Uncommitted records 3
@@ -370,6 +370,18 @@ c3b1f0d2e4  Which license should the parser use?                  yamada       2
           └ Not in the first version. Revisit if there is demand  yamada       09:41
 2217beaddb  Should error positions show both line and column?     claude-code  11:05       unanswered
 2 open, 1 done
+
+$ mtqg bug list
+7f3a2b1c09  Parser crashes on empty input  yamada       10:41  1 reply, awaiting confirmation
+          └ Reproduced on macOS too        claude-code  10:45
+1 open (show done: --all)
+
+$ mtqg bug list --all
+b2c3d4e5f6  Linter crashes on tab characters       yamada       2026-09-19  1 reply, done
+          └ Fixed by treating a tab as one column  claude-code  2026-09-19
+7f3a2b1c09  Parser crashes on empty input          yamada       10:41       1 reply, awaiting confirmation
+          └ Reproduced on macOS too                claude-code  10:45
+1 open, 1 done
 ```
 
 `qa list` and `bug list` are laid out the same way. Each question or bug ends
@@ -435,6 +447,20 @@ Events
   2026-09-21 09:10  create  claude-code (ai)
   2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
   2026-09-21 09:41  create  yamada (human)    answer 95e761d177
+
+$ mtqg show 7f3a2b1c09
+bug  7f3a2b1c09  open
+by yamada (human), 2026-09-21 10:41
+
+  Parser crashes on empty input
+
+Replies (1)
+  3d8e4a0b12  claude-code (ai)  2026-09-21 10:45
+    Reproduced on macOS too
+
+Events
+  2026-09-21 10:41  create  yamada (human)
+  2026-09-21 10:45  create  claude-code (ai)  reply 3d8e4a0b12
 ```
 
 - The first line names the kind (`memo`, `todo`, `question`, `answer`, `bug`,
@@ -461,7 +487,7 @@ $ mtqg log --limit 6
 11:06  todo      1e27a1c08a  Show error positions as line and column                          claude-code
 11:05  question  2217beaddb  Should error positions show both line and column?                claude-code
 10:52  todo      6513270e26  Ignore // inside string literals                                 yamada
-6 of 16 records (--limit 0 for all)
+6 of 20 records (--limit 0 for all)
 
 $ mtqg log --kind qa
 11:05       question  2217beaddb  Should error positions show both line and column?                     claude-code
@@ -471,6 +497,13 @@ $ mtqg log --kind qa
 2026-09-19  answer    d4c2a1e3f5  (to c3b1f0d2e4) MIT is the simplest choice                            claude-code
 2026-09-19  question  c3b1f0d2e4  Which license should the parser use?                                  yamada       done
 6 records
+
+$ mtqg log --kind bug
+10:45       reply  3d8e4a0b12  (to 7f3a2b1c09) Reproduced on macOS too                claude-code
+10:41       bug    7f3a2b1c09  Parser crashes on empty input                          yamada
+2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) Fixed by treating a tab as one column  claude-code
+2026-09-19  bug    b2c3d4e5f6  Linter crashes on tab characters                       yamada       done
+4 records
 ```
 
 - Every record that is not hidden, of every kind, one line each, **newest

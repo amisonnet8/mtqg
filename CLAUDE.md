@@ -27,6 +27,7 @@
 - **`.claude/rules/cli-output.md`** — CLI出力（英語、文言をCLIの層にまとめる、`--json`、正直に伝えること、`context`の書き方）
 - **`.claude/rules/testing.md`** — テスト方針（開発環境の前提、動作確認の粒度、mtqg固有の検証項目、e2e、Trivy、ShellCheck、`-race`、CIの落とし穴）
 - **`.claude/rules/naming.md`** — 命名規則（製品名、日本語と英語の用語の対応、コマンド、フィールド名）
+- **`.claude/skills/`** — 繰り返す手順のSkill。今は**`mutation-check`**（実装を1か所ずつ壊して、テストが効いているかを確かめる。`testing.md`「壊して確かめる」）。作業の区切りで、テストを足したときに使う
 - **`.claude/rules/git-integration.md`** — 製品としてのmtqgがgitに対してしてよいこと・いけないこと
 - **`.claude/rules/distribution.md`** — 配布方法（`go install`、cgoなし、バージョンの取り方）
 

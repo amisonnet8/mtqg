@@ -26,7 +26,7 @@ mtqg/
 │   ├── tour/               ← 歩いて回る入門（実装完了後に作成。英語＋_ja）
 │   └── examples/           ← 実例（実装完了後に作成。英語＋_ja）
 ├── .devcontainer/
-├── .claude/
+├── .claude/                ← rules/（ルール）、skills/（繰り返す手順。mutation-check）、hooks/、settings.json（人間が管理）
 └── .github/workflows/
 ```
 

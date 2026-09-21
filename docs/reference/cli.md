@@ -41,6 +41,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg archive <start>..<end> [-n]` | Move finished items of a date range out of view |
 | `mtqg init` | Create `.mtqg/` |
 | `mtqg version` | Show the mtqg version and the repository's format version |
+| `mtqg help` | List the commands (`-h` and `--help` do the same) |
 
 ## Global options
 
@@ -51,6 +52,34 @@ any language. The storage format is described in [schema.md](schema.md).
 | `--all` | In lists, include finished items |
 | `--full-id` | Show full 32-digit IDs instead of the first 10 digits |
 | `--no-color` | Disable color. `NO_COLOR` is also honored |
+
+Color is only decoration and is used only when the output is a terminal.
+
+### Where options go
+
+- Options come **before** the text of a record. From the first word of the text
+  on, every word is text, even one that starts with `-`:
+  `mtqg t add fix the -x flag` records `fix the -x flag`.
+- A text that itself starts with `-` needs `--` in front of it:
+  `mtqg t add -- -1 is not allowed`. A single `-` means standard input (see
+  [Adding records](#adding-records)).
+- Commands that take an ID (`done`, `reopen`, ...) and commands without text
+  (`list`, `status`, ...) accept options anywhere: `mtqg t done 6cad --full-id`.
+- Options that are not tied to one command (`-C`, `--no-color`) may also come
+  before the kind: `mtqg -C ../other t list`.
+- An option that is not listed here is an error.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success. A change that was already made counts as success |
+| 1 | The command could not do what was asked: no `.mtqg/`, an unknown ID, the write lock could not be taken, and so on |
+| 2 | The command line is wrong: an unknown command or option, a missing argument |
+
+Errors go to standard error. So do warnings (a line that was skipped, conflict
+markers), which never change the exit code, so that standard output stays clean
+for other tools.
 
 ## Finding .mtqg/
 
@@ -86,7 +115,13 @@ $ mtqg init
 - Creates `.mtqg/journal.jsonl`, `.mtqg/.gitattributes`, `.mtqg/.gitignore`,
   `.mtqg/version` and `.mtqg/SCHEMA.md`.
 - Does not change git configuration and does not commit. It tells you to commit
-  `.mtqg/`.
+  `.mtqg/`:
+
+```
+$ mtqg init
+Created .mtqg/ in /home/me/sample-parser
+Commit it to share the records.
+```
 
 ## Adding records
 
@@ -100,15 +135,40 @@ mtqg g add token The smallest unit produced by lexing
 - The remaining arguments are joined with spaces. Quotes are not needed, except
   around shell special characters (`#` `*` `(` `)` `&` `|` `<` `>`).
 - For glossary, the first argument is the word and the rest is the definition.
-- `-` instead of the text reads it from standard input:
-  `git log -1 --format=%s | mtqg m add -`
-- No text opens `$EDITOR`.
+- `-` instead of the text reads it from standard input, to its end. Trailing
+  line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
+- No text opens `$EDITOR` on an empty file, and what is saved is the text
+  (trailing line breaks dropped). `$EDITOR` may hold arguments and quotes
+  (`code --wait`); it is not run through a shell. If `$EDITOR` is not set, mtqg
+  stops and says so.
+- A text can have several lines (from standard input or the editor). `list`
+  shows the first line only.
+- A text that is empty, or only white space, is an error
+  (`Aborting: the text is empty`). Nothing is written.
 - Output is only the new record's ID:
 
 ```
 $ mtqg t add Skip block comments
 6cad4a268d
 ```
+
+## done, reopen
+
+```
+$ mtqg t done 6cad4a268d
+Done: 6cad4a268d  Skip block comments /* */
+$ mtqg t reopen 6cad4a268d
+Reopened: 6cad4a268d  Skip block comments /* */
+```
+
+- One line is printed: what was done, the ID and the first line of the text, so
+  that you can see the ID you typed was the record you meant.
+- If the todo is already in that state, nothing is written and the line says so
+  (`Already done: ...`, `Already open: ...`). The exit code is 0: repeating a
+  change is not an error.
+- Only todos and questions have a state. For the ID of any other record, mtqg
+  stops and says what it is. If another command is the right one, it names it
+  (`6cad4a268d is a question; use `mtqg qa done``).
 
 ## Questions and answers
 
@@ -149,6 +209,8 @@ Ambiguous ID "70430f77ff" matches 2 records:
   70430f77ff91c2e04a8b33f1d7e6a025  memo  Parser now skips // at line end  yamada       2027-03-02
 ```
 
+- If no record matches, mtqg stops: `No record matches "6cad4"`. A deleted
+  record is never matched. Uppercase hex digits are read as lowercase.
 - Records refer to each other by full ID (an answer's `re`), so a short ID
   becoming ambiguous later never changes what a record points to.
 
@@ -198,6 +260,13 @@ Conflicts           1  -> mtqg review
 Uncommitted records 3
 ```
 
+- Each line is a count. `Uncommitted records` is the number of records that have
+  at least one line in `journal.jsonl` that is not in the last commit (`HEAD`):
+  records created or changed since then. A record counts once however many lines
+  it has. Lines that are staged but not committed count as uncommitted. With no
+  commit yet, or when `.mtqg/journal.jsonl` is not tracked, every record counts.
+  If git cannot be run, the line shows `unknown`.
+
 ### list
 
 ```
@@ -216,6 +285,22 @@ $ mtqg qa list
 ```
 
 `qa list` shows the latest answer and the number of answers.
+
+How a list is shown:
+
+- The columns are the ID, the text, the author and the time. The time is `HH:MM`
+  for today and `YYYY-MM-DD` for any other day, in local time.
+- Records are in the order they were created, oldest first.
+- The text is the first line of the record. On a terminal it is cut with `...`
+  to fit the width of the window; when the output goes to a pipe or a file it is
+  never cut.
+- Columns are aligned by display width: a full-width character (Japanese, for
+  example) takes two columns.
+- With `--all`, a finished item ends with `done`.
+- Control characters in a record, such as the escape character, are replaced
+  with U+FFFD when shown, so that a record cannot change what the terminal
+  does. Output with `--json` is not affected.
+- `mtqg memo list` shows every memo and ends with `N memos`.
 
 ### show
 
@@ -384,7 +469,21 @@ Skipped: 3 open todos, 1 open question, 24 glossary entries
 ## version
 
 `mtqg version` prints the mtqg version and the format version declared in
-`.mtqg/version`. mtqg refuses to read or write a repository whose format
+`.mtqg/version`, kept apart:
+
+```
+$ mtqg version
+mtqg v0.1.0
+Repository format version: 0 (this mtqg supports up to 0)
+```
+
+- The mtqg version is the one set when it was built, else the module version of
+  the build (a tag such as `v0.1.0` for `go install ...@v0.1.0`; a version made
+  of the commit time and hash for `go build`), else `dev`.
+- Outside a repository, or where there is no `.mtqg/`, the second line reads
+  `Repository format version: unknown (no .mtqg/ found)`.
+
+mtqg refuses to read or write a repository whose format
 version is newer than it knows, and asks you to update mtqg.
 
 The format version is `0` (unstable) and there is no command to raise it yet.
@@ -395,8 +494,16 @@ One will be added when a format `1` or later exists (see
 
 | Item | Value |
 |---|---|
-| author name | `git config user.name` |
-| author kind | `human` from the CLI |
+| author name | `MTQG_AUTHOR_NAME`, else `git config user.name` |
+| author kind | `MTQG_AUTHOR_KIND` (`human` or `ai`), else `human` |
 | editor | `$EDITOR` |
 
-There is no configuration file.
+- An AI agent that records through the command line says so with the two
+  variables: `MTQG_AUTHOR_KIND=ai MTQG_AUTHOR_NAME=claude-code`. With `ai` the
+  name is required, so an AI is never recorded under the name from `git config`.
+- `git config user.name` is read for the repository (`git -C <root> config
+  user.name`), so a setting of that repository applies. If no name comes from
+  either place, mtqg stops and says how to set one. A `MTQG_AUTHOR_KIND` other
+  than `human` or `ai` is an error.
+
+The variables are not a configuration file. There is no configuration file.

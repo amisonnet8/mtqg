@@ -19,6 +19,7 @@ mtqg/
 │   ├── journal/            ← 【ジャーナル層】journal.jsonl の読み書きだけ
 │   ├── model/              ← 【モデル層】イベントの意味
 │   └── cli/                ← 【入口】引数の解釈、英語の文言、表の整形、--json
+├── e2e/                    ← ビルドした本物のバイナリと本物のgitで動かすテスト（ビルドタグ e2e）
 ├── docs/
 │   ├── reference/          ← 仕様。英語版 schema.md・cli.md と日本語版 *_ja.md
 │   ├── design/             ← 設計判断と理由の記録（日本語）
@@ -34,12 +35,15 @@ mtqg/
 ## 配置の判断基準
 
 - **`.mtqg/`の中のファイル（`journal.jsonl`・`archive/`・`version`・`.local/`）に触れるコード** → `internal/journal/`
-  - `.mtqg/`の探索（設計§4.4）、`version`の確認、行の読み込み、追記、書き直し（`undo`・`archive`用の汎用操作）、ロック、IDの生成
+  - `.mtqg/`の探索（設計§4.4）と`init`での作成、`version`の確認、行の読み込み、追記、書き直し（`undo`・`archive`用の汎用操作）、ロック、IDの生成
+  - **gitを読むコード**（`git config user.name`、コミット済みの`journal.jsonl`）は`internal/journal/git.go`に置く。`exec`で本物の`git`を呼ぶだけで、gitへは書かない（git-integration.md）。`.mtqg/`とその置かれたリポジトリの状況を読む部分なので、この層に属する
   - イベントが「todoの完了」か「用語の定義」かは**知らない**。1行のイベントとして扱うだけ
 - **イベントの意味を扱うコード** → `internal/model/`
   - 状態の組み立て、検証（memoは完了にできない等）、`undo`・`archive`の対象の選び方、並行した状態変更・用語の重複定義の検出、`context`の中身の組み立て
   - ファイルを直接開かない。必ずジャーナル層を通す
 - **利用者とのやり取り** → `internal/cli/`
+  - 種類・動詞・オプションの**表をデータとして持つ**（`args.go`。`help`とシェル補完が同じ表から作れる）、英語の文言は`messages.go`に1か所、表示（`render.go`）、本文の入力（引数・標準入力・`$EDITOR`）、環境変数（記録者）
+  - 標準入出力・環境変数・現在時刻・端末を`Env`で注入し、`Run(env, args)`をテストから直接呼べるようにする
   - 引数の解釈（`archive`の期間の解釈を含む）、英語の文言、表の整形、`--json`の出力
   - コアは**構造化された結果とエラーの種類**を返す。文言にするのはここだけ（cli-output.md）
 - 依存の向きは `cli → model → journal` の一方向。逆向きのimportを作らない

@@ -6,8 +6,8 @@ mtqgはgitの上に乗るツールだが、**gitの運用には何も要求し�
 
 - **読むだけ。** 必要な情報は本物の`git`コマンドに聞く
   - `git rev-parse --show-toplevel`、`.git`の有無（リポジトリの境界）
-  - `git config user.name`（記録者の名前）
-  - 未コミットの記録の件数を出すための`git status`・`git diff`相当の情報
+  - `git -C <ルート> config user.name`（記録者の名前。そのリポジトリの設定が効く）
+  - `git -C <ルート> show HEAD:.mtqg/journal.jsonl`（未コミットの記録の件数を出すため。`HEAD`の`journal.jsonl`の行と、今の行を比べる。`HEAD`やそのパスが無ければ、全行が未コミット）
 - gitのライブラリ（go-gitなど）でgitの動きを再実装しない。`exec`で`git`を呼ぶ。gitの設定・フック・worktree・サブモジュールの扱いが本物と食い違うため
 - gitの私的な領域（`.git/`の中）には何も置かない。mtqgの状態はすべて`.mtqg/`の中に収まる（このマシンだけの一時的なものは`.mtqg/.local/`・journal-format.md）
 

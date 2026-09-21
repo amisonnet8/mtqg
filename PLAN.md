@@ -67,14 +67,14 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 **段階1 Step 8（e2eとdocsの例の確認）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
 
 **できたもの：**
-- **docsの例の確認**（`e2e/examples_test.go`）。`docs/reference/cli.md`・`cli_ja.md`の`$`で始まるコードブロックは、直前のHTMLコメント`<!-- mtqg:example repo=parser -->`の指定で、`e2e/testdata/examples/`のフィクスチャ（`parser`・`parser_ja`・`years`・`ambiguous`・`refuse`・`broken`。`none`・`empty`は特別）から作ったリポジトリのコピーで動かし、出力を文書と比べる。**`Run`を直接、`Env.Now`（2026-09-21 12:00 UTC）と`Env.Location`を固定して呼ぶ**（時計の裏口を製品に作らない）。`binary`の印のブロック（`archive`・`format`）は、本物のバイナリでも同じ出力になることを確かめる。`make docs-examples`が実際の出力を文書に書き戻す（**例は手で書かない**）。例が28個、英語版・日本語版とも。取りこぼしを止めるテスト（印なし、理由なしの`skip=`、フィクスチャの言語違い、2言語で例の数が違う）。
+- **docsの例の確認**（`e2e/examples_test.go`）。`docs/reference/cli.md`・`cli_ja.md`の`$`で始まるコードブロックは、直前のHTMLコメント`<!-- mtqg:example repo=parser -->`の指定で、`e2e/testdata/examples/`のフィクスチャ（`parser`・`parser_ja`・`years`・`ambiguous`・`refuse`・`broken`。`none`・`empty`は特別）から作ったリポジトリのコピーで動かし、出力を文書と比べる。**`Run`を直接、`Env.Now`（2026-09-21 12:00 UTC）と`Env.Location`を固定して呼ぶ**（時計の裏口を製品に作らない）。`binary`の印のブロック（`archive`・`format`）は、本物のバイナリでも同じ出力になることを確かめる。`make docs-examples`が実際の出力を文書に書き戻す（**例は手で書かない**）。例が28個（うち1つは`skip=`）、英語版・日本語版とも。取りこぼしを止めるテスト（印なし、理由なしの`skip=`、フィクスチャの言語違い、2言語で例の数が違う）。
 - **e2eの残り**（`.claude/rules/testing.md`の一覧はすべてe2eにある）：`boundaries_test.go`（衝突マーカー、知らない`version`、`.local/`を消した後、submoduleと既存`.mtqg/`への`init`）、`lock_unix_test.go`（worktreeとシンボリックリンクのロック。**LinuxとmacOSだけ**）、`records_test.go`（曖昧なID、種類の取り違え、`edit`・`delete`・`search`）。
 
 **Step 8で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** ①`Run`を時計を固定して直接呼ぶ（`MTQG_NOW`は作らない）。②印はフェンスの直前のHTMLコメント。③今ある例は、1つの整合したフィクスチャから作り直して差分を確認する。④e2eは一覧の未実施をすべて足す。**`testscript`は要らないと結論した**（未確認事項4）。
 
 **手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`（`-tags e2e`）とテストのコンパイルが通る（**実行はCI**）。仕組みを壊して確かめた（すべてテストが検出）：例を1文字変える、印を外す、理由のない`skip=`、`ids=any`を外す、英語版が日本語のフィクスチャを使う、残った印、本物のバイナリの出力を変える。`make docs-examples`を続けて2回実行しても差分が出ない。新しいe2eは、製品側を壊して確かめた（すべてe2eが検出）：追記が衝突マーカーを無視する、新しい形式を受け入れる、`.local/`を作り直さない、ロックが待たない、曖昧な前方一致が最初の1件を選ぶ、質問を消しても回答が残る、3桁のIDを受け入れる。
 
-**作り直しで見えたこと：** 例の26個は最初から実際の出力と一致していた。食い違っていたのは、`todo list`の2つの例（Step 3のフィクスチャのまま。「3 open」だったが、同じ文書の`status`は5）と、日本語版の`undo`の拒否の例のID（英語版と別の値）だけ。実装の不具合は見つからなかった。
+**作り直しで見えたこと：** 例は28個（うち1つは`skip=`で、`mtqg version`）。食い違っていたのは、英語版が1つのブロック（`todo list`の2つの例。Step 3のフィクスチャのまま「3 open」だったが、同じ文書の`status`は5）、日本語版が2つのブロック（同じ例と、`undo`の拒否の例のID。英語版と別の値）だけで、残りは最初から実際の出力と一致していた。実装の不具合は見つからなかった。
 
 **CIで確かめること（人間のpush後）：** 例の確認がWindows・macOSで通るか（出力に出るパスの置き換え、`git show HEAD`の出力、`format`が相対パスのファイルを読むこと、フィクスチャのコピー。`.git`の読み取り専用のファイルを含む）。新しいe2eのうち`lock_unix_test.go`はWindowsでは走らない。
 

@@ -12,23 +12,23 @@ type Entry struct {
 	Event journal.Event
 	At    time.Time // the time of the event, or the zero time if it could not be read
 
-	// Answer is set on the create event of an answer, in the history of its
-	// question. It is nil for the events of the record itself.
+	// Answer is set on the create event of an answer or a reply, in the history of
+	// its question or bug. It is nil for the events of the record itself.
 	Answer *Record
 }
 
 // History returns what happened to a record, oldest first: its own events (the
-// create, the changes of state, the edits, the delete) and, for a question, the
-// creation of each of its answers that is in view. Events with the same time keep
-// the order the record has them in, and the record's own events come before the
-// answers that arrived at the same moment.
+// create, the changes of state, the edits, the delete) and, for a question or a
+// bug, the creation of each of its answers or replies that is in view. Events with
+// the same time keep the order the record has them in, and the record's own events
+// come before the answers that arrived at the same moment.
 func (s *State) History(rec *Record) []Entry {
 	entries := make([]Entry, 0, len(rec.Events))
 	for _, ev := range rec.Events {
 		entries = append(entries, Entry{Event: ev, At: parseTime(ev.TS)})
 	}
-	if rec.Kind() == KindQuestion {
-		for _, answer := range s.Answers(rec.ID) {
+	if rec.CanHaveReplies() {
+		for _, answer := range s.Replies(rec.ID) {
 			if len(answer.Events) == 0 {
 				continue
 			}

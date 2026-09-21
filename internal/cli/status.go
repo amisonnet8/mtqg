@@ -22,7 +22,8 @@ func runStatus(c *ctx) int {
 	summary := state.Summary()
 
 	c.println(msgStatusLine("Open todos", strconv.Itoa(summary.OpenTodos)))
-	c.println(msgStatusLine("Open questions", msgQuestionsValue(summary.OpenQuestions, summary.AwaitingConfirmation)))
+	c.println(msgStatusLine("Open questions", msgOpenValue(summary.OpenQuestions, summary.QuestionsAwaitingConfirmation)))
+	c.println(msgStatusLine("Open bugs", msgOpenValue(summary.OpenBugs, summary.BugsAwaitingConfirmation)))
 	c.println(msgStatusLine("Glossary", msgGlossaryValue(summary.GlossaryEntries, summary.DuplicateWords)))
 	c.println()
 

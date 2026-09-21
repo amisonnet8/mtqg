@@ -128,7 +128,7 @@ func record(id, typ, text, author, ts string) string {
 		"id": id, "op": "create", "type": typ, "text": text,
 		"v": 0, "ts": ts, "author": map[string]string{"kind": "human", "name": author},
 	}
-	if typ == "todo" || typ == "qa" {
+	if typ == "todo" || typ == "qa" || typ == "bug" {
 		ev["status"] = "open"
 	}
 	return marshal(ev)

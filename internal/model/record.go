@@ -8,21 +8,24 @@ import (
 )
 
 // The kinds of record as people speak of them. A qa record is a question or an
-// answer, and the journal tells them apart by re.
+// answer, and a bug record is a bug or a reply; the journal tells them apart by re.
+// The two have the same shape: a parent that can be replied to, and its replies.
 const (
 	KindMemo     = "memo"
 	KindTodo     = "todo"
 	KindQuestion = "question"
 	KindAnswer   = "answer"
+	KindBug      = "bug"
+	KindReply    = "reply"
 	KindGlossary = "glossary entry"
 )
 
-// Record is one memo, todo, question, answer or glossary entry, as its events
-// leave it.
+// Record is one memo, todo, question, answer, bug, reply or glossary entry, as
+// its events leave it.
 type Record struct {
 	ID string
 
-	// Type is the type field of the format: memo, todo, qa or glossary.
+	// Type is the type field of the format: memo, todo, qa, bug or glossary.
 	Type string
 
 	// Text is the body. For a glossary entry it is the definition.
@@ -31,15 +34,15 @@ type Record struct {
 	// Word is the term of a glossary entry.
 	Word string
 
-	// Re is the ID of the question that an answer belongs to.
+	// Re is the ID of the question or bug that an answer or a reply belongs to.
 	Re string
 
-	// Status is open or done for a todo and a question. It is empty for records
-	// that have no state.
+	// Status is open or done for a todo, a question and a bug. It is empty for
+	// records that have no state.
 	Status string
 
 	// Deleted records are hidden: no list shows them and no ID matches them. So is
-	// an answer whose question is deleted (State.visible).
+	// an answer or a reply whose question or bug is deleted (State.visible).
 	Deleted bool
 
 	// Author wrote the create event.
@@ -54,27 +57,60 @@ type Record struct {
 	Events []journal.Event
 }
 
-// Kind returns how to call the record: memo, todo, question, answer or glossary
-// entry.
-func (r *Record) Kind() string {
-	switch {
-	case r.Type == journal.TypeMemo:
+// Kind returns how to call the record: memo, todo, question, answer, bug, reply
+// or glossary entry.
+func (r *Record) Kind() string { return kindOf(r.Type, r.Re != "") }
+
+// kindOf is the kind of a record of a type. reply says that it has re, which only
+// makes a difference for the types that have replies (qa and bug).
+func kindOf(typ string, reply bool) string {
+	switch typ {
+	case journal.TypeMemo:
 		return KindMemo
-	case r.Type == journal.TypeTodo:
+	case journal.TypeTodo:
 		return KindTodo
-	case r.Type == journal.TypeGlossary:
+	case journal.TypeGlossary:
 		return KindGlossary
-	case r.Re != "":
-		return KindAnswer
+	case journal.TypeBug:
+		if reply {
+			return KindReply
+		}
+		return KindBug
 	default:
+		if reply {
+			return KindAnswer
+		}
 		return KindQuestion
 	}
 }
 
-// HasState reports whether the record has a state to change: todos and
-// questions do; memos, answers and glossary entries do not.
+// ParentKind is the kind of a record of this type that is not a reply: what a
+// create of the type starts (a question for qa, a bug for bug; for memo, todo and
+// glossary, the kind itself).
+func ParentKind(typ string) string { return kindOf(typ, false) }
+
+// ReplyKind is the kind of a record of this type that has re: an answer for qa, a
+// reply for bug. The other types have no replies, and it is their own kind.
+func ReplyKind(typ string) string { return kindOf(typ, true) }
+
+// HasState reports whether the record has a state to change: todos, questions and
+// bugs do; memos, answers, replies and glossary entries do not.
 func (r *Record) HasState() bool {
-	return r.Kind() == KindTodo || r.Kind() == KindQuestion
+	k := r.Kind()
+	return k == KindTodo || k == KindQuestion || k == KindBug
+}
+
+// CanHaveReplies reports whether the record can be answered or replied to: a
+// question or a bug. An answer or a reply cannot.
+func (r *Record) CanHaveReplies() bool {
+	k := r.Kind()
+	return k == KindQuestion || k == KindBug
+}
+
+// IsReply reports whether the record is an answer or a reply.
+func (r *Record) IsReply() bool {
+	k := r.Kind()
+	return k == KindAnswer || k == KindReply
 }
 
 // State is the records that a journal's events amount to.
@@ -167,19 +203,33 @@ func (r *Record) record(ev journal.Event, at time.Time) {
 func (s *State) Record(id string) *Record { return s.byID[id] }
 
 // visible reports whether a record is in view: it is not deleted, and if it is
-// an answer, its question is not deleted either (deleting a question hides its
-// answers). An answer whose question is not in the journal at all is in view: what
-// is missing is not the same as what was deleted.
+// an answer or a reply, its question or bug is not deleted either (deleting a
+// question or a bug hides its answers or replies). An answer whose question is not
+// in the journal at all is in view: what is missing is not the same as what was
+// deleted.
 func (s *State) visible(r *Record) bool {
 	if r.Deleted {
 		return false
 	}
-	if r.Kind() == KindAnswer {
-		if q := s.byID[r.Re]; q != nil && q.Deleted {
-			return false
-		}
+	if p := s.parentOf(r); p != nil && p.Deleted {
+		return false
 	}
 	return true
+}
+
+// parentOf returns the question or bug that an answer or a reply belongs to, or
+// nil if it is not one, or there is no such record. A reply has the same type as
+// its parent, and only a question or a bug can be one: an re that names a record of
+// another type (or an answer) does not make a reply of it, and is not an error.
+func (s *State) parentOf(r *Record) *Record {
+	if !r.IsReply() {
+		return nil
+	}
+	p := s.byID[r.Re]
+	if p == nil || p.Type != r.Type || !p.CanHaveReplies() {
+		return nil
+	}
+	return p
 }
 
 // All returns every record that is in view, of every kind, oldest first.
@@ -200,27 +250,31 @@ func (s *State) Memos() []*Record {
 	return s.pick(func(r *Record) bool { return r.Kind() == KindMemo })
 }
 
-// Questions returns the questions that are in view, oldest first. Closed ones are
+// Parents returns the records of a type that can be replied to and are in view,
+// oldest first: the questions of type qa, the bugs of type bug. Closed ones are
 // included only when includeDone is set.
-func (s *State) Questions(includeDone bool) []*Record {
+func (s *State) Parents(typ string, includeDone bool) []*Record {
+	kind := ParentKind(typ)
 	return s.pick(func(r *Record) bool {
-		return r.Kind() == KindQuestion && (includeDone || r.Status == journal.StatusOpen)
+		return r.HasState() && r.Kind() == kind && (includeDone || r.Status == journal.StatusOpen)
 	})
 }
 
-// Answers returns the answers in view to the question with this full ID, oldest
-// first. Only questions have answers.
-func (s *State) Answers(questionID string) []*Record {
-	return s.pick(func(r *Record) bool { return r.Kind() == KindAnswer && r.Re == questionID })
+// Replies returns the answers or replies in view to the question or bug with this
+// full ID, oldest first. Only a question or a bug has them, and a reply has the
+// type of its parent: a record whose re names a record of another type is not one.
+func (s *State) Replies(parentID string) []*Record {
+	parent := s.byID[parentID]
+	if parent == nil || !parent.CanHaveReplies() {
+		return nil
+	}
+	return s.pick(func(r *Record) bool { return r.IsReply() && r.Re == parentID && r.Type == parent.Type })
 }
 
-// HasQuestion reports whether an answer's question is in the journal. An answer
-// without one (its question may be in an archive) is left out of the question
-// lists.
-func (s *State) HasQuestion(answer *Record) bool {
-	q := s.byID[answer.Re]
-	return q != nil && q.Kind() == KindQuestion
-}
+// HasParent reports whether the question or bug of an answer or a reply is in the
+// journal. One without it (its parent may be in an archive) is left out of the
+// lists of questions and bugs.
+func (s *State) HasParent(reply *Record) bool { return s.parentOf(reply) != nil }
 
 // Glossary returns the glossary entries that are in view, oldest first.
 func (s *State) Glossary() []*Record {
@@ -264,10 +318,13 @@ func (s *State) pick(keep func(*Record) bool) []*Record {
 type Summary struct {
 	OpenTodos int
 
-	// OpenQuestions are the questions that are not closed. AwaitingConfirmation are
-	// those of them that have an answer.
-	OpenQuestions        int
-	AwaitingConfirmation int
+	// OpenQuestions are the questions that are not closed. The ones awaiting
+	// confirmation are those of them that have an answer. Likewise for the bugs and
+	// their replies.
+	OpenQuestions                 int
+	QuestionsAwaitingConfirmation int
+	OpenBugs                      int
+	BugsAwaitingConfirmation      int
 
 	// GlossaryEntries counts the entries, so that two definitions of one word are
 	// two. DuplicateWords counts the words that have more than one.
@@ -282,13 +339,21 @@ func (s *State) Summary() Summary {
 		GlossaryEntries: len(s.Glossary()),
 		DuplicateWords:  len(s.DuplicateWords()),
 	}
-	for _, q := range s.Questions(false) {
-		sum.OpenQuestions++
-		if len(s.Answers(q.ID)) > 0 {
-			sum.AwaitingConfirmation++
+	sum.OpenQuestions, sum.QuestionsAwaitingConfirmation = s.openParents(journal.TypeQA)
+	sum.OpenBugs, sum.BugsAwaitingConfirmation = s.openParents(journal.TypeBug)
+	return sum
+}
+
+// openParents counts the open questions or bugs, and the ones of them that have an
+// answer or a reply.
+func (s *State) openParents(typ string) (open, awaiting int) {
+	for _, p := range s.Parents(typ, false) {
+		open++
+		if len(s.Replies(p.ID)) > 0 {
+			awaiting++
 		}
 	}
-	return sum
+	return open, awaiting
 }
 
 // UncommittedRecords counts the records that the given events belong to. Give it

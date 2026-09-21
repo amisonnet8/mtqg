@@ -23,8 +23,8 @@ func isHex(s string) bool { return s != "" && strings.Trim(s, "0123456789abcdef"
 // Resolve finds the record that a typed ID stands for. The ID is a prefix of the
 // full ID of at least MinIDDigits digits, as long as it is unique, the way git
 // takes a prefix of a hash. Case does not matter. A record that is not in view
-// (deleted, or an answer to a deleted question) is never matched, so it can
-// neither be found nor make another ID ambiguous.
+// (deleted, or an answer or a reply to a deleted question or bug) is never
+// matched, so it can neither be found nor make another ID ambiguous.
 //
 // It returns a *NotFoundError, a *TooShortError, or an *AmbiguousError that lists
 // the candidates.
@@ -81,25 +81,36 @@ func TodoCreate(text string) (journal.Event, error) {
 	return journal.Event{Op: journal.OpCreate, Type: journal.TypeTodo, Status: journal.StatusOpen, Text: text}, nil
 }
 
-// QuestionCreate returns the event that creates a question, which starts open.
-func QuestionCreate(text string) (journal.Event, error) {
+// ParentCreate returns the event that creates a question (type qa) or a bug (type
+// bug), which starts open. Any other type has nothing to be replied to.
+func ParentCreate(typ, text string) (journal.Event, error) {
+	if typ != journal.TypeQA && typ != journal.TypeBug {
+		return journal.Event{}, &journal.InvalidEventError{Field: "type", Reason: "must be qa or bug"}
+	}
 	if strings.TrimSpace(text) == "" {
 		return journal.Event{}, ErrEmptyText
 	}
-	return journal.Event{Op: journal.OpCreate, Type: journal.TypeQA, Status: journal.StatusOpen, Text: text}, nil
+	return journal.Event{Op: journal.OpCreate, Type: typ, Status: journal.StatusOpen, Text: text}, nil
 }
 
-// AnswerCreate returns the event that creates an answer to a question. It holds
-// the full ID of the question (re), whatever length of it was typed. The record
-// must be a question: only questions have answers, and an answer has no state.
-func AnswerCreate(question *Record, text string) (journal.Event, error) {
-	if question.Kind() != KindQuestion {
-		return journal.Event{}, &WrongKindError{Record: question, Want: KindQuestion}
+// QuestionCreate returns the event that creates a question.
+func QuestionCreate(text string) (journal.Event, error) { return ParentCreate(journal.TypeQA, text) }
+
+// BugCreate returns the event that creates a bug.
+func BugCreate(text string) (journal.Event, error) { return ParentCreate(journal.TypeBug, text) }
+
+// ReplyCreate returns the event that creates an answer to a question, or a reply
+// to a bug. It has the type of its parent, and holds the full ID of the parent
+// (re), whatever length of it was typed. Only a question or a bug can be replied
+// to, and an answer or a reply has no state.
+func ReplyCreate(parent *Record, text string) (journal.Event, error) {
+	if !parent.CanHaveReplies() {
+		return journal.Event{}, &NoRepliesError{Record: parent}
 	}
 	if strings.TrimSpace(text) == "" {
 		return journal.Event{}, ErrEmptyText
 	}
-	return journal.Event{Op: journal.OpCreate, Type: journal.TypeQA, Re: question.ID, Text: text}, nil
+	return journal.Event{Op: journal.OpCreate, Type: parent.Type, Re: parent.ID, Text: text}, nil
 }
 
 // GlossaryCreate returns the event that defines a word. The word is kept as it
@@ -115,7 +126,7 @@ func GlossaryCreate(word, text string) (journal.Event, error) {
 	return journal.Event{Op: journal.OpCreate, Type: journal.TypeGlossary, Word: word, Text: text}, nil
 }
 
-// SetStatus returns the event that puts a todo or a question into a state. It
+// SetStatus returns the event that puts a todo, a question or a bug into a state. It
 // records the state the record was in, as the writer saw it: that is what shows
 // two changes that were made without knowing of each other.
 //

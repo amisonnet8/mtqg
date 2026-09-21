@@ -187,7 +187,7 @@ func TestKeepInTheRepository(t *testing.T) {
 	}
 
 	status := r.mtqg("status")
-	if status != "Open todos          1\nOpen questions      0\nGlossary            0\n\nUncommitted records 3\n" {
+	if status != "Open todos          1\nOpen questions      0\nOpen bugs           0\nGlossary            0\n\nUncommitted records 3\n" {
 		t.Errorf("status = %q", status)
 	}
 
@@ -436,7 +436,7 @@ func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
 		t.Errorf("g list =\n%s", glossary)
 	}
 
-	if status := r.mtqg("status"); !strings.HasPrefix(status, "Open todos          0\nOpen questions      0\nGlossary            3  (1 with duplicate definitions)\n") {
+	if status := r.mtqg("status"); !strings.HasPrefix(status, "Open todos          0\nOpen questions      0\nOpen bugs           0\nGlossary            3  (1 with duplicate definitions)\n") {
 		t.Errorf("status = %q", status)
 	}
 
@@ -490,5 +490,86 @@ func TestTwoBranchesAnswerTheSameQuestion(t *testing.T) {
 		if !strings.Contains(show, want) {
 			t.Errorf("show lacks %q:\n%s", want, show)
 		}
+	}
+}
+
+// A bug is written like a question, and a reply like an answer, with the type bug.
+// The two stay apart: an ID of one is not accepted by the commands of the other.
+func TestBugsAndReplies(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+
+	bug := strings.TrimSpace(r.mtqg("bug", "add", "--full-id", "Parser crashes on empty input"))
+	if len(bug) != 32 {
+		t.Fatalf("bug add --full-id printed %q", bug)
+	}
+	question := strings.TrimSpace(r.mtqg("q", "add", "--full-id", "Should nested block comments be supported?"))
+
+	agent := []string{"MTQG_AUTHOR_KIND=ai", "MTQG_AUTHOR_NAME=claude-code"}
+	if reply := r.mtqg("b", "add", bug[:4], "The", "empty", "file", "has", "no", "first", "token"); !idPattern.MatchString(reply) {
+		t.Fatalf("a reply printed %q", reply)
+	}
+	if res := r.run(agent, "", "b", "add", bug[:10], "Reproduced on macOS too"); res.code != 0 {
+		t.Fatalf("%+v", res)
+	}
+
+	journal := readFile(t, filepath.Join(r.dir, ".mtqg", "journal.jsonl"))
+	if strings.Count(journal, `"type":"bug","re":"`+bug+`"`) != 2 || strings.Contains(journal, `"type":"qa","re"`) {
+		t.Errorf("both replies should be of type bug and hold the full ID of the bug:\n%s", journal)
+	}
+
+	// The two kinds stay apart, in both directions, and nothing is written.
+	before := journal
+	res := r.run(nil, "", "b", "add", question[:10], "a", "reply")
+	if res.code != 1 || !strings.Contains(res.stderr, question[:10]+" is a question, not a bug") {
+		t.Errorf("a reply to a question: %+v", res)
+	}
+	res = r.run(nil, "", "q", "add", bug[:10], "an", "answer")
+	if res.code != 1 || !strings.Contains(res.stderr, bug[:10]+" is a bug, not a question") {
+		t.Errorf("an answer to a bug: %+v", res)
+	}
+	res = r.run(nil, "", "q", "done", bug[:10])
+	if res.code != 1 || !strings.Contains(res.stderr, "use `mtqg bug done "+bug[:10]+"`") {
+		t.Errorf("q done on a bug: %+v", res)
+	}
+	// A mistyped ID does not turn into a new bug.
+	res = r.run(nil, "", "b", "add", "a8ec0000", "Crashes", "on", "start")
+	if res.code != 1 || res.stdout != "" || !strings.Contains(res.stderr, "the ID of the bug to reply to") {
+		t.Errorf("a mistyped ID: %+v", res)
+	}
+	if after := readFile(t, filepath.Join(r.dir, ".mtqg", "journal.jsonl")); after != before {
+		t.Errorf("a refused command wrote to the journal:\n%s", after)
+	}
+
+	list := r.mtqg("b", "list")
+	if !strings.Contains(list, "Parser crashes on empty input") || !strings.Contains(list, "2 replies, awaiting confirmation") ||
+		!strings.Contains(list, "\u2514 ") || strings.Contains(list, "nested block comments") || !strings.HasSuffix(list, "1 open (show done: --all)\n") {
+		t.Errorf("b list =\n%s", list)
+	}
+	if qlist := r.mtqg("q", "list"); strings.Contains(qlist, "Parser crashes") || !strings.Contains(qlist, "unanswered") {
+		t.Errorf("q list =\n%s", qlist)
+	}
+
+	if got := r.mtqg("b", "done", bug[:10]); !strings.HasPrefix(got, "Done: "+bug[:10]+"  ") {
+		t.Errorf("b done printed %q", got)
+	}
+	if got := r.mtqg("b", "list"); got != "0 open (show done: --all)\n" {
+		t.Errorf("b list after done =\n%s", got)
+	}
+	if got := r.mtqg("b", "list", "--all"); !strings.Contains(got, "2 replies, done") || !strings.HasSuffix(got, "0 open, 1 done\n") {
+		t.Errorf("b list --all =\n%s", got)
+	}
+
+	if status := r.mtqg("status"); !strings.HasPrefix(status, "Open todos          0\nOpen questions      1\nOpen bugs           0\n") {
+		t.Errorf("status = %q", status)
+	}
+	show := r.mtqg("show", bug[:6])
+	for _, want := range []string{"bug  " + bug[:10] + "  done", "Replies (2)", "The empty file has no first token", "claude-code (ai)", "-> done", "reply "} {
+		if !strings.Contains(show, want) {
+			t.Errorf("show lacks %q:\n%s", want, show)
+		}
+	}
+	if only := r.mtqg("log", "--kind", "b"); !strings.HasSuffix(only, "\n3 records\n") || strings.Contains(only, "question") {
+		t.Errorf("log --kind b =\n%s", only)
 	}
 }

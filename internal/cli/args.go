@@ -2,6 +2,8 @@ package cli
 
 import (
 	"strings"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // The grammar of the command line is data: the kinds, the commands and what
@@ -9,17 +11,22 @@ import (
 // the completion of the shell all come from these tables, so they cannot
 // disagree.
 
-// A kind of record and the letter it can be shortened to.
+// A kind of record, the letter it can be shortened to, and the type of the
+// format that its records are written with. Questions and answers are the kind qa,
+// bugs and replies the kind bug: the two are handled by the same code, which
+// reads what it needs from this table.
 type kindSpec struct {
 	name  string
 	short string
+	typ   string
 }
 
 var kinds = []kindSpec{
-	{"memo", "m"},
-	{"todo", "t"},
-	{"qa", "q"},
-	{"glossary", "g"},
+	{"memo", "m", journal.TypeMemo},
+	{"todo", "t", journal.TypeTodo},
+	{"qa", "q", journal.TypeQA},
+	{"bug", "b", journal.TypeBug},
+	{"glossary", "g", journal.TypeGlossary},
 }
 
 // What a command takes after its name.
@@ -60,6 +67,13 @@ type command struct {
 	run func(c *ctx) int
 }
 
+// spec returns the kind that the command is for. A command without a kind gets
+// the zero kindSpec.
+func (cmd *command) spec() kindSpec {
+	k, _ := findKind(cmd.kind)
+	return k
+}
+
 // takesValue says whether the command has an option of this name that takes a
 // value.
 func (cmd *command) takesValue(name string) bool {
@@ -95,10 +109,14 @@ func init() {
 		{kind: "todo", name: "done", usage: "mtqg todo done <id>", summary: "Mark a todo as done", args: argsID, run: runDone},
 		{kind: "todo", name: "reopen", usage: "mtqg todo reopen <id>", summary: "Mark a todo as open again", args: argsID, run: runReopen},
 
-		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, run: runAddQA},
-		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open (--all: all)", args: argsNone, all: true, run: runListQA},
+		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, run: runAddThread},
+		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open (--all: all)", args: argsNone, all: true, run: runListThread},
 		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID, run: runDone},
 		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID, run: runReopen},
+		{kind: "bug", name: "add", usage: "mtqg bug add <bug> | mtqg bug add <bug-id> <reply>", summary: "Report a bug, or reply to one", args: argsText, run: runAddThread},
+		{kind: "bug", name: "list", usage: "mtqg bug list [--all]", summary: "List the bugs that are open (--all: all)", args: argsNone, all: true, run: runListThread},
+		{kind: "bug", name: "done", usage: "mtqg bug done <bug-id>", summary: "Close a bug", args: argsID, run: runDone},
+		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, run: runReopen},
 		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> <definition>", summary: "Define a term", args: argsText, minWords: 2, run: runAddGlossary},
 		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
 

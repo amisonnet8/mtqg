@@ -39,12 +39,14 @@ func (c *ctx) printRecord(state *model.State, rec *model.Record) {
 	}
 	c.println(head)
 	c.println(msgShowBy(who(rec.Author), formatFull(rec.Created, loc)))
-	if rec.Kind() == model.KindAnswer {
-		question := ""
-		if q := state.Record(rec.Re); q != nil {
-			question = oneLine(q.Text)
+	if rec.IsReply() {
+		// What it is for is named only if the record it points at is its parent: a
+		// re that names a record of another type is not a reply to it.
+		parent := ""
+		if state.HasParent(rec) {
+			parent = oneLine(state.Record(rec.Re).Text)
 		}
-		c.println(msgShowToQuestion(id(rec.Re), question))
+		c.println(msgShowToParent(model.ParentKind(rec.Type), id(rec.Re), parent))
 	}
 	c.println()
 
@@ -54,16 +56,16 @@ func (c *ctx) printRecord(state *model.State, rec *model.Record) {
 	}
 	c.printBody("  ", rec.Text)
 
-	if rec.Kind() == model.KindQuestion {
-		if answers := state.Answers(rec.ID); len(answers) > 0 {
+	if rec.CanHaveReplies() {
+		if replies := state.Replies(rec.ID); len(replies) > 0 {
 			c.println()
-			c.println(msgShowAnswerCount(len(answers)))
+			c.println(msgShowReplyCount(rec.Type, len(replies)))
 			var idW, whoW int
-			for _, a := range answers {
+			for _, a := range replies {
 				idW = max(idW, displayWidth(id(a.ID)))
 				whoW = max(whoW, displayWidth(who(a.Author)))
 			}
-			for _, a := range answers {
+			for _, a := range replies {
 				c.println("  " + c.st.id(padRight(id(a.ID), idW)) + gap + padRight(who(a.Author), whoW) + gap + formatFull(a.Created, loc))
 				c.printBody("    ", a.Text)
 			}
@@ -100,7 +102,7 @@ func showKind(r *model.Record) string {
 func eventDetail(e model.Entry, id func(string) string) string {
 	switch {
 	case e.Answer != nil:
-		return msgShowAnswerEvent(id(e.Answer.ID))
+		return msgShowReplyEvent(e.Answer.Kind(), id(e.Answer.ID))
 	case e.Event.Op == journal.OpStatus:
 		from := oneLine(e.Event.From)
 		if from == "" {

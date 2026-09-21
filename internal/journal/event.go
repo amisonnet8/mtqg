@@ -25,6 +25,7 @@ const (
 	TypeMemo     = "memo"
 	TypeTodo     = "todo"
 	TypeQA       = "qa"
+	TypeBug      = "bug"
 	TypeGlossary = "glossary"
 
 	StatusOpen = "open"

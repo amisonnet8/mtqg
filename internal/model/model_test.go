@@ -31,7 +31,7 @@ func at(minute int) string {
 
 func create(id, typ, text string, minute int) journal.Event {
 	ev := journal.Event{ID: id, Op: journal.OpCreate, Type: typ, Text: text, TS: at(minute), Author: human}
-	if typ == journal.TypeTodo || typ == journal.TypeQA {
+	if typ == journal.TypeTodo || typ == journal.TypeQA || typ == journal.TypeBug {
 		ev.Status = journal.StatusOpen
 	}
 	return ev

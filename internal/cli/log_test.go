@@ -132,7 +132,7 @@ func TestLog(t *testing.T) {
 			{[]string{"log", "--limit", "-1"}, "Option --limit needs a whole number of 0 or more"},
 			{[]string{"log", "--limit", "many"}, `not "many"`},
 			{[]string{"log", "--limit="}, "Option --limit needs a whole number"},
-			{[]string{"log", "--kind", "task"}, `Option --kind needs one of memo, todo, qa, glossary (or its letter), not "task".`},
+			{[]string{"log", "--kind", "task"}, `Option --kind needs one of memo, todo, qa, bug, glossary (or its letter), not "task".`},
 			{[]string{"log", "--limit"}, "Option --limit needs a value"},
 		} {
 			code, out, errOut := h.run(tt.args...)

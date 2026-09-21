@@ -132,6 +132,25 @@ func TestAppendValidation(t *testing.T) {
 	})
 }
 
+func TestAppendWritesEveryKind(t *testing.T) {
+	j := newJournal(t, nil)
+	for _, typ := range []string{TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary} {
+		ev, err := j.Append(Event{Op: OpCreate, Type: typ, Text: "x"})
+		if err != nil {
+			t.Fatalf("type %s: %v", typ, err)
+		}
+		// The journal layer checks the shape of a line, not what it means: re is
+		// accepted with any type (the model decides what can be replied to).
+		if _, err := j.Append(Event{Op: OpCreate, Type: typ, Re: ev.ID, Text: "y"}); err != nil {
+			t.Errorf("type %s with re: %v", typ, err)
+		}
+	}
+	read, err := j.Read()
+	if err != nil || len(read.Events) != 10 {
+		t.Fatalf("Read = %d events, %v; want 10", len(read.Events), err)
+	}
+}
+
 func TestAppendCreatesTheJournalWhenItIsMissing(t *testing.T) {
 	j := newJournal(t, nil)
 	if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: "x"}); err != nil {

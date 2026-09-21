@@ -119,13 +119,30 @@ func msgIDTooShort(prefix string) string {
 	return fmt.Sprintf("The ID %q is too short: give at least %d digits", prefix, model.MinIDDigits)
 }
 
-// msgNoQuestionToAnswer is what `qa add` says when its first word looks like an
-// ID and names no record: a mistyped ID must not turn into a new question, and the
-// way to ask a question that really starts with such a word is to quote it.
-func msgNoQuestionToAnswer(word string) []string {
+// threadWords are the words that a kind with replies is spoken of with: the
+// question that is answered, the bug that is replied to.
+type threadWords struct {
+	parent  string // the record that is replied to
+	replyTo string // what is done to it, after "the ID of the parent to"
+	create  string // what one does to make a new one
+}
+
+func wordsOfThread(typ string) threadWords {
+	if typ == journal.TypeBug {
+		return threadWords{parent: "bug", replyTo: "reply to", create: "report a bug"}
+	}
+	return threadWords{parent: "question", replyTo: "answer", create: "ask a question"}
+}
+
+// msgNoParentToReplyTo is what `qa add` and `bug add` say when their first word
+// looks like an ID and names no record: a mistyped ID must not turn into a new
+// question or bug, and the way to write one that really starts with such a word is
+// to quote it. kind is the name of the command's kind (qa, bug).
+func msgNoParentToReplyTo(typ, kind, word string) []string {
+	w := wordsOfThread(typ)
 	return []string{
-		fmt.Sprintf("No record matches %q. A first word of %d or more hex digits is read as the ID of the question to answer.", word, model.MinIDDigits),
-		fmt.Sprintf("To ask a question that starts with it, put the whole text in quotes: mtqg qa add \"%s ...\"", word),
+		fmt.Sprintf("No record matches %q. A first word of %d or more hex digits is read as the ID of the %s to %s.", word, model.MinIDDigits, w.parent, w.replyTo),
+		fmt.Sprintf("To %s that starts with it, put the whole text in quotes: mtqg %s add \"%s ...\"", w.create, kind, word),
 	}
 }
 
@@ -144,21 +161,28 @@ func article(kind string) string {
 }
 
 // msgWrongKind says what a record is when a command was for another kind. If
-// another command is the right one, it is named.
+// another command is the right one, it is named: the kind whose commands are for
+// this record, when it has the verb (a reply is not, because a reply has no state
+// to change).
 func msgWrongKind(e *model.WrongKindError, verb string) string {
 	id := shortID(e.Record.ID, false)
 	msg := fmt.Sprintf("%s is %s, not %s", id, article(e.Record.Kind()), article(e.Want))
-	if e.Record.Kind() == model.KindQuestion && e.Want == model.KindTodo && (verb == "done" || verb == "reopen") {
-		return fmt.Sprintf("%s; use `mtqg qa %s %s`", msg, verb, id)
-	}
-	if e.Record.Kind() == model.KindTodo && e.Want == model.KindQuestion && (verb == "done" || verb == "reopen") {
-		return fmt.Sprintf("%s; use `mtqg todo %s %s`", msg, verb, id)
+	if verb == "done" || verb == "reopen" {
+		for _, k := range kinds {
+			if model.ParentKind(k.typ) == e.Record.Kind() && lookup(k.name, verb) != nil {
+				return fmt.Sprintf("%s; use `mtqg %s %s %s`", msg, k.name, verb, id)
+			}
+		}
 	}
 	return msg
 }
 
 func msgNoState(e *model.NoStateError, verb string) string {
 	return fmt.Sprintf("%s is %s; %s has no state to change", shortID(e.Record.ID, false), article(e.Record.Kind()), article(e.Record.Kind()))
+}
+
+func msgNoReplies(e *model.NoRepliesError) string {
+	return fmt.Sprintf("%s is %s; only a question or a bug can be answered or replied to", shortID(e.Record.ID, false), article(e.Record.Kind()))
 }
 
 // The result of a change to a state.
@@ -214,9 +238,9 @@ func msgStatusLine(label string, value string) string {
 	return padRight(label, statusLabelWidth) + value
 }
 
-// msgQuestionsValue is the count of open questions, and how many of them have an
-// answer that nobody has confirmed by closing the question.
-func msgQuestionsValue(open, awaiting int) string {
+// msgOpenValue is the count of open questions (or bugs), and how many of them have
+// an answer (or a reply) that nobody has confirmed by closing the question.
+func msgOpenValue(open, awaiting int) string {
 	if awaiting == 0 {
 		return strconv.Itoa(open)
 	}
@@ -259,20 +283,24 @@ func msgGlossaryFooter(n, duplicateWords int) string {
 	return line
 }
 
-// msgQuestionState is the state of a question in a list: whether it has answers,
-// and whether it is closed.
-func msgQuestionState(answers int, done bool) string {
-	count := fmt.Sprintf("%d answers", answers)
-	if answers == 1 {
-		count = "1 answer"
+// msgThreadState is the state of a question or a bug in a list: whether it has
+// answers (or replies), and whether it is closed.
+func msgThreadState(typ string, replies int, done bool) string {
+	many, one, none := "answers", "answer", "unanswered"
+	if typ == journal.TypeBug {
+		many, one, none = "replies", "reply", "no replies"
+	}
+	count := fmt.Sprintf("%d %s", replies, many)
+	if replies == 1 {
+		count = "1 " + one
 	}
 	switch {
-	case done && answers == 0:
-		return "done without answers"
+	case done && replies == 0:
+		return "done without " + many
 	case done:
 		return count + ", done"
-	case answers == 0:
-		return "unanswered"
+	case replies == 0:
+		return none
 	default:
 		return count + ", awaiting confirmation"
 	}
@@ -305,25 +333,33 @@ func msgBadKind(value string) string {
 
 // show
 
-const (
-	msgShowAnswers = "Answers"
-	msgShowEvents  = "Events"
-)
+const msgShowEvents = "Events"
 
-func msgShowAnswerCount(n int) string { return fmt.Sprintf("%s (%d)", msgShowAnswers, n) }
+// msgShowReplyCount heads the answers of a question or the replies of a bug.
+func msgShowReplyCount(typ string, n int) string {
+	heading := "Answers"
+	if typ == journal.TypeBug {
+		heading = "Replies"
+	}
+	return fmt.Sprintf("%s (%d)", heading, n)
+}
 
 func msgShowBy(author, when string) string { return fmt.Sprintf("by %s, %s", author, when) }
 
-func msgShowToQuestion(id, text string) string {
+// msgShowToParent names the question or bug that an answer or a reply is for. text
+// is what it says, and empty when the record is not in the journal.
+func msgShowToParent(kind, id, text string) string {
 	if text == "" {
-		return "to question " + id
+		return "to " + kind + " " + id
 	}
-	return "to question " + id + "  " + text
+	return "to " + kind + " " + id + "  " + text
 }
 
 func msgShowWord(word string) string { return "Word: " + word }
 
-func msgShowAnswerEvent(id string) string { return "answer " + id }
+// msgShowReplyEvent says which answer or reply an event of the history is: its
+// kind (answer, reply) and its ID.
+func msgShowReplyEvent(kind, id string) string { return kind + " " + id }
 
 // version
 

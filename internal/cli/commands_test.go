@@ -584,7 +584,7 @@ func TestStatus(t *testing.T) {
 		)
 		code, out, errOut := h.run("status")
 		wantExit(t, code, 0, out, errOut)
-		want := "Open todos          1\nOpen questions      0\nGlossary            0\n\nUncommitted records 3\n"
+		want := "Open todos          1\nOpen questions      0\nOpen bugs           0\nGlossary            0\n\nUncommitted records 3\n"
 		if out != want {
 			t.Errorf("stdout %q, want %q", out, want)
 		}
@@ -673,7 +673,7 @@ func TestHelpAndMistakes(t *testing.T) {
 
 	code, out, errOut := h.run("help")
 	wantExit(t, code, 0, out, errOut)
-	for _, want := range []string{"mtqg todo done <id>", "mtqg init", "mtqg status", "--full-id", "memo (m), todo (t), qa (q), glossary (g)"} {
+	for _, want := range []string{"mtqg todo done <id>", "mtqg init", "mtqg status", "--full-id", "memo (m), todo (t), qa (q), bug (b), glossary (g)", "mtqg bug done <bug-id>"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("help does not mention %q:\n%s", want, out)
 		}

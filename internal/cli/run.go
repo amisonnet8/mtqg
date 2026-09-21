@@ -156,6 +156,7 @@ func (c *ctx) describe(err error) []string {
 		ambiguous  *model.AmbiguousError
 		wrongKind  *model.WrongKindError
 		noState    *model.NoStateError
+		noReplies  *model.NoRepliesError
 		notFound   *model.NotFoundError
 		tooShort   *model.TooShortError
 		gitMissing *journal.GitUnavailableError
@@ -187,6 +188,8 @@ func (c *ctx) describe(err error) []string {
 		return []string{msgWrongKind(wrongKind, verb)}
 	case errors.As(err, &noState):
 		return []string{msgNoState(noState, verb)}
+	case errors.As(err, &noReplies):
+		return []string{msgNoReplies(noReplies)}
 	case errors.As(err, &notFound):
 		return []string{msgNotFound(notFound.Prefix)}
 	case errors.As(err, &tooShort):

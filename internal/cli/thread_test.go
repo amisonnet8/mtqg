@@ -577,6 +577,7 @@ func TestStatusCountsQuestionsAndGlossary(t *testing.T) {
 	wantExit(t, code, 0, out, errOut)
 	want := "Open todos          0\n" +
 		"Open questions      2  (1 awaiting confirmation)\n" +
+		"Open bugs           0\n" +
 		"Glossary            3  (1 with duplicate definitions)\n" +
 		"\n" +
 		"Uncommitted records 7\n"

@@ -27,6 +27,9 @@ var ErrEmptyWord = errors.New("model: the word is empty")
 // ErrNoState means the record has no state to change.
 var ErrNoState = errors.New("model: the record has no state")
 
+// ErrNoReplies means the record cannot be answered or replied to.
+var ErrNoReplies = errors.New("model: the record has no replies")
+
 // ErrNoChange means the record is already in the state that was asked for.
 var ErrNoChange = errors.New("model: the record is already in that state")
 
@@ -86,3 +89,14 @@ func (e *NoStateError) Error() string {
 
 // Is makes errors.Is(err, ErrNoState) true.
 func (e *NoStateError) Is(target error) bool { return target == ErrNoState }
+
+// NoRepliesError names the record that cannot be answered or replied to: only a
+// question or a bug can be.
+type NoRepliesError struct{ Record *Record }
+
+func (e *NoRepliesError) Error() string {
+	return fmt.Sprintf("model: a %s has no replies", e.Record.Kind())
+}
+
+// Is makes errors.Is(err, ErrNoReplies) true.
+func (e *NoRepliesError) Is(target error) bool { return target == ErrNoReplies }

@@ -28,7 +28,7 @@ func runLog(c *ctx) int {
 		if !found {
 			return c.usageFailure(msgBadKind(v))
 		}
-		typ = typeOfKind(k)
+		typ = k.typ
 	}
 
 	j, err := c.reader()
@@ -77,30 +77,16 @@ func runLog(c *ctx) int {
 	return exitOK
 }
 
-// logText is the text of a record for the line of log: an answer says which
-// question it is for, and a glossary entry gives the word before its definition.
+// logText is the text of a record for the line of log: an answer or a reply says
+// which question or bug it is for, and a glossary entry gives the word before its
+// definition.
 func (c *ctx) logText(r *model.Record) string {
-	switch r.Kind() {
-	case model.KindAnswer:
+	switch {
+	case r.IsReply():
 		return "(to " + shortID(r.Re, c.inv.fullID) + ") " + oneLine(r.Text)
-	case model.KindGlossary:
+	case r.Kind() == model.KindGlossary:
 		return oneLine(r.Word) + ": " + oneLine(r.Text)
 	default:
 		return oneLine(r.Text)
-	}
-}
-
-// typeOfKind is the type field of the format that a kind of the command line
-// stands for.
-func typeOfKind(k kindSpec) string {
-	switch k.name {
-	case "memo":
-		return journal.TypeMemo
-	case "todo":
-		return journal.TypeTodo
-	case "glossary":
-		return journal.TypeGlossary
-	default:
-		return journal.TypeQA
 	}
 }

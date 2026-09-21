@@ -99,8 +99,8 @@ func (j *Journal) validate(ev Event) error {
 		if ev.ID != "" {
 			return bad("id", "the id of a new record is chosen by the journal layer")
 		}
-		if !oneOf(ev.Type, TypeMemo, TypeTodo, TypeQA, TypeGlossary) {
-			return bad("type", "must be memo, todo, qa or glossary")
+		if !oneOf(ev.Type, TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary) {
+			return bad("type", "must be memo, todo, qa, bug or glossary")
 		}
 		if ev.Re != "" && !isID(ev.Re) {
 			return bad("re", "must be a full ID: 32 lowercase hex digits")
@@ -110,7 +110,7 @@ func (j *Journal) validate(ev Event) error {
 			return bad("id", "must be a full ID: 32 lowercase hex digits")
 		}
 		if ev.Re != "" {
-			return bad("re", "only a created answer has re")
+			return bad("re", "only a created answer or reply has re")
 		}
 	default:
 		return bad("op", "must be create, status, edit or delete")

@@ -41,6 +41,14 @@ func TestEncodeLineGolden(t *testing.T) {
 			want: `{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"Not in the first version","v":0,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}` + "\n",
 		},
 		{
+			name: "reply to a bug",
+			ev: Event{
+				ID: idC, Op: OpCreate, Type: "bug", Re: idB, Text: "Reproduced on macOS too",
+				V: 0, TS: "2026-09-17T01:20:00Z", Author: Author{Kind: AuthorAI, Name: "claude-code"},
+			},
+			want: `{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"bug","re":"1012f037b64c44228c38fb2918f135d2","text":"Reproduced on macOS too","v":0,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}` + "\n",
+		},
+		{
 			name: "status change",
 			ev: Event{
 				ID: idA, Op: OpStatus, From: "open", Status: "done",

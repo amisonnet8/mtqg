@@ -38,7 +38,8 @@ type Record struct {
 	// that have no state.
 	Status string
 
-	// Deleted records are hidden: no list shows them and no ID matches them.
+	// Deleted records are hidden: no list shows them and no ID matches them. So is
+	// an answer whose question is deleted (State.visible).
 	Deleted bool
 
 	// Author wrote the create event.
@@ -165,23 +166,94 @@ func (r *Record) record(ev journal.Event, at time.Time) {
 // Record returns the record with this full ID, deleted or not, or nil.
 func (s *State) Record(id string) *Record { return s.byID[id] }
 
-// Todos returns the todos that are not deleted, oldest first. Done ones are
-// included only when includeDone is set.
+// visible reports whether a record is in view: it is not deleted, and if it is
+// an answer, its question is not deleted either (deleting a question hides its
+// answers). An answer whose question is not in the journal at all is in view: what
+// is missing is not the same as what was deleted.
+func (s *State) visible(r *Record) bool {
+	if r.Deleted {
+		return false
+	}
+	if r.Kind() == KindAnswer {
+		if q := s.byID[r.Re]; q != nil && q.Deleted {
+			return false
+		}
+	}
+	return true
+}
+
+// All returns every record that is in view, of every kind, oldest first.
+func (s *State) All() []*Record {
+	return s.pick(func(*Record) bool { return true })
+}
+
+// Todos returns the todos that are in view, oldest first. Done ones are included
+// only when includeDone is set.
 func (s *State) Todos(includeDone bool) []*Record {
 	return s.pick(func(r *Record) bool {
 		return r.Kind() == KindTodo && (includeDone || r.Status == journal.StatusOpen)
 	})
 }
 
-// Memos returns the memos that are not deleted, oldest first.
+// Memos returns the memos that are in view, oldest first.
 func (s *State) Memos() []*Record {
 	return s.pick(func(r *Record) bool { return r.Kind() == KindMemo })
+}
+
+// Questions returns the questions that are in view, oldest first. Closed ones are
+// included only when includeDone is set.
+func (s *State) Questions(includeDone bool) []*Record {
+	return s.pick(func(r *Record) bool {
+		return r.Kind() == KindQuestion && (includeDone || r.Status == journal.StatusOpen)
+	})
+}
+
+// Answers returns the answers in view to the question with this full ID, oldest
+// first. Only questions have answers.
+func (s *State) Answers(questionID string) []*Record {
+	return s.pick(func(r *Record) bool { return r.Kind() == KindAnswer && r.Re == questionID })
+}
+
+// HasQuestion reports whether an answer's question is in the journal. An answer
+// without one (its question may be in an archive) is left out of the question
+// lists.
+func (s *State) HasQuestion(answer *Record) bool {
+	q := s.byID[answer.Re]
+	return q != nil && q.Kind() == KindQuestion
+}
+
+// Glossary returns the glossary entries that are in view, oldest first.
+func (s *State) Glossary() []*Record {
+	return s.pick(func(r *Record) bool { return r.Kind() == KindGlossary })
+}
+
+// DuplicateWords returns the words that are defined more than once, each with its
+// entries in the order they were written, the words in the order of their first
+// entry. Two words are the same only if they are the same character for
+// character: mtqg does not decide that Token and token mean one thing. Nothing
+// here says which definition is right.
+func (s *State) DuplicateWords() [][]*Record {
+	var order []string
+	byWord := make(map[string][]*Record)
+	for _, r := range s.Glossary() {
+		if _, seen := byWord[r.Word]; !seen {
+			order = append(order, r.Word)
+		}
+		byWord[r.Word] = append(byWord[r.Word], r)
+	}
+	var groups [][]*Record
+	for _, word := range order {
+		if len(byWord[word]) > 1 {
+			groups = append(groups, byWord[word])
+		}
+	}
+	return groups
 }
 
 func (s *State) pick(keep func(*Record) bool) []*Record {
 	var out []*Record
 	for _, r := range s.records {
-		if !r.Deleted && keep(r) {
+		if s.visible(r) && keep(r) {
 			out = append(out, r)
 		}
 	}
@@ -191,11 +263,32 @@ func (s *State) pick(keep func(*Record) bool) []*Record {
 // Summary counts what a person wants to know at a glance.
 type Summary struct {
 	OpenTodos int
+
+	// OpenQuestions are the questions that are not closed. AwaitingConfirmation are
+	// those of them that have an answer.
+	OpenQuestions        int
+	AwaitingConfirmation int
+
+	// GlossaryEntries counts the entries, so that two definitions of one word are
+	// two. DuplicateWords counts the words that have more than one.
+	GlossaryEntries int
+	DuplicateWords  int
 }
 
-// Summary counts the records that are not deleted.
+// Summary counts the records that are in view.
 func (s *State) Summary() Summary {
-	return Summary{OpenTodos: len(s.Todos(false))}
+	sum := Summary{
+		OpenTodos:       len(s.Todos(false)),
+		GlossaryEntries: len(s.Glossary()),
+		DuplicateWords:  len(s.DuplicateWords()),
+	}
+	for _, q := range s.Questions(false) {
+		sum.OpenQuestions++
+		if len(s.Answers(q.ID)) > 0 {
+			sum.AwaitingConfirmation++
+		}
+	}
+	return sum
 }
 
 // UncommittedRecords counts the records that the given events belong to. Give it

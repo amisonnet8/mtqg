@@ -18,6 +18,12 @@ var ErrAmbiguous = errors.New("model: the ID matches more than one record")
 // ErrWrongKind means the record is not of the kind the command is for.
 var ErrWrongKind = errors.New("model: the record is of another kind")
 
+// ErrTooShort means an ID that was typed has fewer than MinIDDigits digits.
+var ErrTooShort = errors.New("model: the ID is too short")
+
+// ErrEmptyWord means the word of a glossary entry is empty.
+var ErrEmptyWord = errors.New("model: the word is empty")
+
 // ErrNoState means the record has no state to change.
 var ErrNoState = errors.New("model: the record has no state")
 
@@ -34,6 +40,16 @@ func (e *NotFoundError) Error() string { return fmt.Sprintf("model: no record ma
 
 // Is makes errors.Is(err, ErrNotFound) true.
 func (e *NotFoundError) Is(target error) bool { return target == ErrNotFound }
+
+// TooShortError says which ID had too few digits.
+type TooShortError struct{ Prefix string }
+
+func (e *TooShortError) Error() string {
+	return fmt.Sprintf("model: the ID %q has fewer than %d digits", e.Prefix, MinIDDigits)
+}
+
+// Is makes errors.Is(err, ErrTooShort) true.
+func (e *TooShortError) Is(target error) bool { return target == ErrTooShort }
 
 // AmbiguousError lists the records that an ID matched, oldest first.
 type AmbiguousError struct {

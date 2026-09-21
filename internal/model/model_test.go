@@ -287,7 +287,7 @@ func TestResolve(t *testing.T) {
 	})
 
 	t.Run("a unique prefix", func(t *testing.T) {
-		for _, prefix := range []string{"1012", "1", idMemo, "1012F037", "  1012  "} {
+		for _, prefix := range []string{"1012", idMemo, "1012F037", "  1012  "} {
 			rec, err := state.Resolve(prefix)
 			if err != nil || rec.ID != idMemo {
 				t.Errorf("Resolve(%q) = %v, %v", prefix, rec, err)
@@ -315,6 +315,22 @@ func TestResolve(t *testing.T) {
 			if _, err := state.Resolve(prefix); !errors.Is(err, ErrNotFound) {
 				t.Errorf("Resolve(%q): err = %v, want ErrNotFound", prefix, err)
 			}
+		}
+	})
+
+	t.Run("a prefix of fewer than four digits is too short, not a match", func(t *testing.T) {
+		// One digit matches nearly everything, and a word like add or bad would be
+		// taken for an ID. 1012 is unique, but 101 is refused all the same.
+		for _, prefix := range []string{"1", "10", "101", "  101  ", "ADD", "bad"} {
+			rec, err := state.Resolve(prefix)
+			var short *TooShortError
+			if !errors.As(err, &short) || !errors.Is(err, ErrTooShort) || rec != nil {
+				t.Errorf("Resolve(%q) = %v, %v; want a TooShortError", prefix, rec, err)
+			}
+		}
+		// Something that is not hex digits is not an ID at all.
+		if _, err := state.Resolve("xyz"); !errors.Is(err, ErrNotFound) {
+			t.Errorf("err = %v, want ErrNotFound", err)
 		}
 	})
 

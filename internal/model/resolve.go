@@ -6,20 +6,39 @@ import (
 	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
+// MinIDDigits is how short a typed ID may be. Anything shorter is refused, so
+// that a word such as add or bad is never taken for the ID of a record, and
+// because a digit or two matches nearly everything.
+const MinIDDigits = 4
+
+// IsIDLike reports whether a word is made of hex digits only, and at least
+// MinIDDigits of them: the shape of an ID that was typed (upper case counts as
+// lower case). Whether such a word names a record is for Resolve to say.
+func IsIDLike(word string) bool {
+	return len(word) >= MinIDDigits && isHex(strings.ToLower(word))
+}
+
+func isHex(s string) bool { return s != "" && strings.Trim(s, "0123456789abcdef") == "" }
+
 // Resolve finds the record that a typed ID stands for. The ID is a prefix of the
-// full ID, as long as it is unique, the way git takes a prefix of a hash. Case
-// does not matter. A deleted record is never matched, so it can neither be found
-// nor make another ID ambiguous.
+// full ID of at least MinIDDigits digits, as long as it is unique, the way git
+// takes a prefix of a hash. Case does not matter. A record that is not in view
+// (deleted, or an answer to a deleted question) is never matched, so it can
+// neither be found nor make another ID ambiguous.
 //
-// It returns a *NotFoundError, or an *AmbiguousError that lists the candidates.
+// It returns a *NotFoundError, a *TooShortError, or an *AmbiguousError that lists
+// the candidates.
 func (s *State) Resolve(prefix string) (*Record, error) {
 	p := strings.ToLower(strings.TrimSpace(prefix))
-	if p == "" || strings.Trim(p, "0123456789abcdef") != "" {
+	if !isHex(p) {
 		return nil, &NotFoundError{Prefix: prefix}
+	}
+	if len(p) < MinIDDigits {
+		return nil, &TooShortError{Prefix: prefix}
 	}
 	var matches []*Record
 	for _, rec := range s.records {
-		if !rec.Deleted && strings.HasPrefix(rec.ID, p) {
+		if s.visible(rec) && strings.HasPrefix(rec.ID, p) {
 			matches = append(matches, rec)
 		}
 	}
@@ -60,6 +79,40 @@ func TodoCreate(text string) (journal.Event, error) {
 		return journal.Event{}, ErrEmptyText
 	}
 	return journal.Event{Op: journal.OpCreate, Type: journal.TypeTodo, Status: journal.StatusOpen, Text: text}, nil
+}
+
+// QuestionCreate returns the event that creates a question, which starts open.
+func QuestionCreate(text string) (journal.Event, error) {
+	if strings.TrimSpace(text) == "" {
+		return journal.Event{}, ErrEmptyText
+	}
+	return journal.Event{Op: journal.OpCreate, Type: journal.TypeQA, Status: journal.StatusOpen, Text: text}, nil
+}
+
+// AnswerCreate returns the event that creates an answer to a question. It holds
+// the full ID of the question (re), whatever length of it was typed. The record
+// must be a question: only questions have answers, and an answer has no state.
+func AnswerCreate(question *Record, text string) (journal.Event, error) {
+	if question.Kind() != KindQuestion {
+		return journal.Event{}, &WrongKindError{Record: question, Want: KindQuestion}
+	}
+	if strings.TrimSpace(text) == "" {
+		return journal.Event{}, ErrEmptyText
+	}
+	return journal.Event{Op: journal.OpCreate, Type: journal.TypeQA, Re: question.ID, Text: text}, nil
+}
+
+// GlossaryCreate returns the event that defines a word. The word is kept as it
+// was given: two entries are of one word only if the words are the same
+// character for character.
+func GlossaryCreate(word, text string) (journal.Event, error) {
+	if strings.TrimSpace(word) == "" {
+		return journal.Event{}, ErrEmptyWord
+	}
+	if strings.TrimSpace(text) == "" {
+		return journal.Event{}, ErrEmptyText
+	}
+	return journal.Event{Op: journal.OpCreate, Type: journal.TypeGlossary, Word: word, Text: text}, nil
 }
 
 // SetStatus returns the event that puts a todo or a question into a state. It

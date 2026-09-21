@@ -132,6 +132,14 @@ type jsonDelete struct {
 	HiddenReplies []jsonRecord `json:"hidden_replies"`
 }
 
+// jsonUndo is the line that was removed, in the form of the journal, and the record
+// it belongs to as it was before (left out if the journal has no such record).
+type jsonUndo struct {
+	Command string        `json:"command"`
+	Event   journal.Event `json:"event"`
+	Record  *jsonRecord   `json:"record,omitempty"`
+}
+
 type jsonMemoList struct {
 	Command string       `json:"command"`
 	Records []jsonRecord `json:"records"`

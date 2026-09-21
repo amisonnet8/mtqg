@@ -36,6 +36,8 @@ const (
 	kindWrongKind       = "wrong_kind"
 	kindNoState         = "no_state"
 	kindNoReplies       = "no_replies"
+	kindNothingToUndo   = "nothing_to_undo"
+	kindHasLaterEvents  = "has_later_events"
 	kindUnknown         = "unknown"
 )
 
@@ -64,6 +66,7 @@ func (c *ctx) reportOf(err error) errorReport {
 		wrongKind  *model.WrongKindError
 		noState    *model.NoStateError
 		noReplies  *model.NoRepliesError
+		laterOnes  *model.HasLaterEventsError
 		notFound   *model.NotFoundError
 		tooShort   *model.TooShortError
 		gitMissing *journal.GitUnavailableError
@@ -98,6 +101,8 @@ func (c *ctx) reportOf(err error) errorReport {
 		return errorReport{kind: kindNoState, lines: []string{msgNoState(noState, verb)}, record: noState.Record}
 	case errors.As(err, &noReplies):
 		return errorReport{kind: kindNoReplies, lines: []string{msgNoReplies(noReplies)}, record: noReplies.Record}
+	case errors.As(err, &laterOnes):
+		return errorReport{kind: kindHasLaterEvents, lines: msgHasLaterEvents(laterOnes.Record, len(laterOnes.Events)), record: laterOnes.Record}
 	case errors.As(err, &notFound):
 		return errorReport{kind: kindNotFound, lines: []string{msgNotFound(notFound.Prefix)}, prefix: notFound.Prefix}
 	case errors.As(err, &tooShort):

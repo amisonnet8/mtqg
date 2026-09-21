@@ -228,6 +228,35 @@ func msgAlsoHidden(typ string, n int, authors []string) string {
 // msgDeleteNote is said after every delete: nothing was removed.
 func msgDeleteNote() string { return "The lines remain in the journal and in git history" }
 
+// undo
+
+// msgUndone says what was removed: the type of the record, what the line did, the
+// text (when there is one) and the ID.
+func msgUndone(typ, what, text, id string) string {
+	if text == "" {
+		return fmt.Sprintf("Undone: %s %s (%s)", typ, what, id)
+	}
+	return fmt.Sprintf("Undone: %s %s %q (%s)", typ, what, text, id)
+}
+
+func msgNothingToUndo(author string) string {
+	return fmt.Sprintf("Nothing to undo: .mtqg/journal.jsonl has no line written by %s from this terminal", author)
+}
+
+// msgHasLaterEvents refuses to undo the creation of a record that other events
+// are about, and says what to do instead.
+func msgHasLaterEvents(rec *model.Record, others int) []string {
+	count := fmt.Sprintf("%d other events", others)
+	if others == 1 {
+		count = "1 other event"
+	}
+	id := shortID(rec.ID, false)
+	return []string{
+		fmt.Sprintf("Cannot undo: %s %s has %s, and undoing its creation would leave them without a record", rec.Kind(), id, count),
+		"To hide it instead: mtqg delete " + id,
+	}
+}
+
 // Reading the journal.
 
 // maxWarnings is how many skipped lines are named before the rest is counted.

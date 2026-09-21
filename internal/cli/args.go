@@ -127,7 +127,7 @@ func init() {
 
 		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, run: runEdit},
 		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, run: runDelete},
-		{name: "undo", usage: "mtqg undo", summary: "Remove the last line written from this terminal", args: argsNone},
+		{name: "undo", usage: "mtqg undo", summary: "Remove the last line you wrote from this terminal", args: argsNone, run: runUndo},
 		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind"}, run: runLog},
 		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Search the text of the records", args: argsText},

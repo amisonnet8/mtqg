@@ -691,3 +691,53 @@ func TestJSONAndContext(t *testing.T) {
 		t.Errorf("a bad --max-tokens: %+v", res)
 	}
 }
+
+// undo removes the last line of this author from this terminal, and no one else's.
+// The real binary has no terminal here, so the terminals are told apart with
+// MTQG_TTY (which also works on Windows).
+func TestUndoKeepsTheLinesOfOtherTerminalsAndAuthors(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	termA := []string{"MTQG_TTY=terminal-a"}
+	termB := []string{"MTQG_TTY=terminal-b"}
+	agent := []string{"MTQG_AUTHOR_KIND=ai", "MTQG_AUTHOR_NAME=claude-code"}
+	for _, w := range []struct {
+		env  []string
+		text string
+	}{{termA, "written at a"}, {termB, "written at b"}, {agent, "written by the agent"}} {
+		if res := r.run(w.env, "", "m", "add", w.text); res.code != 0 {
+			t.Fatalf("%+v", res)
+		}
+	}
+	journalPath := filepath.Join(r.dir, ".mtqg", "journal.jsonl")
+
+	// Only a hash of the terminal is written, never what it was made from.
+	written := readFile(t, journalPath)
+	if strings.Contains(written, "terminal-") || !regexp.MustCompile(`"text":"written at b","v":0,"ts":"[^"]+","author":\{[^}]*\},"tty":"[0-9a-f]{8}"`).MatchString(written) {
+		t.Errorf("journal =\n%s", written)
+	}
+	if strings.Contains(strings.Split(written, "\n")[2], `"tty"`) {
+		t.Errorf("a line written without a terminal has a tty:\n%s", written)
+	}
+
+	res := r.run(termA, "", "undo")
+	if res.code != 0 || !strings.HasPrefix(res.stdout, `Undone: memo add "written at a" (`) {
+		t.Fatalf("undo at a: %+v", res)
+	}
+	after := readFile(t, journalPath)
+	if strings.Contains(after, "written at a") || !strings.Contains(after, "written at b") || !strings.Contains(after, "written by the agent") {
+		t.Errorf("journal after the undo =\n%s", after)
+	}
+
+	// Terminal a has nothing left to undo, and nothing was written.
+	res = r.run(termA, "", "undo")
+	if res.code != 1 || !strings.HasPrefix(res.stderr, "Nothing to undo: ") || readFile(t, journalPath) != after {
+		t.Errorf("second undo at a: %+v", res)
+	}
+
+	// The agent, which has no terminal, removes its own line and only that.
+	res = r.run(agent, "", "undo")
+	if res.code != 0 || strings.Contains(readFile(t, journalPath), "written by the agent") || !strings.Contains(readFile(t, journalPath), "written at b") {
+		t.Errorf("undo by the agent: %+v", res)
+	}
+}

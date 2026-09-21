@@ -707,9 +707,9 @@ func TestHelpAndMistakes(t *testing.T) {
 	}
 
 	// A command that exists but is not built yet says so.
-	code, out, errOut = h.run("undo")
+	code, out, errOut = h.run("archive", "2021..2023")
 	wantExit(t, code, 1, out, errOut)
-	if !strings.Contains(errOut, "`mtqg undo` is not available yet") {
+	if !strings.Contains(errOut, "`mtqg archive` is not available yet") {
 		t.Errorf("stderr %q", errOut)
 	}
 }

@@ -3,6 +3,8 @@ package model
 import (
 	"errors"
 	"fmt"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // The model returns kinds of error, not sentences: the wording shown to people
@@ -35,6 +37,12 @@ var ErrNoChange = errors.New("model: the record is already in that state")
 
 // ErrEmptyText means the text of a record is empty.
 var ErrEmptyText = errors.New("model: the text is empty")
+
+// ErrNothingToUndo means no line was written by this author from this terminal.
+var ErrNothingToUndo = errors.New("model: nothing to undo")
+
+// ErrHasLaterEvents means removing a line would leave events without their record.
+var ErrHasLaterEvents = errors.New("model: the record has other events")
 
 // NotFoundError says which ID matched nothing.
 type NotFoundError struct{ Prefix string }
@@ -100,3 +108,19 @@ func (e *NoRepliesError) Error() string {
 
 // Is makes errors.Is(err, ErrNoReplies) true.
 func (e *NoRepliesError) Is(target error) bool { return target == ErrNoReplies }
+
+// HasLaterEventsError says that a line cannot be undone: it creates a record that
+// has other events, which would be left without a record. Events are those other
+// events: the record's changes, edits and delete, and the creation of each answer
+// or reply to it.
+type HasLaterEventsError struct {
+	Record *Record
+	Events []journal.Event
+}
+
+func (e *HasLaterEventsError) Error() string {
+	return fmt.Sprintf("model: %s %s has %d other events", e.Record.Kind(), e.Record.ID, len(e.Events))
+}
+
+// Is makes errors.Is(err, ErrHasLaterEvents) true.
+func (e *HasLaterEventsError) Is(target error) bool { return target == ErrHasLaterEvents }

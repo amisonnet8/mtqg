@@ -477,7 +477,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 		for _, c := range records(t, obj, "commands") {
 			available[c["command"].(string)] = c["available"]
 		}
-		if available["bug done"] != true || available["context"] != true || available["edit"] != true || available["undo"] != false {
+		if available["bug done"] != true || available["context"] != true || available["edit"] != true || available["undo"] != true || available["archive"] != false {
 			t.Errorf("available %v", available)
 		}
 	})
@@ -534,7 +534,7 @@ func TestJSONErrors(t *testing.T) {
 		{"an unknown option", []string{"todo", "list", "--frobnicate"}, 2, "usage", nil},
 		{"a missing argument", []string{"todo", "done"}, 2, "usage", nil},
 		{"a wrong limit", []string{"log", "--limit", "many"}, 2, "usage", nil},
-		{"a command that is not built", []string{"undo"}, 1, "not_available", nil},
+		{"a command that is not built", []string{"archive", "2021..2023"}, 1, "not_available", nil},
 		{"an empty text", []string{"todo", "add", " "}, 1, "empty_text", nil},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

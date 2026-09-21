@@ -132,7 +132,7 @@ func init() {
 		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Search the text of the records", args: argsText},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes and duplicate definitions", args: argsNone},
-		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsAny},
+		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsNone, values: []string{"--max-tokens"}, run: runContext},
 		{name: "format", usage: "mtqg format [file]", summary: "Show the event lines found in any text", args: argsAny},
 		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move finished items of a date range out of view", args: argsAny},
 	}

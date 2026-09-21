@@ -133,6 +133,7 @@ func TestJSONEveryCommandPrintsOneObject(t *testing.T) {
 		{[]string{"log"}, "log"},
 		{[]string{"show", idQ2[:10]}, "show"},
 		{[]string{"status"}, "status"},
+		{[]string{"context"}, "context"},
 		{[]string{"version"}, "version"},
 		{[]string{"help"}, "help"},
 		{[]string{"todo", "done", "--help"}, "help"},
@@ -476,7 +477,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 		for _, c := range records(t, obj, "commands") {
 			available[c["command"].(string)] = c["available"]
 		}
-		if available["bug done"] != true || available["status"] != true || available["edit"] != false {
+		if available["bug done"] != true || available["context"] != true || available["edit"] != false {
 			t.Errorf("available %v", available)
 		}
 	})

@@ -13,8 +13,8 @@ import (
 // longer wait means something is wrong (a lock, a slow file system).
 const gitTimeout = 10 * time.Second
 
-// The journal layer reads two things from git: who the user is, and what the
-// last commit holds of journal.jsonl. It asks the real git command, so that
+// The journal layer reads three things from git: who the user is, what the last
+// commit holds of journal.jsonl, and which branch is checked out. It asks the real git command, so that
 // git's own configuration, worktrees and submodules are honored, and it never
 // writes anything to git (.claude/rules/git-integration.md).
 
@@ -26,6 +26,7 @@ type gitQuery int
 const (
 	queryUserName gitQuery = iota
 	queryCommittedJournal
+	queryBranch
 )
 
 // committedJournal names journal.jsonl in the last commit. It starts with "./"
@@ -46,6 +47,8 @@ func runGit(root string, query gitQuery) (stdout []byte, exitCode int, err error
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "config", "user.name")
 	case queryCommittedJournal:
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "show", committedJournal)
+	case queryBranch:
+		cmd = exec.CommandContext(ctx, "git", "--no-pager", "branch", "--show-current")
 	default:
 		return nil, 0, &GitUnavailableError{Err: errors.New("unknown git query")}
 	}
@@ -75,6 +78,20 @@ func GitUserName(root string) (string, error) {
 		return "", ErrNoUserName
 	}
 	return name, nil
+}
+
+// GitBranch returns the name of the branch that is checked out in the repository
+// at root, or "" when there is none (a detached HEAD). A branch that has no commit
+// yet has a name. If git cannot be run, the error is ErrGitUnavailable.
+func GitBranch(root string) (string, error) {
+	out, code, err := runGit(root, queryBranch)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", nil
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // UncommittedEvents returns the events of journal.jsonl that are not in the last

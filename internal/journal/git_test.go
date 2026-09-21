@@ -49,6 +49,37 @@ func TestGitUserName(t *testing.T) {
 	})
 }
 
+func TestGitBranch(t *testing.T) {
+	t.Run("the branch that is checked out, before the first commit too", func(t *testing.T) {
+		root := newRepo(t) // init -b main, and no commit
+		if got, err := GitBranch(root); err != nil || got != "main" {
+			t.Fatalf("got %q, %v; want main", got, err)
+		}
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+		git(t, root, "checkout", "-q", "-b", "feature/日本語")
+		if got, err := GitBranch(root); err != nil || got != "feature/日本語" {
+			t.Fatalf("got %q, %v; want feature/日本語", got, err)
+		}
+	})
+
+	t.Run("a detached HEAD has no branch", func(t *testing.T) {
+		root := newRepo(t)
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+		git(t, root, "checkout", "-q", "--detach")
+		if got, err := GitBranch(root); err != nil || got != "" {
+			t.Fatalf("got %q, %v; want no branch", got, err)
+		}
+	})
+
+	t.Run("git cannot be run", func(t *testing.T) {
+		root := newRepo(t)
+		t.Setenv("PATH", t.TempDir())
+		if _, err := GitBranch(root); !errors.Is(err, ErrGitUnavailable) {
+			t.Fatalf("err = %v, want ErrGitUnavailable", err)
+		}
+	})
+}
+
 // journalWith opens a repository with a .mtqg/ and appends n memos to it.
 func journalWith(t *testing.T, n int) *Journal {
 	t.Helper()

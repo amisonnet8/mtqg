@@ -206,3 +206,63 @@ type jsonCommandInfo struct {
 	Summary   string `json:"summary"`
 	Available bool   `json:"available"`
 }
+
+// What context prints with --json: the same content as the text, after the same
+// cuts, in sections that each say how many there were.
+
+type jsonContext struct {
+	Command         string              `json:"command"`
+	Repository      string              `json:"repository"`
+	Branch          string              `json:"branch,omitempty"`
+	Attention       []jsonAttention     `json:"attention"`
+	OpenTodos       jsonSection         `json:"open_todos"`
+	OpenQuestions   jsonThreadSection   `json:"open_questions"`
+	OpenBugs        jsonThreadSection   `json:"open_bugs"`
+	Recent          jsonSection         `json:"recent"`
+	Glossary        jsonGlossarySection `json:"glossary"`
+	Truncated       bool                `json:"truncated"`
+	MaxTokens       *int                `json:"max_tokens"`
+	EstimatedTokens int                 `json:"estimated_tokens"`
+}
+
+type jsonAttention struct {
+	Kind  string `json:"kind"`
+	Word  string `json:"word,omitempty"`
+	Count int    `json:"count,omitzero"`
+}
+
+type jsonSection struct {
+	Total   int          `json:"total"`
+	Records []jsonRecord `json:"records"`
+}
+
+type jsonThreadSection struct {
+	Total   int                `json:"total"`
+	Records []jsonThreadRecord `json:"records"`
+}
+
+// jsonThreadRecord is a question or a bug, with how many answers or replies it
+// has and the latest of them (if it was not left out).
+type jsonThreadRecord struct {
+	jsonRecord
+	ReplyCount  int         `json:"reply_count"`
+	LatestReply *jsonRecord `json:"latest_reply,omitempty"`
+}
+
+type jsonGlossarySection struct {
+	Total   int                `json:"total"`
+	Records []jsonGlossaryItem `json:"records"`
+}
+
+// jsonGlossaryItem is an entry of the glossary, or only its word when the
+// definitions were left out (no id, no text).
+type jsonGlossaryItem struct {
+	ID          string      `json:"id,omitempty"`
+	Kind        string      `json:"kind,omitempty"`
+	Word        string      `json:"word"`
+	Text        string      `json:"text,omitempty"`
+	Author      *jsonAuthor `json:"author,omitempty"`
+	Created     string      `json:"created,omitempty"`
+	Updated     string      `json:"updated,omitempty"`
+	Definitions int         `json:"definitions"`
+}

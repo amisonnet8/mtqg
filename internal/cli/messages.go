@@ -371,3 +371,98 @@ func msgFormatVersion(found, supported int, known bool) string {
 	}
 	return fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)", found, supported)
 }
+
+// context
+
+// contextGuide tells the agent what it is reading and what to do with it.
+var contextGuide = []string{
+	"This is the process record of this project. Read the following before you start working.",
+	"- Respect what has been decided (answered questions, memos stating a policy)",
+	"- Do not decide open questions on your own; confirm them",
+	"- Use terms as defined in the glossary",
+	"- Record questions, decisions, findings, bugs, and todos with mtqg as they come up",
+}
+
+func msgContextTitle(repository, branch string) string {
+	if branch == "" {
+		return "# mtqg context — " + repository
+	}
+	return fmt.Sprintf("# mtqg context — %s (%s)", repository, branch)
+}
+
+const (
+	msgContextAttention = "## Attention"
+	msgContextRecent    = "## Recent records (newest first)"
+	msgContextFooter    = "Read full entries with mtqg show <id>."
+)
+
+func msgContextHeading(name string, total int) string { return fmt.Sprintf("## %s (%d)", name, total) }
+
+func msgContextConflictingWord(word string) string {
+	return fmt.Sprintf("- Glossary term %q has conflicting definitions (see mtqg glossary list)", word)
+}
+
+func msgContextMoreWords(n int) string {
+	return fmt.Sprintf("- (%d more words have conflicting definitions; see mtqg glossary list)", n)
+}
+
+func msgContextUncommitted(n int) string {
+	if n == 1 {
+		return "- 1 mtqg record is not committed"
+	}
+	return fmt.Sprintf("- %d mtqg records are not committed", n)
+}
+
+// msgContextItem is a todo: what it is, who wrote it and when.
+func msgContextItem(id, text, author, when string) string {
+	return fmt.Sprintf("- %s %s (%s, %s)", id, text, author, when)
+}
+
+// msgContextThread is a question or a bug, with its state.
+func msgContextThread(id, text, state, author, when string) string {
+	return fmt.Sprintf("- %s %s (%s, %s, %s)", id, text, state, author, when)
+}
+
+// msgContextReplyLine is the latest answer or reply, under its question or bug.
+func msgContextReplyLine(text, author, kind string) string {
+	return fmt.Sprintf("    └ %s (%s, %s)", text, author, kind)
+}
+
+// msgContextThreadState says whether a question or a bug has anything under it
+// that nobody has confirmed. typ is the type of the record, as in msgThreadState.
+func msgContextThreadState(typ string, replies int) string {
+	switch {
+	case replies > 0:
+		return "awaiting confirmation"
+	case typ == journal.TypeBug:
+		return "no replies"
+	default:
+		return "unanswered"
+	}
+}
+
+func msgContextOlder(n int, list string) string {
+	return fmt.Sprintf("- (%d older; see mtqg %s)", n, list)
+}
+
+func msgContextMoreRecent(n int) string { return fmt.Sprintf("- (%d more; see mtqg log)", n) }
+
+func msgContextRepliesLeft(typ string) string {
+	if typ == journal.TypeBug {
+		return "- (latest replies left out; see mtqg show <id>)"
+	}
+	return "- (latest answers left out; see mtqg show <id>)"
+}
+
+const msgContextDefinitionsLeft = "- (definitions left out; see mtqg glossary list)"
+
+func msgContextWord(word string, definitions int) string {
+	if definitions > 1 {
+		return fmt.Sprintf("- %s (%d definitions)", word, definitions)
+	}
+	return "- " + word
+}
+
+func msgBadMaxTokens(value string) string {
+	return fmt.Sprintf("Option --max-tokens needs a whole number of 0 or more, not %q. Use 0 for no limit.", value)
+}

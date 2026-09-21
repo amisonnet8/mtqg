@@ -587,7 +587,7 @@ v0.1のCLIに**入れないもの**（設計§12.2の段階4以降）：`mtqg mc
 | 3 | `context`、全コマンドの`--json` | AIに渡せる。サンプルPJでAIにも使わせる |
 | 4 | `edit`、`delete`、`undo`、`search`、`review`、`format` | 直す・消す・取り消す・探す・食い違いを見る・差分を読む |
 | 5 | `archive` | 長く使い始めてから要る。サンプルPJでは期間を短くして試す |
-| 6 | シェル補完 | |
+| 6 | シェル補完 | 動的（`mtqg completion <shell>`が固定のスクリプトを出し、候補は`mtqg candidates`が`args.go`の表から計算する）。bash・zsh・fish・PowerShell。文法を2か所に持たない（設計§11.1と同じ考え方）。仕様は`docs/reference/cli.md`、判断は`docs/design/history.md` |
 
 1が動いた時点でサンプルPJを始められる。
 

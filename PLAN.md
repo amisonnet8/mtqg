@@ -54,7 +54,7 @@ mtqgの実装計画・進捗管理ドキュメント。実装が進むにつれ�
 6. **Step 6: CLI順4** — `edit`、`delete`、`undo`、`search`、`review`、`format`
 7. **Step 7: CLI順5** — `archive`（`-n`を含む）
 8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5・5・6・7で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を6回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。**完了（2026-09-21）：**フィクスチャを`e2e/testdata/examples/`に置き、文書の例をHTMLコメントの印で`Run`（時計を固定）と本物のバイナリに突き合わせる仕組みにした。`make docs-examples`が文書に書き戻す（`testing.md`「e2eとdocsの例の確認」）。一覧の未実施のe2eもすべて足した
-9. **Step 9: シェル補完**
+9. **Step 9: シェル補完** — **実装と手元の検証が済んだ（2026-09-21。CIの確認待ち）。**動的：`mtqg completion <shell>`（bash・zsh・fish・PowerShell）が固定のスクリプトを出し、TABのたびに`mtqg candidates`が`args.go`の表から候補（コマンド・オプション・`--kind`の値・ID）を計算する。本物の4つのシェルで動かして確かめた（`e2e/completion_test.go`）
 
 Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
@@ -64,7 +64,29 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 8（e2eとdocsの例の確認）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
+**段階1 Step 9（シェル補完）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。これで段階1のステップはすべて終わった。CIがgreenなら、次は「段階1完了（v0.1）の判定」（下）。**
+
+**できたもの：**
+- **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。
+- **`internal/cli/candidates.go`**：語を寛容に歩き（`parseArgs`は使い回さない。誤りで止まるため）、位置から候補を決める。**文法を持たず、`args.go`の表を読む**。表に`ids`（`idsOpen`・`idsDone`・`idsAll`・`idsParents`）と`choices`のフィールドを足した。IDはモデル層から新しい順に。**何があっても終了コード0で、標準エラー出力に何も出さない**（`.mtqg/`が無い、形式が新しすぎる、衝突マーカー、読めない行）。説明は1行・60桁で切る（`--json`でも）。
+- **`internal/cli/completion.go`と`completions/`**：4つのスクリプト（固定のテキスト。コマンドの一覧を持たない）を`embed`して出す。打ちかけの語は`--word=<語>`で渡す（空の引数を渡さない）。
+- **環境**：`.devcontainer/postCreate.sh`にzsh・fish・PowerShell（Linux版のpwsh、Microsoftのaptリポジトリ）を足した。今のコンテナには同じコマンドで入れた（fish 3.6.0、pwsh 7.6.6）。`make shellcheck`が`.bash`も対象にする。
+
+**Step 9で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** ①動的（スクリプトに文法を焼き込まない）。②候補を出すコマンドは公開（`candidates`）。③4つのシェル（最初はbash・zsh・fishの3つを推奨したが、人間の判断でPowerShellも入れ、テストは手元のLinux版pwshで動かす）。④コマンド・オプション・`--kind`の値に加えてIDまで補完する。実装前に決めたこと：1文字の短縮形は候補に出さない、`todo add`などの本文と用語は補完しない、`--kind=todo`の形は補完しない（`--kind <TAB>`）、10桁が重なるIDは完全なIDで出す、打ちかけの語は`--word=`で渡す。
+
+**手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`（`-tags e2e`も）とテストのコンパイルが通る（**実行はCI**）。**本物のシェルで動かして確かめた**：bash（`COMP_WORDS`を組んで`_mtqg`）、fish（`complete -C`）、PowerShell（`TabExpansion2`。引用符つきの`-C`、行の途中でのTAB、`$LASTEXITCODE`が変わらないことも）、zsh（`_mtqg`を直接。補完のしくみ自体は端末が要るので動かしていない）。壊して確かめた（すべて検出）：候補の絞り込み・並び・10桁の扱い・オプションの表との一致・警告を出す・スクリプトの語の渡し方（4つとも）など（`testing.md`）。1件だけ生き残った：fishの`"--word=$cur"`の引用符を外しても、fish 3.6では通る（残した）。`make docs-examples`は冪等（例は30個ずつ、英日同数）。
+
+**実際のシェルで動かして見つけた不具合（直した）：**fishのスクリプトで、語が0個のとき`printf '%s\n' $words`が空行を1つ出し、空の語が1つ渡って「未知のコマンド」になり、`mtqg t<TAB>`が何も出さなかった。
+
+**CIで確かめられること：** bashとPowerShellのe2eがWindows・macOS・Linuxで動くか（ランナーの画像にあるシェルだけが動く。**どのシェルがskipされたかは、`go test -v`でないと見えない**）。**確かめられないこと：**対話のシェルでの実際のTAB（bashが`=`で語を切ること、zshの補完のしくみ自体、fish 4系、PowerShell 5.1の引数の渡し方）。Windowsのbashが、WSLの起動用のものになりうる点は、Git for Windowsのbashを探す形にしたが、CIで動くかは分からない。
+
+**段階1完了（v0.1）の判定の進み具合：** `make check`・`make test`・`make race`は通る（手元）／3OSのCIがgreenか：Step 9の分は確認待ち／`go build`のバイナリの`mtqg version`は`v0.0.0-<コミット時刻>-<ハッシュ>+dirty`の疑似バージョンを出す（`go install ...@タグ`は、公開してタグを打つまで確かめられない）／`docs/reference/`の例は実際の出力と一致している（30個、`make docs-examples`が冪等）。
+
+**Step 9に含めなかったもの：** 用語（`g add <TAB>`）・`archive`の期間・`search`の語・`--limit`の値の補完、`docs/tour/`・`docs/examples/`、看板としてのREADME（実装完了後）。
+
+**提案（作っていない）：** 「壊して確かめる」（変異を入れて、テストが落ちるかを見て、戻す）を、Step 7・8・9で毎回、その場のシェル関数で書いている。Skill（またはスクリプト）にするなら、「ファイルの、この文字列を、これに置き換えて、このテストを走らせ、生き残ったかを言い、必ず元に戻す」という形になる。まだ手順が固まっていないので、判断は人間に任せる。
+
+**（前の状態）** **段階1 Step 8（e2eとdocsの例の確認）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 9（シェル補完）。** これで段階1は、シェル補完を除いて終わった。
 
 **できたもの：**
 - **docsの例の確認**（`e2e/examples_test.go`）。`docs/reference/cli.md`・`cli_ja.md`の`$`で始まるコードブロックは、直前のHTMLコメント`<!-- mtqg:example repo=parser -->`の指定で、`e2e/testdata/examples/`のフィクスチャ（`parser`・`parser_ja`・`years`・`ambiguous`・`refuse`・`broken`。`none`・`empty`は特別）から作ったリポジトリのコピーで動かし、出力を文書と比べる。**`Run`を直接、`Env.Now`（2026-09-21 12:00 UTC）と`Env.Location`を固定して呼ぶ**（時計の裏口を製品に作らない）。`binary`の印のブロック（`archive`・`format`）は、本物のバイナリでも同じ出力になることを確かめる。`make docs-examples`が実際の出力を文書に書き戻す（**例は手で書かない**）。例が28個（うち1つは`skip=`）、英語版・日本語版とも。取りこぼしを止めるテスト（印なし、理由なしの`skip=`、フィクスチャの言語違い、2言語で例の数が違う）。

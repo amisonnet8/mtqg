@@ -15,6 +15,11 @@ const recentShown = 10
 
 var recentSteps = [...]int{5, 3, 0}
 
+// keptThreads is how many of the newest questions, and of the newest bugs, are
+// never left out. What is open and undecided must stay in view: the agent is told
+// not to decide it, and cannot be told what it does not see.
+const keptThreads = 3
+
 // Thread is a question or a bug, with its latest answer or reply.
 type Thread struct {
 	Parent     *Record
@@ -107,16 +112,20 @@ func (s *State) threads(typ string) []Thread {
 
 // Steps is how many times Reduced can cut: the steps that are always there (the
 // recent records in three steps, the definitions, the latest answers and replies),
-// and one for each question, bug and todo. A step may cut nothing (when there are
+// and one for each todo and for each question and bug beyond the newest few that
+// are kept. A step may cut nothing (when there are
 // only 3 recent records, the step from 5 to 3 does nothing).
 func (d *ContextData) Steps() int {
-	return len(recentSteps) + 2 + len(d.Questions) + len(d.Bugs) + len(d.Todos)
+	return len(recentSteps) + 2 + droppable(len(d.Questions)) + droppable(len(d.Bugs)) + len(d.Todos)
 }
+
+// droppable is how many of n questions (or bugs) may be left out.
+func droppable(n int) int { return max(0, n-keptThreads) }
 
 // Reduced returns d with its first n cuts made, in this order: the recent records
 // (to 5, to 3, to none), the definitions of the glossary (each word stays), the
 // latest answers and replies, then the oldest questions and bugs, one at a time (the
-// two together), then the oldest todos, one at a time. More cuts than Steps make
+// two together, and never the newest few of each), then the oldest todos, one at a time. More cuts than Steps make
 // no more difference. d itself is not changed, and the more cuts, the less there is.
 func (d *ContextData) Reduced(n int) *ContextData {
 	r := *d
@@ -145,16 +154,19 @@ func (d *ContextData) Reduced(n int) *ContextData {
 	r.Questions = withoutLatest(r.Questions)
 	r.Bugs = withoutLatest(r.Bugs)
 
-	// The oldest question or bug of the two sections goes first.
-	drop := min(n, len(r.Questions)+len(r.Bugs))
+	// The oldest question or bug of the two sections goes first, and the newest few
+	// of each stay.
+	drop := min(n, droppable(len(r.Questions))+droppable(len(r.Bugs)))
 	n -= drop
 	q, b := 0, 0
 	for i := 0; i < drop; i++ {
+		canQ := len(r.Questions)-q > keptThreads
+		canB := len(r.Bugs)-b > keptThreads
 		switch {
-		case q == len(r.Questions):
-			b++
-		case b == len(r.Bugs):
+		case !canB:
 			q++
+		case !canQ:
+			b++
 		case olderThan(r.Questions[q].Parent, r.Bugs[b].Parent):
 			q++
 		default:

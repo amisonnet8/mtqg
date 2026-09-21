@@ -102,7 +102,7 @@ func TestContextLeavesOutWhatIsHidden(t *testing.T) {
 
 func TestContextReducedCutsInTheOrderOfTheSpec(t *testing.T) {
 	d := contextFixture().Context(0)
-	if d.Steps() != 3+2+2+2+3 {
+	if d.Steps() != 3+2+3 { // no question or bug is beyond the newest 3
 		t.Fatalf("steps = %d", d.Steps())
 	}
 
@@ -122,14 +122,11 @@ func TestContextReducedCutsInTheOrderOfTheSpec(t *testing.T) {
 		{3, shape{0, 3, 2, 2, 3}, "to none"},
 		{4, shape{0, 2, 2, 2, 3}, "the definitions: each word once"},
 		{5, shape{0, 2, 2, 2, 3}, "the latest answers and replies"},
-		{6, shape{0, 2, 1, 2, 3}, "the oldest of the questions and bugs: q1 (minute 3)"},
-		{7, shape{0, 2, 1, 1, 3}, "then b1 (minute 4)"},
-		{8, shape{0, 2, 0, 1, 3}, "then q2 (minute 5)"},
-		{9, shape{0, 2, 0, 0, 3}, "then b2 (minute 20)"},
-		{10, shape{0, 2, 0, 0, 2}, "the oldest todo"},
-		{12, shape{0, 2, 0, 0, 0}, "all the todos"},
-		{13, shape{0, 2, 0, 0, 0}, "more cuts than steps make no difference"},
-		{1000, shape{0, 2, 0, 0, 0}, "the same"},
+		{6, shape{0, 2, 2, 2, 2}, "the oldest todo: the questions and bugs are all among the newest 3"},
+		{7, shape{0, 2, 2, 2, 1}, "the next"},
+		{8, shape{0, 2, 2, 2, 0}, "all the todos"},
+		{9, shape{0, 2, 2, 2, 0}, "more cuts than steps make no difference"},
+		{1000, shape{0, 2, 2, 2, 0}, "the same"},
 	} {
 		if s, _ := got(tt.n); s != tt.want {
 			t.Errorf("after %d cuts (%s): %+v, want %+v", tt.n, tt.note, s, tt.want)
@@ -137,14 +134,11 @@ func TestContextReducedCutsInTheOrderOfTheSpec(t *testing.T) {
 	}
 
 	// What is left is the newest, and the totals still say what there was.
-	_, r := got(7)
-	if r.Questions[0].Parent.ID != cid(13) || r.Bugs[0].Parent.ID != cid(22) {
-		t.Errorf("left: %v %v", r.Questions, r.Bugs)
+	_, r := got(8)
+	if len(r.Questions) != 2 || len(r.Bugs) != 2 || r.QuestionsTotal != 2 || r.BugsTotal != 2 || r.TodosTotal != 3 || r.RecentTotal != d.RecentTotal || r.GlossaryTotal != 3 {
+		t.Errorf("totals: %+v", r)
 	}
-	if r.QuestionsTotal != 2 || r.BugsTotal != 2 || r.RecentTotal != d.RecentTotal || r.GlossaryTotal != 3 {
-		t.Errorf("totals changed: %+v", r)
-	}
-	_, r = got(10)
+	_, r = got(6)
 	sameIDs(t, "todos left after one cut", r.Todos, cid(2), cid(3))
 
 	// The words are the words: b has two definitions and no entry.
@@ -183,20 +177,102 @@ func TestContextReducedDoesNotChangeWhatItIsGiven(t *testing.T) {
 	}
 }
 
-func TestContextReducedWhenOneSectionIsEmpty(t *testing.T) {
-	// Only bugs: the cuts of the questions have nothing to take, and the bugs go
-	// oldest first.
-	state := Build([]journal.Event{
+func TestContextKeepsTheNewestQuestionsAndBugs(t *testing.T) {
+	// Six questions (minutes 0 2 4 6 8 10), five bugs (1 3 5 7 9) and four todos.
+	var events []journal.Event
+	for i := 0; i < 6; i++ {
+		events = append(events, create(cid(10+i), journal.TypeQA, fmt.Sprintf("q%d", i), 2*i))
+	}
+	for i := 0; i < 5; i++ {
+		events = append(events, create(cid(20+i), journal.TypeBug, fmt.Sprintf("b%d", i), 2*i+1))
+	}
+	for i := 0; i < 4; i++ {
+		events = append(events, create(cid(30+i), journal.TypeTodo, fmt.Sprintf("t%d", i), 20+i))
+	}
+	d := Build(events).Context(0)
+
+	// 3 questions and 2 bugs are beyond the newest 3 of each, and can go.
+	if d.Steps() != 3+2+3+2+4 {
+		t.Fatalf("steps = %d", d.Steps())
+	}
+	first := 3 + 2 // the steps before the questions and bugs
+	type shape struct{ questions, bugs, todos int }
+	for _, tt := range []struct {
+		cuts int
+		want shape
+		note string
+	}{
+		{first, shape{6, 5, 4}, "before any of them"},
+		{first + 1, shape{5, 5, 4}, "q0 (minute 0) is the oldest"},
+		{first + 2, shape{5, 4, 4}, "b0 (minute 1)"},
+		{first + 3, shape{4, 4, 4}, "q1 (minute 2)"},
+		{first + 4, shape{4, 3, 4}, "b1 (minute 3)"},
+		{first + 5, shape{3, 3, 4}, "q2 (minute 4); q3, b2 and the newer ones are the newest 3 and stay"},
+		{first + 6, shape{3, 3, 3}, "and now the todos, oldest first"},
+		{first + 9, shape{3, 3, 0}, "all the todos"},
+		{first + 10, shape{3, 3, 0}, "and the newest 3 of each are still there"},
+		{100, shape{3, 3, 0}, "however many cuts"},
+	} {
+		r := d.Reduced(tt.cuts)
+		if got := (shape{len(r.Questions), len(r.Bugs), len(r.Todos)}); got != tt.want {
+			t.Errorf("after %d cuts (%s): %+v, want %+v", tt.cuts, tt.note, got, tt.want)
+		}
+	}
+	r := d.Reduced(100)
+	if r.Questions[0].Parent.ID != cid(13) || r.Questions[2].Parent.ID != cid(15) || r.Bugs[0].Parent.ID != cid(22) || r.Bugs[2].Parent.ID != cid(24) {
+		t.Errorf("what stays is not the newest: %v %v", r.Questions, r.Bugs)
+	}
+	if r.QuestionsTotal != 6 || r.BugsTotal != 5 {
+		t.Errorf("totals %d %d", r.QuestionsTotal, r.BugsTotal)
+	}
+}
+
+func TestContextReducedWhenOneSectionIsOlder(t *testing.T) {
+	// Every question is older than every bug: the questions go first, down to the
+	// newest 3, and only then the bugs, and neither goes below 3.
+	var events []journal.Event
+	for i := 0; i < 5; i++ {
+		events = append(events, create(cid(10+i), journal.TypeQA, fmt.Sprintf("q%d", i), i))
+	}
+	for i := 0; i < 5; i++ {
+		events = append(events, create(cid(20+i), journal.TypeBug, fmt.Sprintf("b%d", i), 10+i))
+	}
+	d := Build(events).Context(0)
+	const first = 3 + 2
+	if d.Steps() != first+2+2 {
+		t.Fatalf("steps = %d", d.Steps())
+	}
+	r := d.Reduced(first + 2)
+	if len(r.Questions) != 3 || len(r.Bugs) != 5 || r.Questions[0].Parent.ID != cid(12) {
+		t.Errorf("questions %d, bugs %d", len(r.Questions), len(r.Bugs))
+	}
+	r = d.Reduced(first + 3)
+	if len(r.Questions) != 3 || len(r.Bugs) != 4 || r.Bugs[0].Parent.ID != cid(21) {
+		t.Errorf("questions %d, bugs %d", len(r.Questions), len(r.Bugs))
+	}
+
+	// Bugs that are older than the questions: the one bug beyond the newest 3 goes
+	// first, and then it is the questions, though the next bug is older than they are.
+	events = nil
+	for i := 0; i < 4; i++ {
+		events = append(events, create(cid(20+i), journal.TypeBug, fmt.Sprintf("b%d", i), i))
+	}
+	for i := 0; i < 6; i++ {
+		events = append(events, create(cid(10+i), journal.TypeQA, fmt.Sprintf("q%d", i), 10+i))
+	}
+	d = Build(events).Context(0)
+	r = d.Reduced(first + 1 + 3)
+	if len(r.Bugs) != 3 || len(r.Questions) != 3 || r.Bugs[0].Parent.ID != cid(21) || r.Questions[0].Parent.ID != cid(13) {
+		t.Errorf("bugs %d, questions %d", len(r.Bugs), len(r.Questions))
+	}
+
+	// Only bugs, and no more than the newest 3: nothing to leave out.
+	few := Build([]journal.Event{
 		create(cid(1), journal.TypeBug, "b1", 0),
 		create(cid(2), journal.TypeBug, "b2", 1),
 		create(cid(3), journal.TypeBug, "b3", 2),
-	})
-	d := state.Context(0)
-	if d.Steps() != 5+3 {
-		t.Fatalf("steps = %d", d.Steps())
-	}
-	r := d.Reduced(5 + 2)
-	if len(r.Bugs) != 1 || r.Bugs[0].Parent.ID != cid(3) {
-		t.Errorf("bugs %v", r.Bugs)
+	}).Context(0)
+	if few.Steps() != 5 || len(few.Reduced(100).Bugs) != 3 {
+		t.Errorf("steps = %d, bugs left %d", few.Steps(), len(few.Reduced(100).Bugs))
 	}
 }

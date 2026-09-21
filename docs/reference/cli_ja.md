@@ -640,18 +640,17 @@ This is the process record of this project. Read the following before you start 
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- 6cad4a268d ブロックコメント /* */ の読み飛ばし (claude-code, 10:18)
-- 6513270e26 文字列リテラル中の // を無視する (yamada, 10:52)
-- 1e27a1c08a エラー位置を行と列で表示する (claude-code, 11:06)
-- 1818e81189 READMEに対応している構文を書く (yamada, 11:30)
+- (4 older; see mtqg todo list)
 - 2e44158bae コメント処理のテストケースを追加 (claude-code, 11:32)
 
 ## Open questions (2)
-- (1 older; see mtqg qa list)
+- 1012f037b6 ブロックコメントの入れ子に対応する？ (awaiting confirmation, claude-code, 09:10)
 - 2217beaddb エラー位置は行と列の両方を出しますか？ (unanswered, claude-code, 11:05)
+- (latest answers left out; see mtqg show <id>)
 
 ## Open bugs (1)
-- (1 older; see mtqg bug list)
+- 7f3a2b1c09 空の入力でパーサーが落ちる (awaiting confirmation, yamada, 10:41)
+- (latest replies left out; see mtqg show <id>)
 
 ## Recent records (newest first)
 - (20 more; see mtqg log)
@@ -672,7 +671,7 @@ Read full entries with mtqg show <id>.
 - 未完了のtodo・質問・バグは古い順で、ID、記録者、時刻（今日は`HH:MM`、別の日は日付。ローカル時間）を持つ。質問とバグは`unanswered`（バグは`no replies`）または`awaiting confirmation`（回答・返信があり、閉じていない）と書き、その下に最新の回答・返信を、記録者と記録者の種別とともに出す
 - 最近の記録は、`log`と同じく、全種類の新しい記録を新しい順に、種類とIDとともに出す。回答・返信の終わりに、向かう質問・バグを書く。Glossaryは全項目を、IDとともに出す
 - 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える
-- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、見出し、最後の行は削らない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、古い質問とバグ（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ）。それでも収まらないときは、そのまま出す
+- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のことは見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ、なくなるまで）。それでも収まらないときは、そのまま出す
 - 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 older; see mtqg todo list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
 - `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`と`{"kind": "uncommitted", "count": N}`
 - 並行した状態変更（`mtqg review`）は、まだAttentionに出ない

@@ -244,7 +244,9 @@ const (
 	bigBugs      = 10 // all with a reply
 	bigMemos     = 60
 	bigWords     = 30
-	bigRecords   = bigTodos + bigQuestions + bigAnswered + 2*bigBugs + bigMemos + bigWords
+	// The newest questions and bugs that are never left out, of each.
+	bigKept    = 3
+	bigRecords = bigTodos + bigQuestions + bigAnswered + 2*bigBugs + bigMemos + bigWords
 )
 
 // bigContextHarness is a repository with bigTodos todos, bigQuestions questions
@@ -321,8 +323,14 @@ func TestContextBudget(t *testing.T) {
 	})
 
 	t.Run("it fits, and the less there is room for, the less is shown", func(t *testing.T) {
+		// What cannot be left out (and the newest questions and bugs) is the least there
+		// is: a budget below it is not met, and this is the least that is.
+		least := estimateTokens(mustRun(h, "context", "--max-tokens", "1"))
 		prev := fullTokens
-		for _, budget := range []int{3000, 2000, 1500, 1000, 700, 500, 400} {
+		for _, budget := range []int{3000, 2000, 1500, 1000, 700, 500, least} {
+			if budget < least {
+				continue
+			}
 			out := mustRun(h, "context", "--max-tokens", fmt.Sprint(budget))
 			got := estimateTokens(out)
 			if got > budget {
@@ -366,8 +374,8 @@ func TestContextBudget(t *testing.T) {
 			if f.threadsLeft && (f.replyLines != 0 || !f.definitionsLeft) {
 				t.Errorf("budget %d: questions or bugs are left out while %d answers are shown (definitions left out: %v)", budget, f.replyLines, f.definitionsLeft)
 			}
-			if f.todosLeft && f.threadsShown != 0 {
-				t.Errorf("budget %d: todos are left out while %d questions and bugs are shown", budget, f.threadsShown)
+			if f.todosLeft && f.threadsShown != 2*bigKept {
+				t.Errorf("budget %d: todos are left out while %d questions and bugs are shown, and only the newest %d of each should be", budget, f.threadsShown, bigKept)
 			}
 		}
 		for _, name := range []string{"recent", "definitions", "replies", "threads", "todos"} {
@@ -379,28 +387,30 @@ func TestContextBudget(t *testing.T) {
 
 	t.Run("what is cut is the oldest, and the newest stays", func(t *testing.T) {
 		// In this fixture every question is older than every bug, so the questions go
-		// first, oldest first, and only when they are all gone do the bugs.
+		// first, oldest first, down to the newest few; then the bugs, down to the newest
+		// few; and only then the todos.
 		checked := map[string]bool{}
 		for budget := fullTokens; budget >= 300; budget -= 10 {
 			out := mustRun(h, "context", "--max-tokens", fmt.Sprint(budget))
-			if k := olderCount(out, "qa list"); k > 0 && k < bigQuestions {
+			if k := olderCount(out, "qa list"); k > 0 && k < bigQuestions-bigKept {
 				checked["questions"] = true
 				if strings.Contains(out, fmt.Sprintf("Question number %02d ", k-1)) || !strings.Contains(out, fmt.Sprintf("Question number %02d ", k)) ||
-					!strings.Contains(out, fmt.Sprintf("Question number %02d ", bigQuestions-1)) || olderCount(out, "bug list") != 0 {
+					olderCount(out, "bug list") != 0 {
 					t.Errorf("budget %d: %d older questions are left out, and that is not the oldest %d:\n%s", budget, k, k, out)
 				}
 			}
-			if k := olderCount(out, "bug list"); k > 0 && k < bigBugs {
+			if k := olderCount(out, "bug list"); k > 0 && k < bigBugs-bigKept {
 				checked["bugs"] = true
-				if olderCount(out, "qa list") != bigQuestions || strings.Contains(out, fmt.Sprintf("Bug number %02d ", k-1)) || !strings.Contains(out, fmt.Sprintf("Bug number %02d ", k)) {
+				if olderCount(out, "qa list") != bigQuestions-bigKept || strings.Contains(out, fmt.Sprintf("Bug number %02d ", k-1)) || !strings.Contains(out, fmt.Sprintf("Bug number %02d ", k)) {
 					t.Errorf("budget %d: %d older bugs are left out, and that is not the oldest %d:\n%s", budget, k, k, out)
 				}
 			}
 			if k := olderCount(out, "todo list"); k > 0 && k < bigTodos {
 				checked["todos"] = true
 				if strings.Contains(out, fmt.Sprintf("Todo number %02d ", k-1)) || !strings.Contains(out, fmt.Sprintf("Todo number %02d ", k)) ||
-					!strings.Contains(out, fmt.Sprintf("Todo number %02d ", bigTodos-1)) || contextFacts(out).threadsShown != 0 {
-					t.Errorf("budget %d: %d older todos are left out, and that is not the oldest %d", budget, k, k)
+					!strings.Contains(out, fmt.Sprintf("Todo number %02d ", bigTodos-1)) ||
+					olderCount(out, "qa list") != bigQuestions-bigKept || olderCount(out, "bug list") != bigBugs-bigKept {
+					t.Errorf("budget %d: %d older todos are left out, and that is not the oldest %d, or questions and bugs were not cut to the newest %d first", budget, k, k, bigKept)
 				}
 			}
 		}
@@ -411,10 +421,27 @@ func TestContextBudget(t *testing.T) {
 		}
 	})
 
+	t.Run("the newest questions and bugs are never left out, whatever the budget", func(t *testing.T) {
+		for _, budget := range []string{"1", "100", "300", "600", "1000", "2000", "0"} {
+			out := mustRun(h, "context", "--max-tokens", budget)
+			for i := 0; i < bigKept; i++ {
+				for _, want := range []string{fmt.Sprintf("Question number %02d ", bigQuestions-1-i), fmt.Sprintf("Bug number %02d ", bigBugs-1-i)} {
+					if !strings.Contains(out, want) {
+						t.Errorf("--max-tokens %s: %q is missing:\n%s", budget, want, out)
+					}
+				}
+			}
+			if strings.Contains(out, fmt.Sprintf("Question number %02d ", 0)) && budget != "0" && budget != "2000" && budget != "1000" {
+				t.Errorf("--max-tokens %s: the oldest question is still shown", budget)
+			}
+		}
+	})
+
 	t.Run("more than the fixed parts can hold is printed as it is", func(t *testing.T) {
 		code, out, errOut := h.run("context", "--max-tokens", "1")
 		wantExit(t, code, 0, "", errOut)
-		if !strings.Contains(out, "This is the process record") || !strings.Contains(out, fmt.Sprintf("## Open todos (%d)", bigTodos)) || strings.Contains(out, "Todo number") {
+		if !strings.Contains(out, "This is the process record") || !strings.Contains(out, fmt.Sprintf("## Open todos (%d)", bigTodos)) || strings.Contains(out, "Todo number") ||
+			contextFacts(out).threadsShown != 2*bigKept {
 			t.Errorf("stdout:\n%s", out)
 		}
 	})

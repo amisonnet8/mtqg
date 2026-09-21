@@ -783,13 +783,14 @@ Read full entries with mtqg show <id>.
 - **Budget.** `--max-tokens N` sets it (default 2000; `0` means no limit). It is
   **an estimate from the number of characters, not a token count**: 4 ASCII
   characters count as 1 token, and every other character counts as 1. The
-  header, the instructions, Attention, the headings and the last line are never
-  left out. When the text is over budget, mtqg leaves out, in this order and
-  only as much as it takes: recent records (10, then 5, then 3, then none), the
-  definitions of the glossary (leaving each word), the latest answers and
-  replies, the oldest questions and bugs (of both sections together, one at a
-  time), the oldest todos (one at a time). If that is not enough, the text is
-  printed as it is.
+  header, the instructions, Attention, the headings, the last line and **the
+  newest 3 questions and the newest 3 bugs** are never left out: what is open and
+  undecided must stay in view. When the text is over budget, mtqg leaves out, in
+  this order and only as much as it takes: recent records (10, then 5, then 3,
+  then none), the definitions of the glossary (leaving each word), the latest
+  answers and replies, the oldest questions and bugs beyond those 3 of each (of
+  both sections together, one at a time), the oldest todos (one at a time, down
+  to none). If that is not enough, the text is printed as it is.
 - What is left out is always said, in its section, with where to read it:
   `- (7 more; see mtqg log)`, `- (3 older; see mtqg todo list)`,
   `- (definitions left out; see mtqg glossary list)`,

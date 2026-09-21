@@ -14,14 +14,19 @@ on, the compatibility rules in [Versioning](#versioning) apply.
 
 mtqg keeps the part of a project's process that does not survive in the code:
 things noticed while working, things to do, questions and their answers, and
-agreed terms. There are four kinds of record:
+agreed terms. There are five kinds of record:
 
 | Kind | Meaning | State |
 |---|---|---|
 | `memo` | Free-form note. Decisions, findings, reasons, hand-overs | none |
 | `todo` | Something to do | `open` / `done` |
 | `qa` | A question, or an answer to a question | questions: `open` / `done`; answers: none |
+| `bug` | A bug report, and the exchange about it (a reply to it) | bugs: `open` / `done`; replies: none |
 | `glossary` | A term (`word`) and its definition (`text`) | none |
+
+`qa` and `bug` have the same shape: a record that can be replied to, and its
+replies. They differ in what they are about. A bug is `done` when it is fixed or
+no longer pursued.
 
 Versioning is left to git. mtqg only **appends** lines; changes, answers,
 corrections and deletions are all expressed as new lines.
@@ -63,7 +68,9 @@ Example:
 {"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"Support C syntax","v":0,"ts":"2026-09-17T00:00:00Z","author":{"kind":"human","name":"yamada"}}
 {"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"Should nested block comments be supported?","v":0,"ts":"2026-09-17T00:10:00Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"Not in the first version. Revisit if there is demand","v":0,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}
+{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"Parser crashes on empty input","v":0,"ts":"2026-09-17T00:50:00Z","author":{"kind":"human","name":"yamada"}}
 {"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"token","text":"The smallest unit produced by lexing","v":0,"ts":"2026-09-17T01:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"Reproduced on macOS too. The empty file has no first token","v":0,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}
 ```
 
@@ -73,10 +80,10 @@ Example:
 |---|---|---|---|
 | `id` | string | all | ID of the record the event is about (see [IDs](#ids)) |
 | `op` | string | all | `create`, `status`, `edit` or `delete` |
-| `type` | string | `create` | `memo`, `todo`, `qa` or `glossary` |
-| `re` | string | `create` of an answer | ID of the question this answer belongs to |
+| `type` | string | `create` | `memo`, `todo`, `qa`, `bug` or `glossary` |
+| `re` | string | `create` of an answer or a reply | ID of the record this one replies to. It has the same `type` as this one |
 | `from` | string | `status` | state before the change, as the writer saw it |
-| `status` | string | `create` of todo / question, `status` | state after the event (`open` or `done`) |
+| `status` | string | `create` of todo / question / bug, `status` | state after the event (`open` or `done`) |
 | `word` | string | `create` of glossary | the term |
 | `text` | string | `create`, `edit` | body text. For glossary, the definition |
 | `at` | object | optional | where in the project the record was written about (see below) |
@@ -101,16 +108,21 @@ AI wrote it on their behalf).
 
 | `op` | Meaning | Fields |
 |---|---|---|
-| `create` | a new record | `type`, `text`; `word` for glossary; `status:"open"` for todo and questions; `re` for answers |
-| `status` | state change of a todo or a question | `from`, `status` |
+| `create` | a new record | `type`, `text`; `word` for glossary; `status:"open"` for todo, questions and bugs; `re` for answers and replies |
+| `status` | state change of a todo, a question or a bug | `from`, `status` |
 | `edit` | replace the body text | `text` |
 | `delete` | hide the record | none |
 
 - A `qa` record with `re` is an **answer**; without `re` it is a **question**.
-  Answers cannot have answers. Only answers have `re`.
+  A `bug` record with `re` is a **reply**; without `re` it is a **bug**.
+  Answers and replies cannot be replied to. Only answers and replies have `re`.
+- **A reply has the same `type` as the record it replies to**: `re` of a `qa`
+  record is the ID of a question, and `re` of a `bug` record is the ID of a
+  bug. A record whose `re` names a record of another `type` is not a reply to
+  it.
 - `edit` replaces `text` only. A glossary `word` cannot be changed.
-- `delete` hides the record from normal view. Deleting a question also hides
-  its answers. The lines remain in the file and in git history.
+- `delete` hides the record from normal view. Deleting a question or a bug also
+  hides its answers or replies. The lines remain in the file and in git history.
 
 ## IDs
 
@@ -185,7 +197,8 @@ event** falls in the date range from `journal.jsonl` to
 |---|---|
 | `todo` | state is `done` |
 | `qa` question | state is `done`; its answers move with it |
-| `memo` | always (answers follow their question instead) |
+| `bug` | state is `done`; its replies move with it |
+| `memo` | always (answers and replies follow their question or bug instead) |
 | `glossary` | never |
 
 All events of an item move together. To restore, append the archive file to

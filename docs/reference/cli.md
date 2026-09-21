@@ -12,24 +12,27 @@ any language. The storage format is described in [schema.md](schema.md).
 
 ## Kinds and verbs
 
-| | memo (`m`) | todo (`t`) | qa (`q`) | glossary (`g`) |
+| Kind | `add` | `done` | `reopen` | `list` |
 |---|---|---|---|---|
-| `add` | `add <text>` | `add <text>` | `add <question>`<br>`add <question-id> <answer>` | `add <word> <definition>` |
-| `done` | — | `done <id>` | `done <question-id>` | — |
-| `reopen` | — | `reopen <id>` | `reopen <question-id>` | — |
-| `list` | all | open (`--all`: all) | open (`--all`: all) | all |
+| memo (`m`) | `add <text>` | — | — | all |
+| todo (`t`) | `add <text>` | `done <id>` | `reopen <id>` | open (`--all`: all) |
+| qa (`q`) | `add <question>`<br>`add <question-id> <answer>` | `done <question-id>` | `reopen <question-id>` | open (`--all`: all) |
+| bug (`b`) | `add <bug>`<br>`add <bug-id> <reply>` | `done <bug-id>` | `reopen <bug-id>` | open (`--all`: all) |
+| glossary (`g`) | `add <word> <definition>` | — | — | all |
 
 - A kind can be abbreviated to one letter: `mtqg t add ...` is `mtqg todo add ...`.
   The verb is always required.
 - Using a verb on a record of the wrong kind (for example `mtqg qa done` with a
   todo ID) is an error that names the right command.
+- `qa` and `bug` work the same way. See
+  [Questions, answers, bugs and replies](#questions-answers-bugs-and-replies).
 
 ## Other commands
 
 | Command | Description |
 |---|---|
 | `mtqg edit <id> <text>` | Replace the text of a record. For glossary, the definition; the word cannot change |
-| `mtqg delete <id>` | Hide a record. Deleting a question also hides its answers |
+| `mtqg delete <id>` | Hide a record. Deleting a question or a bug also hides its answers or replies |
 | `mtqg undo` | Remove the last line written from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
 | `mtqg log [--limit N] [--kind K]` | Records of all kinds, newest first |
@@ -129,6 +132,7 @@ Commit it to share the records.
 mtqg m add Use English for all error messages
 mtqg t add Skip block comments
 mtqg q add Should nested block comments be supported?
+mtqg b add Parser crashes on empty input
 mtqg g add token The smallest unit produced by lexing
 ```
 
@@ -137,18 +141,20 @@ mtqg g add token The smallest unit produced by lexing
 - For glossary, the first argument is the word and the rest is the definition.
   A word of several words needs quotes:
   `mtqg g add "block comment" A comment enclosed in /* and */`
-- `mtqg q add <question-id> <text>` adds an answer instead of a question (see
-  [Questions and answers](#questions-and-answers)).
+- `mtqg q add <question-id> <text>` adds an answer instead of a question, and
+  `mtqg b add <bug-id> <text>` adds a reply instead of a bug (see
+  [Questions, answers, bugs and replies](#questions-answers-bugs-and-replies)).
 - `-` instead of the text reads it from standard input, to its end. Trailing
   line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
-- No arguments at all (`mtqg m add`, `mtqg t add`, `mtqg q add`) opens
-  `$EDITOR` on an empty file, and what is saved is the text (trailing line
+- No arguments at all (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`)
+  opens `$EDITOR` on an empty file, and what is saved is the text (trailing line
   breaks dropped). `$EDITOR` may hold arguments and quotes (`code --wait`); it
   is not run through a shell. If `$EDITOR` is not set, mtqg stops and says so.
 - Only that case opens the editor. A part that is missing is a mistake in the
   command line, and nothing is written: `mtqg q add <question-id>` (no answer),
-  `mtqg g add` (no word) and `mtqg g add <word>` (no definition). The text of
-  an answer or a definition can be `-`, to read it from standard input.
+  `mtqg b add <bug-id>` (no reply), `mtqg g add` (no word) and
+  `mtqg g add <word>` (no definition). The text of an answer, a reply or a
+  definition can be `-`, to read it from standard input.
 - A text can have several lines (from standard input or the editor). `list`
   shows the first line only.
 - A text that is empty, or only white space, is an error
@@ -176,33 +182,47 @@ Reopened: 6cad4a268d  Skip block comments /* */
 - If the todo is already in that state, nothing is written and the line says so
   (`Already done: ...`, `Already open: ...`). The exit code is 0: repeating a
   change is not an error.
-- `mtqg q done` and `mtqg q reopen` do the same for a question.
-- Only todos and questions have a state. For the ID of any other record, mtqg
-  stops and says what it is. If another command is the right one, it names it:
-  `81e74ef5e8 is a memo, not a todo`, and
-  `2217beaddb is a question, not a todo; use `mtqg qa done 2217beaddb``.
+- `mtqg q done` and `mtqg q reopen` do the same for a question, and
+  `mtqg b done` and `mtqg b reopen` for a bug.
+- Only todos, questions and bugs have a state. For the ID of any other record,
+  mtqg stops and says what it is. If another command is the right one, it names
+  it: `81e74ef5e8 is a memo, not a todo`,
+  `2217beaddb is a question, not a todo; use `mtqg qa done 2217beaddb``, and
+  `7f3a2b1c09 is a bug, not a question; use `mtqg bug done 7f3a2b1c09``.
 
-## Questions and answers
+## Questions, answers, bugs and replies
+
+A question and a bug have the same shape: a record that can be answered, which is
+open until it is closed. They differ in what they are about. A question asks
+something. A bug reports something that does not work, and the exchange about it;
+it is closed when it is fixed or no longer pursued. Everything below holds for
+both, with the words *bug* and *reply* where a question has *question* and
+*answer*.
 
 - `mtqg q add <text>` adds a question. `mtqg q add <question-id> <text>` adds an
-  answer to that question. An answer has its own ID, and its `re` holds the full
-  ID of the question.
+  answer to that question. `mtqg b add <text>` adds a bug, and
+  `mtqg b add <bug-id> <text>` adds a reply to that bug. An answer or a reply has
+  its own ID, and its `re` holds the full ID of the question or the bug.
 - Answering and closing are separate: `mtqg q done <question-id>` closes the
-  question. Any number of answers can be added; none replaces another. A closed
-  question can still be answered.
-- Only questions can have answers. Answers cannot be answered.
+  question, and `mtqg b done <bug-id>` closes the bug. Any number of answers or
+  replies can be added; none replaces another. A closed question or bug can
+  still be answered or replied to.
+- Only questions and bugs can have answers or replies. Answers and replies cannot
+  be answered. An answer is always to a question, and a reply always to a bug:
+  `mtqg b add <question-id> <text>` is an error that says the ID is a question.
 
-### Question or answer?
+### Question or answer? Bug or reply?
 
-`q add` tells them apart by its first argument alone. If the first argument is
-**4 or more hex digits and nothing else** (`0-9`, `a-f`; upper case is read as
-lower case), it is the ID of the question to answer, and the rest is the text of
-the answer. Any other first argument makes the whole text a new question.
+`q add` and `b add` tell them apart by their first argument alone. If the first
+argument is **4 or more hex digits and nothing else** (`0-9`, `a-f`; upper case is
+read as lower case), it is the ID of the question to answer (or the bug to reply
+to), and the rest is the text of the answer (or the reply). Any other first
+argument makes the whole text a new question (or bug).
 
 | The first argument, made of 4 or more hex digits, matches | Result |
 |---|---|
-| one question | the rest is added as an answer to it |
-| one record that is not a question | error that says what it is |
+| one question (`q add`) or one bug (`b add`) | the rest is added as an answer or a reply to it |
+| one record that is not a question (`q add`) or not a bug (`b add`) | error that says what it is |
 | more than one record | error that lists the candidates with their full IDs |
 | no record | error, and nothing is written |
 
@@ -212,30 +232,33 @@ No record matches "a8ec". A first word of 4 or more hex digits is read as the ID
 To ask a question that starts with it, put the whole text in quotes: mtqg qa add "a8ec ..."
 ```
 
+For `b add` the same error reads `... the ID of the bug to reply to.` and
+`To report a bug that starts with it, ...: mtqg bug add "a8ec ..."`.
+
 - A text in quotes is one argument. With a space in it, it is not hex digits
   only, so it is never an ID: `mtqg q add "a8ec What does this mean?"` asks a
   question, and `mtqg q add a8ec Not found error code` answers the question
   `a8ec`.
-- No record matching is an error, not a question, so that a mistyped ID never
-  turns into a new question without a word. A question in English whose first
+- No record matching is an error, not a new record, so that a mistyped ID never
+  turns into a new question or bug without a word. A text in English whose first
   word is made of hex digits (`Face detection is slow. Why?`, `Dead code: remove
-  it?`) stops the same way; quote the whole text. A question of one such word
-  can be given on standard input.
+  it?`) stops the same way; quote the whole text. A text of one such word can be
+  given on standard input.
 - The ID with no text after it is an error, and nothing is written.
 
-A question is in one of four states:
+A question or a bug is in one of four states:
 
-| State | Answers | Closed | Shown by `qa list` |
+| State | Answers or replies | Closed | Shown by `qa list` and `bug list` |
 |---|---|---|---|
 | unanswered | 0 | no | yes |
-| awaiting confirmation | 1 or more | no | yes, with the number of answers |
+| awaiting confirmation | 1 or more | no | yes, with the number of answers or replies |
 | answered | 1 or more | yes | with `--all` |
 | closed without answer | 0 | yes | with `--all` |
 
 | ID given | Allowed |
 |---|---|
-| question | `q add` (answer), `q done`, `q reopen`, `edit`, `delete` (hides its answers too) |
-| answer | `edit`, `delete` (that answer only; the question's state is unchanged) |
+| question or bug | `add` (answer or reply), `done`, `reopen`, `edit`, `delete` (hides its answers or replies too) |
+| answer or reply | `edit`, `delete` (that answer or reply only; the question's or bug's state is unchanged) |
 
 ## IDs
 
@@ -301,14 +324,16 @@ Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a
 $ mtqg status
 Open todos          5
 Open questions      2  (1 awaiting confirmation)
+Open bugs           1
 Glossary            4  (1 with duplicate definitions)
 
 Uncommitted records 3
 ```
 
 - Each line is a count. `Open questions` counts the questions that are not
-  closed, and `awaiting confirmation` those of them that have an answer.
-  `Glossary` counts the entries, and `with duplicate definitions` the words that
+  closed, and `awaiting confirmation` those of them that have an answer. `Open
+  bugs` counts the bugs that are not closed the same way (`awaiting
+  confirmation` are those that have a reply). `Glossary` counts the entries, and `with duplicate definitions` the words that
   are defined more than once (the same word, character for character).
   `Uncommitted records` is the number of records that have
   at least one line in `journal.jsonl` that is not in the last commit (`HEAD`):
@@ -347,17 +372,19 @@ c3b1f0d2e4  Which license should the parser use?                  yamada       2
 2 open, 1 done
 ```
 
-`qa list` ends each question with its state, and shows the latest answer under
-it, indented, with its author and time:
+`qa list` and `bug list` are laid out the same way. Each question or bug ends
+with its state, and the latest answer or reply is shown under it, indented, with
+its author and time:
 
-| State | Meaning |
-|---|---|
-| `unanswered` | open, no answers |
-| `N answers, awaiting confirmation` | open, with answers |
-| `N answers, done` | closed, with answers (`--all`) |
-| `done without answers` | closed, no answers (`--all`) |
+| State of a question | State of a bug | Meaning |
+|---|---|---|
+| `unanswered` | `no replies` | open, nothing added |
+| `N answers, awaiting confirmation` | `N replies, awaiting confirmation` | open, with answers or replies |
+| `N answers, done` | `N replies, done` | closed, with answers or replies (`--all`) |
+| `done without answers` | `done without replies` | closed, nothing added (`--all`) |
 
-An answer whose question is not in the journal is not listed.
+An answer whose question is not in the journal, or a reply whose bug is not, is
+not listed.
 
 ```
 $ mtqg glossary list
@@ -410,17 +437,19 @@ Events
   2026-09-21 09:41  create  yamada (human)    answer 95e761d177
 ```
 
-- The first line names the kind (`memo`, `todo`, `question`, `answer` or
-  `glossary`), the ID and, for a todo or a question, its state. The second line
+- The first line names the kind (`memo`, `todo`, `question`, `answer`, `bug`,
+  `reply` or `glossary`), the ID and, for a todo, a question or a bug, its
+  state. The second line
   says who wrote it and when, with the kind of author.
 - The text is shown in full, with every line of it, however the output is
   read. Control characters are replaced as in a list. A glossary entry shows
   `Word: <word>` before its definition. An answer shows the question it belongs
-  to.
-- A question lists its answers, oldest first, each with its author and time.
+  to, and a reply the bug.
+- A question lists its answers, and a bug its replies (`Replies (2)`), oldest
+  first, each with its author and time.
 - `Events` lists what happened to the record, oldest first, with the full local
   date and time: its own events (`create`, `status` as `open -> done`, `edit`,
-  `delete`) and, for a question, the creation of each answer.
+  `delete`) and, for a question or a bug, the creation of each answer or reply.
 
 ### log
 
@@ -445,16 +474,17 @@ $ mtqg log --kind qa
 ```
 
 - Every record that is not hidden, of every kind, one line each, **newest
-  first**: the time, the kind (`memo`, `todo`, `question`, `answer`,
-  `glossary`), the ID, the text and the author. A glossary entry shows its word,
-  a colon and its definition. An answer starts with `(to <id>)`, the question it
-  belongs to. A finished todo or question ends with `done`.
+  first**: the time, the kind (`memo`, `todo`, `question`, `answer`, `bug`,
+  `reply`, `glossary`), the ID, the text and the author. A glossary entry shows
+  its word, a colon and its definition. An answer or a reply starts with
+  `(to <id>)`, the question or bug it belongs to. A finished todo, question or
+  bug ends with `done`.
 - The time is `HH:MM` for today and `YYYY-MM-DD` for any other day, the time the
   record was created. The text follows the rules of a list (first line only, cut
   only on a terminal, control characters replaced).
 - `--limit N` shows the newest `N` records; the default is 20, and `0` shows all.
-  `--kind K` shows one kind only: `memo`, `todo`, `qa` (questions and answers) or
-  `glossary`, or the letter. Both may be written `--limit=N`. A value that is not
+  `--kind K` shows one kind only: `memo`, `todo`, `qa` (questions and answers),
+  `bug` (bugs and replies) or `glossary`, or the letter. Both may be written `--limit=N`. A value that is not
   a whole number of 0 or more, or a kind that does not exist, is a mistake in the
   command line.
 - The last line counts the records: `N records`, or `N of M records (--limit 0
@@ -511,6 +541,10 @@ This is the process record of this project. Read the following before you start 
 - 1012f037b6  Should nested block comments be supported? (awaiting confirmation, 09:10)
     └ Not in the first version. Revisit if there is demand (yamada, human)
 
+## Open bugs (1)
+- 7f3a2b1c09 Parser crashes on empty input (awaiting confirmation, yamada, 10:41)
+    └ Reproduced on macOS too (claude-code, ai)
+
 ## Recent records (10, newest first)
 - 11:24 claude-code glossary lexing: Reading source and turning it into a sequence of tokens
 - 10:32 yamada      memo     Policy: use English for all error messages
@@ -527,12 +561,12 @@ This is the process record of this project. Read the following before you start 
 Read full entries with mtqg show <id>.
 ```
 
-- Sections, in order: Attention, Open todos, Open questions, Recent records,
-  Glossary. Empty sections are omitted.
+- Sections, in order: Attention, Open todos, Open questions, Open bugs, Recent
+  records, Glossary. Empty sections are omitted.
 - Every item carries its ID, author and time. Text is cut to one line.
 - Default budget: about 2000 tokens (`--max-tokens N` to change). Over budget,
   mtqg drops, in order: recent records (10 → 5 → 3 → 0), glossary definitions
-  (then glossary words), answer texts, older questions. Open todos are not
+  (then glossary words), answer and reply texts, older questions and bugs. Open todos are not
   dropped; if still over budget, the list is shortened and ends with `(N more)`.
 - Omissions always say how many were left out and where to read them.
 - With `--json`: one array per section, whether it was cut, and the total counts.
@@ -597,8 +631,8 @@ than digits, `-` and `.`.
 ```
 $ mtqg archive 2021-0101..202409-18
 Range: 2021-01-01..2024-09-18
-Archived: 412 memos, 138 todos, 57 questions -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
-Skipped: 3 open todos, 1 open question, 24 glossary entries
+Archived: 412 memos, 138 todos, 57 questions, 12 bugs -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
+Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
 ```
 
 - The first line always shows how the range was read.

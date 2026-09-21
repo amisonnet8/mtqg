@@ -49,6 +49,7 @@ mtqgの実装計画・進捗管理ドキュメント。実装が進むにつれ�
    - ロックの並行テスト（追記どうし、追記と書き直し）、`make race`
 3. **Step 3: CLI順1** — `init`、`m add`、`t add`、`t done`、`t list`、`status`。モデル層はここから、各コマンドに要る分だけ足していく（Step 3〜9共通）。**これだけでGoogle Keepの代わりになる。ここから自分で使い始められる**
 4. **Step 4: CLI順2** — `q add`（質問・回答）／`done`／`reopen`／`list`、`g add`／`list`、`show`、`log`。4種類が揃う
+   - **Step 4.5: 5つ目の種類`bug`**（2026-09-21に挿入。Step 5〜9の番号は変えない）— `bug add`（不具合と返信）／`done`／`reopen`／`list`。qaと同じ形（親＋`re`を持つ返信）で、データ形式は`type`に`bug`を足すだけ。`--json`の形は外部との約束になるので、種類が5つ揃ってからStep 5に入る
 5. **Step 5: CLI順3** — `context`、全コマンドの`--json`。AIに渡せる
 6. **Step 6: CLI順4** — `edit`、`delete`、`undo`、`search`、`review`、`format`
 7. **Step 7: CLI順5** — `archive`（`-n`を含む）
@@ -63,7 +64,13 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4（CLI順2）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
+**段階1 Step 4.5（5つ目の種類`bug`）：着手（2026-09-21）。** ユーザーの決定で`bug`を足す（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。計画は承認済み。次はStep 5（`context`と全コマンドの`--json`）。
+
+**決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** 返信の呼び名は`reply`（`show`・`log`の種類の列は memo / todo / question / answer / bug / reply / glossary）。Step 4.5として独立させ、CIを通してからStep 5に入る。仕様書でのbugは「不具合そのもの」（不具合の報告と、そのやり取り。`done`は、直った／もう追わない）。**名前は`mtqg`のまま**（設計§3の「要判断」を「改名しない」と決定）。課題管理への線引きは設計§2.7に足した：bugはqaと同じ形（親＋返信、open/doneだけ）に留め、重要度・担当者・再現手順・影響バージョンの欄は持たない。
+
+**進み具合：** 仕様（`schema.md`・`cli.md`とその日本語版、ルール類、設計文書）を更新済み。次にモデル層（`Parents`・`Replies`・`ParentCreate`・`ReplyCreate`、種類をまたぐ`re`は結び付けない）、CLIの層（`kindSpec`の表、`thread.go`）、e2e、実際の出力での例の差し替え、の順。
+
+**（前の状態）段階1 Step 4（CLI順2）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
 
 **できたもの：** モデル層に、質問と回答（`Questions`・`Answers`・`HasQuestion`）、`Glossary`、`DuplicateWords`、`All`、`History`、`QuestionCreate`・`AnswerCreate`・`GlossaryCreate`、`Summary`の拡張、IDの最短4桁（`MinIDDigits`・`IsIDLike`・`TooShortError`）。質問を消すと回答も隠れる判定（`visible`）。CLIの層に、`q add`（質問と回答）・`q list`・`q done`／`reopen`、`g add`・`g list`、`show`、`log`（`--limit`・`--kind`）、`status`の`Open questions`・`Glossary`の行。一覧の整形は表の関数1つ（`formatTable`）にまとめ、todo・質問・用語・`log`が使う。コマンドごとの「値を取るオプション」と「必須の語数」を文法の表に持たせた。
 
@@ -232,7 +239,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 日本語版は同じ内容を日本語で書く。**これ以上足さない。** 足したくなったら、それは看板の仕事なので最後に回す。
 
-材料：名前の由来を縦に並べて見せる。
+材料：名前の由来を縦に並べて見せる（`bug`はqaの隣に添える。見せ方は、看板のREADMEを作るときに決める）。
 
 ```
 (m)emo
@@ -243,7 +250,9 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **GitHubのDescription（仮決め。看板のREADMEを作るときに一緒に見直す）**
 
-> mtqg - (m)emo, (t)odo, (q)a, (g)lossary: a project journal in your git repo, for humans and AI agents.
+> mtqg - (m)emo, (t)odo, (q)a & bugs, (g)lossary: a project journal in your git repo, for humans and AI agents.
+
+`bug`を足した（2026-09-21）ので、`(q)a`のあとに`& bugs`を添えた。名前は変えない（設計§3）。GitHubの設定（Description）は人間が変える。
 
 未完成の間は、末尾に`(work in progress)`を足す。READMEを開かない人にも伝わるようにするため。
 

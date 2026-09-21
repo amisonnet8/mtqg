@@ -4,6 +4,7 @@
 
 - **`mtqg`は常に小文字**で書く。文頭でも`Mtqg`・`MTQG`にしない（コマンド名とそろえる）
 - 由来は **(m)emo・(t)odo・(q)a・(g)lossary**。順序にも意味がある（設計§3）
+- **`bug`を足したが、名前は変えない**（設計§3。GitHubのDescriptionは`(q)a & bugs`と書く）。今後、種類が増えても改名しない
 - 旧称（tdmqa、tmqg）は使わない
 
 ## 用語の対応
@@ -13,13 +14,15 @@
 | 日本語（設計文書・対話） | 英語（コード・出力・reference） | 補足 |
 |---|---|---|
 | 記録 | record | memo・todo・qa・glossaryの1件 |
-| 種類 | kind | memo / todo / qa / glossary。JSONのフィールド名は`type` |
+| 種類 | kind | memo / todo / qa / bug / glossary。JSONのフィールド名は`type` |
 | イベント | event | `journal.jsonl`の1行 |
 | ジャーナル | journal | `journal.jsonl` |
 | ID、短縮ID、完全なID | ID, short ID, full ID | 完全なIDは16進32桁、短縮IDは表示用の先頭10桁 |
 | 記録者 | author | `author.kind`（`human`/`ai`）と`author.name` |
 | 端末識別子 | terminal ID | フィールド名は`tty` |
 | 質問 / 回答 | question / answer | どちらも`type:"qa"`。回答は`re`を持つ |
+| バグ / 返信 | bug / reply | どちらも`type:"bug"`。返信は`re`を持つ。バグは不具合の報告とそのやり取り（課題管理ではない・設計§2.7） |
+| 親の記録 | parent | 回答・返信の`re`が指す、質問・バグ。返信は親と同じ`type`を持つ |
 | 用語 / 定義 | word / definition | glossaryの`word`と`text` |
 | 未完了・未クローズ / 完了 | open / done | 状態の値 |
 | 確定待ち | awaiting confirmation | 回答はあるが閉じていない質問 |
@@ -30,7 +33,7 @@
 
 ## 表示する種類の名前
 
-`show`・`log`・エラー文言に出す種類の名前は、`memo`・`todo`・`question`・`answer`・`glossary`（モデル層の`Record.Kind()`。文の中では`glossary entry`）。JSONの`type`は`qa`のままで、質問と回答は`re`の有無で見分ける。`log --kind`の値は`type`と同じ`memo`・`todo`・`qa`・`glossary`（1文字も可）で、`qa`は質問と回答の両方。
+`show`・`log`・エラー文言に出す種類の名前は、`memo`・`todo`・`question`・`answer`・`bug`・`reply`・`glossary`（モデル層の`Record.Kind()`。文の中では`glossary entry`）。JSONの`type`は`qa`と`bug`のままで、質問と回答、バグと返信は`re`の有無で見分ける。`log --kind`の値は`type`と同じ`memo`・`todo`・`qa`・`bug`・`glossary`（1文字も可）で、`qa`は質問と回答の両方、`bug`はバグと返信の両方。
 
 ## コマンド
 

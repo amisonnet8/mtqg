@@ -86,9 +86,15 @@ type State struct {
 //
 // The order is by time (ts) and, for the same time, by ID: the order of lines in
 // the file carries no meaning, because a merge does not keep it. Events that
-// belong to one record and have the same time are told apart by what they do (a
-// create comes before a change), and after that by the order they were given in,
+// belong to one record and have the same time are told apart by what they do
+// (an edit before a delete), and after that by the order they were given in,
 // which is the one place where the order of lines counts.
+//
+// A record starts with its create, whatever the times say. A change whose time
+// is earlier than the create of its record still counts, applied after it, in
+// order with the other changes: the clock of the machine that made the change
+// may run behind the one that made the record, and dropping the change would
+// lose what that person did.
 //
 // An event for an ID that no create started is ignored (its record may have
 // been archived). A second create of an ID is ignored. Events that are repeated
@@ -97,44 +103,56 @@ type State struct {
 func Build(events []journal.Event) *State {
 	ordered := sortEvents(events)
 	state := &State{byID: make(map[string]*Record, len(ordered))}
+
+	// First the records: the earliest create of each ID.
 	for _, ev := range ordered {
+		if ev.Op != journal.OpCreate {
+			continue
+		}
+		if _, exists := state.byID[ev.ID]; exists {
+			continue
+		}
+		rec := &Record{
+			ID: ev.ID, Type: ev.Type, Text: ev.Text, Word: ev.Word, Re: ev.Re,
+			Author: ev.Author, Created: parseTime(ev.TS),
+		}
+		if rec.HasState() {
+			rec.Status = ev.Status
+			if rec.Status != journal.StatusDone {
+				rec.Status = journal.StatusOpen
+			}
+		}
+		state.byID[ev.ID] = rec
+		state.records = append(state.records, rec)
+	}
+
+	// Then every event, in order, is added to its record and applied. The create
+	// that started the record is already applied; another create is skipped.
+	created := make(map[string]bool, len(state.records))
+	for _, ev := range ordered {
+		rec := state.byID[ev.ID]
+		if rec == nil {
+			continue
+		}
 		at := parseTime(ev.TS)
 		switch ev.Op {
 		case journal.OpCreate:
-			if _, exists := state.byID[ev.ID]; exists {
+			if created[ev.ID] {
 				continue
 			}
-			rec := &Record{
-				ID: ev.ID, Type: ev.Type, Text: ev.Text, Word: ev.Word, Re: ev.Re,
-				Author: ev.Author, Created: at,
-			}
-			if rec.HasState() {
-				rec.Status = ev.Status
-				if rec.Status != journal.StatusDone {
-					rec.Status = journal.StatusOpen
-				}
-			}
-			state.byID[ev.ID] = rec
-			state.records = append(state.records, rec)
-			rec.record(ev, at)
+			created[ev.ID] = true
 		case journal.OpStatus:
-			if rec := state.byID[ev.ID]; rec != nil {
-				if rec.HasState() && (ev.Status == journal.StatusOpen || ev.Status == journal.StatusDone) {
-					rec.Status = ev.Status
-				}
-				rec.record(ev, at)
+			if rec.HasState() && (ev.Status == journal.StatusOpen || ev.Status == journal.StatusDone) {
+				rec.Status = ev.Status
 			}
 		case journal.OpEdit:
-			if rec := state.byID[ev.ID]; rec != nil {
-				rec.Text = ev.Text
-				rec.record(ev, at)
-			}
+			rec.Text = ev.Text
 		case journal.OpDelete:
-			if rec := state.byID[ev.ID]; rec != nil {
-				rec.Deleted = true
-				rec.record(ev, at)
-			}
+			rec.Deleted = true
+		default:
+			continue
 		}
+		rec.record(ev, at)
 	}
 	return state
 }

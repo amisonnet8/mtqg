@@ -189,6 +189,26 @@ func TestBuildToleratesWhatIsOddInAJournal(t *testing.T) {
 		}
 	})
 
+	t.Run("a change from a clock that runs behind still counts", func(t *testing.T) {
+		// The todo was made at minute 10 on one machine; another machine, whose
+		// clock is behind, marked it done at minute 5. The change is not lost.
+		state := Build([]journal.Event{
+			status(idTodoA, "open", "done", 5, agent),
+			create(idTodoA, journal.TypeTodo, "x", 10),
+			{ID: idTodoA, Op: journal.OpEdit, Text: "x, edited", TS: at(4), Author: human},
+		})
+		rec := state.Record(idTodoA)
+		if rec == nil || rec.Status != journal.StatusDone || rec.Text != "x, edited" {
+			t.Fatalf("got %+v, want a done todo with the edited text", rec)
+		}
+		if len(rec.Events) != 3 {
+			t.Errorf("got %d events, want 3", len(rec.Events))
+		}
+		if !rec.Created.Equal(time.Date(2026, 9, 17, 10, 10, 0, 0, time.UTC)) {
+			t.Errorf("created = %s, want the time of the create", rec.Created)
+		}
+	})
+
 	t.Run("a ts that cannot be read does not stop anything", func(t *testing.T) {
 		broken := create(idMemo, journal.TypeMemo, "broken ts", 0)
 		broken.TS = "yesterday"

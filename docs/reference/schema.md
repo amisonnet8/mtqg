@@ -133,7 +133,10 @@ AI wrote it on their behalf).
    order of lines in the file.** Clock skew between machines can reorder
    events; that is accepted.
 4. Apply events per `id` in that order: `create` starts a record, `status` sets
-   its state, `edit` replaces its text, `delete` hides it.
+   its state, `edit` replaces its text, `delete` hides it. An event whose time
+   is earlier than the `create` of its record (the clock of the writer runs
+   behind) still counts: it is applied after the `create`, in order with the
+   other changes. An event for an `id` that has no `create` is ignored.
 5. Ignore fields you do not know.
 
 Repeated events are not errors. If the same state change appears more than

@@ -143,7 +143,7 @@ What each command prints, after `command`:
 | `undo` | `event`: the line that was removed, in the form of [schema.md](schema.md), and `record`: the record it belongs to as it was before, if it is in the journal |
 | `search` | `query`, `records` (newest first), `count` |
 | `review` | `concurrent_status_changes`: `{"record", "changes"}` for each record, with `changes` as lines of `journal.jsonl`; `duplicate_words`: `{"word", "records"}`; `unattached_replies`: `{"record", "re_record"}`, with `re_record` left out if the `re` names nothing in the journal. Each is `[]` if there is nothing |
-| `archive` | `range`: `{"start", "end"}` (as read, `YYYY-MM-DD`); `file`: the archive file, relative to the repository; `dry_run`; `archived`: counts `memos`, `todos`, `questions`, `answers`, `bugs`, `replies`, `glossary_entries` (deleted ones), `records` and `lines` (the lines moved); `skipped`: counts `open_todos`, `open_questions`, `open_bugs`, `glossary_entries`, `records`. When `archived.records` is 0 no file is made |
+| `archive` | `range`: `{"start", "end"}` (as read, `YYYY-MM-DD`); `file`: the archive file, relative to the repository; `dry_run`; `archived`: counts `memos`, `todos`, `questions`, `answers`, `bugs`, `replies`, `glossary_entries` (deleted ones) and `records` (their total); `skipped`: counts `open_todos`, `open_questions`, `open_bugs`, `glossary_entries`, `records`. When `archived.records` is 0 no file is made |
 | `format` | `events` (in time order, as lines of `journal.jsonl`; a line that has a mark in the input has `mark`, `+` or `-`), `count` |
 | `memo list` | `records`, `count` |
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
@@ -1005,10 +1005,10 @@ is not 8, 6 or 4 digits; different units on the two sides; a date that does not
 exist; start after end; any character other than digits, `-` and `.`.
 
 ```
-$ mtqg archive 2021-0101..202409-18
-Range: 2021-01-01..2024-09-18
-Archived: 412 memos, 138 todos, 57 questions, 81 answers, 12 bugs, 20 replies -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
-Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
+$ mtqg archive 2024-0101..202412-31
+Range: 2024-01-01..2024-12-31
+Archived: 2 memos, 1 todo, 1 question, 2 answers, 1 bug, 1 reply -> .mtqg/archive/2024-01-01..2024-12-31.jsonl
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
 ```
 
 - The first line always shows how the range was read.
@@ -1029,6 +1029,77 @@ Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
 - With `--json` the report is one object (see [JSON output](#json-output)); it
   counts and does not list the records. To see what an archive holds, pass its
   file to `mtqg format`.
+
+With `-n`, the report of the example above is printed and nothing moves
+(`Archived:` says what would):
+
+```
+$ mtqg archive 2024..2024 -n
+Range: 2024-01-01..2024-12-31 (dry run)
+Archived: 2 memos, 1 todo, 1 question, 2 answers, 1 bug, 1 reply -> .mtqg/archive/2024-01-01..2024-12-31.jsonl
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
+```
+
+When nothing moves, no file is made or changed. Here the range above is
+archived again, and only what stays is left:
+
+```
+$ mtqg archive 2024..2024
+Range: 2024-01-01..2024-12-31
+Archived: nothing
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
+```
+
+A thread is dated by its last event, so a question that was closed in 2024 and
+answered in 2025 is left by `2024..2024`, and moved, with its answer, by
+`2025..2025` (here a dry run with `--json`, which counts and does not list):
+
+```
+$ mtqg archive --json 2025..2025 -n
+{
+  "command": "archive",
+  "range": {
+    "start": "2025-01-01",
+    "end": "2025-12-31"
+  },
+  "file": ".mtqg/archive/2025-01-01..2025-12-31.jsonl",
+  "dry_run": true,
+  "archived": {
+    "memos": 1,
+    "todos": 0,
+    "questions": 1,
+    "answers": 1,
+    "bugs": 0,
+    "replies": 0,
+    "glossary_entries": 0,
+    "records": 3
+  },
+  "skipped": {
+    "open_todos": 1,
+    "open_questions": 0,
+    "open_bugs": 0,
+    "glossary_entries": 0,
+    "records": 1
+  }
+}
+```
+
+An archive file is read with `mtqg format`:
+
+```
+$ mtqg format .mtqg/archive/2024-01-01..2024-12-31.jsonl
+2024-01-15 09:10  memo      cafa0631b6  Policy: use English for all error messages                             yamada
+2024-02-05 11:00  todo      546c4b4711  Add tests for comment handling                                         yamada
+2024-03-11 15:30  done      546c4b4711  Add tests for comment handling                                         yamada
+2024-04-02 09:00  question  1a1cc7a6ab  Should nested block comments be supported?                             yamada
+2024-04-02 09:20  answer    64f59967e3  (to 1a1cc7a6ab) Supporting them is preferable, since C code uses them  claude-code
+2024-04-03 10:15  answer    869916a85b  (to 1a1cc7a6ab) Not in the first version. Revisit if there is demand   yamada
+2024-04-05 16:00  done      1a1cc7a6ab  Should nested block comments be supported?                             yamada
+2024-06-02 14:00  memo      2e8a4b4d62  Tokens carry their line and column                                     yamada
+2024-07-10 09:30  bug       74ede9841a  Parser crashes on empty input                                          yamada
+2024-07-11 10:00  reply     9383a1dad2  (to 74ede9841a) Fixed by checking for the end of input first           claude-code
+2024-07-12 17:45  done      74ede9841a  Parser crashes on empty input                                          yamada
+```
 
 To bring a range back, append its file to `journal.jsonl` and delete it (see
 [schema.md](schema.md#archive)). There is no `unarchive` command.

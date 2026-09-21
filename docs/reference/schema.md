@@ -185,7 +185,10 @@ While conflict markers remain, mtqg warns when reading and refuses to write.
 those lines had already been merged into another branch, a later union merge
 can bring them back into `journal.jsonl`. Identical lines are one event
 (see above); archived items that come back are simply in view again and can be
-archived again.
+archived again. They also come back when the other branch changed the lines
+next to them, as when two branches archive lines that are neighbors in
+`journal.jsonl`: after the merge, the lines of both are in `journal.jsonl` and
+in the archive file of the branch that moved them, so none is lost.
 
 ## Archive
 

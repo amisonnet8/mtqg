@@ -126,7 +126,7 @@ $ mtqg memo list --json
 | `undo` | `event`：消した行を[schema_ja.md](schema_ja.md)の形で、`record`：その行が属する記録の、消す前の姿（ジャーナルにあれば） |
 | `search` | `query`、`records`（新しい順）、`count` |
 | `review` | `concurrent_status_changes`：記録ごとの`{"record", "changes"}`（`changes`は`journal.jsonl`の行）、`duplicate_words`：`{"word", "records"}`、`unattached_replies`：`{"record", "re_record"}`（`re`がジャーナルの何も指さないときは`re_record`を出さない）。どれも、なければ`[]` |
-| `archive` | `range`：`{"start", "end"}`（読んだとおりの`YYYY-MM-DD`）、`file`：アーカイブのファイル（リポジトリからの相対）、`dry_run`、`archived`：件数`memos`・`todos`・`questions`・`answers`・`bugs`・`replies`・`glossary_entries`（削除したもの）・`records`・`lines`（移した行数）、`skipped`：件数`open_todos`・`open_questions`・`open_bugs`・`glossary_entries`・`records`。`archived.records`が0のときファイルは作らない |
+| `archive` | `range`：`{"start", "end"}`（読んだとおりの`YYYY-MM-DD`）、`file`：アーカイブのファイル（リポジトリからの相対）、`dry_run`、`archived`：件数`memos`・`todos`・`questions`・`answers`・`bugs`・`replies`・`glossary_entries`（削除したもの）・`records`（その合計）、`skipped`：件数`open_todos`・`open_questions`・`open_bugs`・`glossary_entries`・`records`。`archived.records`が0のときファイルは作らない |
 | `format` | `events`（時刻順。`journal.jsonl`の行として。入力で印があった行は`mark`（`+`か`-`）を持つ）、`count` |
 | `memo list` | `records`、`count` |
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
@@ -817,10 +817,10 @@ $ mtqg archive 202404..2024-09 -n
 エラーになるもの（終了コード2。コマンドラインの誤りと同じ）：`..`がない、8・6・4桁でない側がある、左右の単位が違う、存在しない日付、開始が終了より後、数字・`-`・`.`以外の文字がある。
 
 ```
-$ mtqg archive 2021-0101..202409-18
-Range: 2021-01-01..2024-09-18
-Archived: 412 memos, 138 todos, 57 questions, 81 answers, 12 bugs, 20 replies -> .mtqg/archive/2021-01-01..2024-09-18.jsonl
-Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
+$ mtqg archive 2024-0101..202412-31
+Range: 2024-01-01..2024-12-31
+Archived: 2 memos, 1 todo, 1 question, 2 answers, 1 bug, 1 reply -> .mtqg/archive/2024-01-01..2024-12-31.jsonl
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
 ```
 
 - 1行目に、期間をどう読んだかを必ず表示する
@@ -831,6 +831,73 @@ Skipped: 3 open todos, 1 open question, 2 open bugs, 24 glossary entries
 - 相対的な日付（「2年前」など）は受け付けない
 - `archive`はイベントを書かないので、記録者は要らない（`git config user.name`が未設定でもよい）
 - `--json`のときは、報告は1つのオブジェクトになる（[JSON出力](#json出力)）。数えるだけで、記録の一覧は出さない。アーカイブの中身は、そのファイルを`mtqg format`に渡して見る
+
+`-n`は、上の例と同じ報告を、何も移さずに表示する（`Archived:`は「移すもの」を言う）。
+
+```
+$ mtqg archive 2024..2024 -n
+Range: 2024-01-01..2024-12-31 (dry run)
+Archived: 2 memos, 1 todo, 1 question, 2 answers, 1 bug, 1 reply -> .mtqg/archive/2024-01-01..2024-12-31.jsonl
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
+```
+
+何も移さないときは、ファイルを作らず、変えもしない。次は、上の期間をもう一度アーカイブした例で、残るものだけが出る。
+
+```
+$ mtqg archive 2024..2024
+Range: 2024-01-01..2024-12-31
+Archived: nothing
+Skipped: 1 open todo, 1 open bug, 2 glossary entries
+```
+
+スレッドは最後のイベントで日付を決めるので、2024年に閉じた質問に2025年に回答が付いていたら、`2024..2024`では残り、`2025..2025`で回答と一緒に移る（次は`--json`の`-n`。数えるだけで一覧は出さない）。
+
+```
+$ mtqg archive --json 2025..2025 -n
+{
+  "command": "archive",
+  "range": {
+    "start": "2025-01-01",
+    "end": "2025-12-31"
+  },
+  "file": ".mtqg/archive/2025-01-01..2025-12-31.jsonl",
+  "dry_run": true,
+  "archived": {
+    "memos": 1,
+    "todos": 0,
+    "questions": 1,
+    "answers": 1,
+    "bugs": 0,
+    "replies": 0,
+    "glossary_entries": 0,
+    "records": 3
+  },
+  "skipped": {
+    "open_todos": 1,
+    "open_questions": 0,
+    "open_bugs": 0,
+    "glossary_entries": 0,
+    "records": 1
+  }
+}
+```
+
+アーカイブのファイルは`mtqg format`で読む。
+
+```
+$ mtqg format .mtqg/archive/2024-01-01..2024-12-31.jsonl
+2024-01-15 09:10  memo      cafa0631b6  エラーメッセージは英語で統一する方針                       yamada
+2024-02-05 11:00  todo      546c4b4711  コメント処理のテストを足す                                 yamada
+2024-03-11 15:30  done      546c4b4711  コメント処理のテストを足す                                 yamada
+2024-04-02 09:00  question  1a1cc7a6ab  ブロックコメントの入れ子に対応する？                       yamada
+2024-04-02 09:20  answer    64f59967e3  (to 1a1cc7a6ab) 対応したほうがよい。C言語では使われるため  claude-code
+2024-04-03 10:15  answer    869916a85b  (to 1a1cc7a6ab) 初版では非対応。需要が出たら再検討         yamada
+2024-04-05 16:00  done      1a1cc7a6ab  ブロックコメントの入れ子に対応する？                       yamada
+2024-06-02 14:00  memo      2e8a4b4d62  トークンは行と桁を持つ                                     yamada
+2024-07-10 09:30  bug       74ede9841a  空の入力でパーサーが落ちる                                 yamada
+2024-07-11 10:00  reply     9383a1dad2  (to 74ede9841a) 入力の終わりを先に調べるようにして直した   claude-code
+2024-07-12 17:45  done      74ede9841a  空の入力でパーサーが落ちる                                 yamada
+```
 
 期間を戻すには、そのファイルを`journal.jsonl`の末尾に結合して消す（[schema_ja.md](schema_ja.md#アーカイブ)）。`unarchive`コマンドはない。
 

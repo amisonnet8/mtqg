@@ -328,7 +328,14 @@ func TestDocExamples(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, "gitconfig"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 
-	r := &exampleRunner{root: t.TempDir(), templates: map[string]string{}}
+	// mtqg prints the path that git and the file system give, with links and short
+	// names resolved (/private/var on macOS, long names on Windows), so the directory
+	// the examples run in is resolved too. Otherwise path= would not find it.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &exampleRunner{root: root, templates: map[string]string{}}
 	for _, name := range documents {
 		d := loadDocument(t, name)
 		if len(d.problems) > 0 {

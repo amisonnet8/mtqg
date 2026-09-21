@@ -64,7 +64,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 7（`archive`）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認。Step 5・6の分も未確認）。次はStep 8（e2eとdocsの例の仕組み）。** これで**段階1のコマンドはすべてそろった**（残りはStep 8の検証の仕組みとStep 9のシェル補完）。
+**段階1 Step 7（`archive`）：完了（2026-09-21、CIの3OSがgreen。人間が確認。Step 5・6の分も同時に確認済み）。次はStep 8（e2eとdocsの例の仕組み）。** これで**段階1のコマンドはすべてそろった**（残りはStep 8の検証の仕組みとStep 9のシェル補完）。
 
 **できたもの：** ジャーナル層の`Archive`（アーカイブへ追記して`fsync`→`journal.jsonl`を置き換え。移す行＋残す行が読んだ行と合わなければ何も書かない。`Rewrite`と読み込み・置き換えを共有）。モデル層の`ArchiveTargets`（項目＝記録＋従う回答・返信。最後のイベントで期間を判定）。CLIの`archive`（範囲の解釈`parseRange`、`-n`／`--dry-run`、`--json`は件数だけ、記録者は要らない）。未実装のコマンドが無くなったので、`not_available`のテストは`withUnbuiltCommand`（テストの中で仮のコマンドを足す）に直した（e2eは該当のケースを外した）。
 
@@ -76,7 +76,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **Step 7に含めなかったもの：** docsの例の確認の仕組み化（Step 8。**同じ手作業が今回で6回目**）、シェル補完（Step 9）、`unarchive`（作らない・設計§9.1）。
 
-**CIで確かめられないこと：** Windowsでの`archive/`の作成と追記、`journal.jsonl`の置き換え（Windowsのランナーで初めて動く）。Windowsの色と端末の幅（変わらず）。
+**CIで確かめられたこと（Step 5〜7）：** Windows・macOSでの`archive/`の作成と追記、`journal.jsonl`の置き換え、`context`・`edit`・`undo`・`review`など新しいコマンドの動き、`MTQG_TTY`からの`tty`（e2e）。**CIで確かめられないこと：** Windowsの色と端末の幅（変わらず）。デバイス番号からの`tty`（CIには端末が無い）。書き込み失敗で順序を確かめるテストは、Windowsとrootではskipされる。
 
 **（前の状態）** **段階1 Step 6（`edit`・`delete`・`undo`・`search`・`review`・`format`、`tty`）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認。Step 5の分も未確認）。次はStep 7（`archive`）。** これで、記録を書く・読む・直す・消す・取り消す・探す・食い違いを見る、が一通りそろった。
 

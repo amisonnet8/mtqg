@@ -14,8 +14,9 @@ import (
 // committed.
 const tmpName = "tmp"
 
-// Rewrite replaces journal.jsonl with the lines fn returns. It is what undo and
-// archive are made of: they are the only operations that remove or move lines.
+// Rewrite replaces journal.jsonl with the lines fn returns. It is what undo is
+// made of; undo and archive (Archive) are the only operations that remove or move
+// lines.
 //
 // Under the write lock, fn is given every non-blank line of journal.jsonl, and
 // returns the lines to keep, in the order to write them. A line fn gives back
@@ -45,17 +46,10 @@ func (j *Journal) Rewrite(fn func(lines []Line) ([]Line, error)) error {
 	}
 	defer func() { _ = root.Close() }()
 
-	data, err := root.ReadFile(journalName)
-	exists := err == nil
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("journal: %w", err)
+	lines, exists, err := readLocked(root)
+	if err != nil {
+		return err
 	}
-	if hasConflictMarkers(data) {
-		return ErrConflictMarkers
-	}
-	// A bytes.Reader cannot fail, so Scan has no error to report here.
-	lines, _, _ := Scan(bytes.NewReader(data))
-
 	kept, err := fn(lines)
 	if err != nil {
 		return err
@@ -64,6 +58,30 @@ func (j *Journal) Rewrite(fn func(lines []Line) ([]Line, error)) error {
 	if err != nil {
 		return err
 	}
+	return replaceJournal(root, out, exists)
+}
+
+// readLocked reads the lines of journal.jsonl for a rewrite, which holds the
+// lock. exists says whether the file is there: a missing file is an empty journal.
+// Conflict markers are refused, as every write refuses them.
+func readLocked(root *os.Root) (lines []Line, exists bool, err error) {
+	data, err := root.ReadFile(journalName)
+	exists = err == nil
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, false, fmt.Errorf("journal: %w", err)
+	}
+	if hasConflictMarkers(data) {
+		return nil, false, ErrConflictMarkers
+	}
+	// A bytes.Reader cannot fail, so Scan has no error to report here.
+	lines, _, _ = Scan(bytes.NewReader(data))
+	return lines, exists, nil
+}
+
+// replaceJournal writes out to .local/tmp/, syncs it, and puts it in place of
+// journal.jsonl, keeping the permissions of the file it replaces. Nothing is
+// written when there was no journal.jsonl and there is nothing to put in it.
+func replaceJournal(root *os.Root, out []byte, exists bool) error {
 	if !exists && len(out) == 0 {
 		return nil
 	}

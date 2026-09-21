@@ -42,6 +42,8 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg archive <開始>..<終了> [-n]` | 期間内の項目を視界から外す（`-n`：報告だけ） |
 | `mtqg init` | `.mtqg/`を作る |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
+| `mtqg completion <シェル>` | シェルの補完スクリプトを出力する。`bash`、`zsh`、`fish`、`powershell` |
+| `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
 | `mtqg help` | コマンドの一覧を表示する（`-h`、`--help`も同じ） |
 
 ## 共通のオプション
@@ -75,7 +77,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 - 出力は**JSONオブジェクト1つ**。2スペースで字下げし、改行で終える。最初のフィールドは`command`で、打ったコマンドを略さずに書く（`todo list`、`qa add`、`log`）
 - キーは`snake_case`。値のないフィールドは`journal.jsonl`と同じく省く。件数は省かない
 - **IDは、`--full-id`の有無にかかわらず、常に完全な32桁。** **時刻はUTC**で、`journal.jsonl`と同じ形（`2026-09-21T10:18:00Z`）。ローカル時間で見せるのは読む側の仕事
-- **本文は書かれたとおり。** 制御文字を置き換えず、窓の幅で切らず、色も付けない。`--no-color`と`--full-id`は何も変えない
+- **本文は書かれたとおり。** 制御文字を置き換えず、窓の幅で切らず、色も付けない。`--no-color`と`--full-id`は何も変えない（例外は`candidates`の説明だけで、シェルのメニューのためのものなので切る。[シェル補完](#シェル補完)）
 - 出力は標準出力へ。成功したとき、標準エラー出力へは警告（後述）のほか何も出さない。隠された記録は出ない
 
 記録はオブジェクトで、次のフィールドを持つ。
@@ -138,6 +140,8 @@ $ mtqg memo list --json
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
+| `completion` | `shell`：頼まれたシェル、`script`：スクリプト |
+| `candidates` | `candidates`：それぞれ`{"value", "description"}`（テキストの形と同じ順。`description`は、なければ省く）、`count` |
 | `help`、またはコマンドへの`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
 | `context` | [context](#context)を参照 |
 
@@ -950,6 +954,46 @@ Repository format version: 0 (this mtqg supports up to 0)
   `Repository format version: unknown (no .mtqg/ found)`になる
 
 形式のバージョンは`0`（未確定）で、それを上げるコマンドはまだない。形式1以降ができたときに用意する（[schema_ja.md](schema_ja.md#バージョン)）。
+
+## シェル補完
+
+`mtqg completion <シェル>`は、シェルの補完スクリプトを出力する。対応するのは`bash`、`zsh`、`fish`、`powershell`。ほかの語、または語がないときは、コマンドラインの誤りで、4つの名前を言う。スクリプトは、シェルが補完を探す場所に置く。
+
+```
+mtqg completion bash > ~/.local/share/bash-completion/completions/mtqg
+mtqg completion zsh > "${fpath[1]}/_mtqg"
+mtqg completion fish > ~/.config/fish/completions/mtqg.fish
+mtqg completion powershell >> $PROFILE
+```
+
+スクリプトは、コマンドの一覧を持たない短い固定のテキスト。TABを押すたびに`mtqg candidates`へ「次に何が来られるか」を聞く。そのため、出てくるものが、入っているmtqgと食い違うことはなく、その行を打っているリポジトリの記録のIDも出せる。
+
+補完するもの：
+
+| 場所 | 候補 |
+|---|---|
+| 1語目 | 種類（`memo`、`todo`、`qa`、`bug`、`glossary`。1文字の略は出さない）と、種類を持たないコマンド |
+| 種類の次 | その種類の動詞 |
+| `-`で始まる語 | そのコマンドが受け付けるオプションのうち、行にまだないもの、と共通のオプション |
+| `--kind`の次 | `memo`、`todo`、`qa`、`bug`、`glossary` |
+| `todo done`、`qa done`、`bug done`のID | その種類の、未完了のもの |
+| `todo reopen`、`qa reopen`、`bug reopen`のID | その種類の、完了したもの |
+| `show`、`edit`、`delete`のID | 見えている記録すべて（新しい順） |
+| `qa add`、`bug add`の1語目 | 質問（バグ）。完了したものも含む。回答（返信）する相手のIDかもしれないため |
+| `completion`の次 | 4つのシェル |
+
+これ以外は補完しない。記録の本文、`search`の語、`archive`の期間、`--limit`の値など。パスが要るところ（`-C`、`format`）は、シェルのファイル補完に任せる。等号の形（`--kind=todo`）は補完しない。`--kind <TAB>`と書く。
+
+### candidates
+
+`mtqg candidates [--word=<打ちかけの語>] -- <語>...`は、スクリプトが呼ぶコマンド。打つためのものではないが、ほかのコマンドと同じコマンドで（`mtqg help`に出る）、コマンドラインの次に来られるものを知りたいプログラムも使える。
+
+- `--`のあとの語は、それまでに打った行（`mtqg`自身は含まない）を、シェルが区切ったまま。`--word`は今打っている語で、カーソルが新しい語の先頭にあるときは空。語の並びに入れないのは、シェルが空の引数を落とすことがあるため。`--word=`は空にならない
+- 出力は1行に1件。値と、言うことがあれば、タブと説明（コマンドや動詞なら要約、記録なら本文）。`--word`で始まるものだけを並べるので、シェルがどう扱っても、4つのシェルで同じものが出る。件数の上限はない
+- IDは先頭10桁で出す。打った語が10桁より長いとき、または10桁が見えている記録の2件以上に当てはまるときは、完全な32桁で出す。入るものが、必ず1件の記録を指すようにするため
+- 説明は、本文を1行にしたもの。制御文字は一覧と同じく置き換え、表示の幅で60桁に切る。`--json`でも切る（シェルのメニューのためのものなので）
+- **語がどう言っていても、リポジトリがどうなっていても、終了コードは0で、標準エラー出力には何も出さない**（警告も）。`.mtqg/`がない、未来の形式、読めない行、衝突マーカー。どれでも、出せるものは出す（コマンドとオプションはリポジトリが要らない）。TABのたびに警告が出ると、打っている行が壊れるため。`candidates`自身のオプションの誤りは、ほかと同じくコマンドラインの誤り
+- 語の中の`-C`は読む。`mtqg -C ../other todo done <TAB>`は、`../other`のリポジトリのIDを出す。語はデータであり、`candidates`は、ほかのコマンドのようにはそれを解釈して動かない
 
 ## 記録者
 

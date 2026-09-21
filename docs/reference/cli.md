@@ -44,6 +44,8 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg archive <start>..<end> [-n]` | Move the items of a date range out of view (`-n`: only report) |
 | `mtqg init` | Create `.mtqg/` |
 | `mtqg version` | Show the mtqg version and the repository's format version |
+| `mtqg completion <shell>` | Print the completion script of a shell: `bash`, `zsh`, `fish` or `powershell` |
+| `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
 | `mtqg help` | List the commands (`-h` and `--help` do the same) |
 
 ## Global options
@@ -89,7 +91,9 @@ Until then this promise is not yet frozen either.)
   time is up to the reader.
 - **Text is exactly what was written**: control characters are not replaced, a
   text is never cut to the width of the window, and there is no color. `--no-color`
-  and `--full-id` change nothing.
+  and `--full-id` change nothing. (The one exception is the descriptions of
+  `candidates`, which are made for the menu of a shell; see
+  [Shell completion](#shell-completion).)
 - The output goes to standard output and, on success, nothing goes to standard
   error except warnings (below). Records that are hidden do not appear.
 
@@ -155,6 +159,8 @@ What each command prints, after `command`:
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
+| `completion` | `shell`: the shell that was asked for; `script`: the script |
+| `candidates` | `candidates`: `{"value", "description"}` for each, in the order of the text form (`description` is left out if there is none), `count` |
 | `help`, or `-h` on a command | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}`. `available` is `false` for a command that is known and not yet built |
 | `context` | See [context](#context) |
 
@@ -1160,6 +1166,75 @@ version is newer than it knows, and asks you to update mtqg.
 The format version is `0` (unstable) and there is no command to raise it yet.
 One will be added when a format `1` or later exists (see
 [schema.md](schema.md#versioning)).
+
+## Shell completion
+
+`mtqg completion <shell>` prints the completion script of a shell: `bash`,
+`zsh`, `fish` or `powershell`. Any other word, or none, is a usage error that
+names the four. Put the script where the shell looks for completions:
+
+```
+mtqg completion bash > ~/.local/share/bash-completion/completions/mtqg
+mtqg completion zsh > "${fpath[1]}/_mtqg"
+mtqg completion fish > ~/.config/fish/completions/mtqg.fish
+mtqg completion powershell >> $PROFILE
+```
+
+The script is a short piece of fixed text that does not list the commands. Each
+time TAB is pressed it asks `mtqg candidates` what can come next, so what is
+offered never disagrees with the mtqg that is installed, and it includes the IDs
+of the records of the repository the line is typed in.
+
+What is completed:
+
+| Where | Candidates |
+|---|---|
+| The first word | The kinds (`memo`, `todo`, `qa`, `bug`, `glossary`; not their one-letter forms) and the commands that have no kind |
+| After a kind | Its verbs |
+| A word that starts with `-` | The options the command takes that are not on the line yet, and the global options |
+| After `--kind` | `memo`, `todo`, `qa`, `bug`, `glossary` |
+| The ID of `todo done`, `qa done`, `bug done` | The open ones of that kind |
+| The ID of `todo reopen`, `qa reopen`, `bug reopen` | The done ones of that kind |
+| The ID of `show`, `edit`, `delete` | Every record in view, newest first |
+| The first word of `qa add`, `bug add` | The questions (the bugs), open or done: it may be the ID of the one to answer (reply to) |
+| After `completion` | The four shells |
+
+Nothing else is completed: the text of a record, the words of `search`, the
+range of `archive`, the value of `--limit`. Where a path is wanted (`-C`,
+`format`), the completion of files that the shell has is left to work. The form
+with an equals sign (`--kind=todo`) is not completed; write `--kind <TAB>`.
+
+### candidates
+
+`mtqg candidates [--word=<partial>] -- <word>...` is what the scripts call. It
+is not meant to be typed, but it is a command like the others (it is in
+`mtqg help`), and a program that wants to know what can come next on a line can
+use it too.
+
+- The words after `--` are the command line typed so far, without `mtqg`
+  itself, as the shell split it. `--word` is the word being typed, empty when
+  the cursor is at the start of a new word. It is not one of the words because
+  shells drop an empty argument, and `--word=` is never empty.
+- The output is one candidate per line: the value, and when there is something
+  to say about it, a tab and a description (a summary for a command or a verb; the
+  text of a record). Only the candidates that start with `--word` are listed, so
+  the four shells offer the same, whatever they do with the list. There is
+  no limit on the number.
+- An ID is given as its first 10 digits, or as the full 32 digits when what was
+  typed is longer than 10 digits or when the 10 digits fit more than one record in
+  view, so that what is inserted always names one record.
+- A description is the text on one line, with control characters replaced as in
+  a list, cut to 60 columns of the display. It is cut with `--json` too, because
+  it is for the menu of a shell.
+- **Whatever the words say or the repository holds, the exit code is 0 and
+  nothing goes to standard error**, not even a warning: no `.mtqg/`, a format
+  from the future, lines that cannot be read, conflict markers — what can be
+  offered is offered (the commands and options need no repository), because a
+  warning printed at every TAB would break the line that is being typed. A
+  mistake in the options of `candidates` itself is a usage error, as anywhere.
+- A `-C` among the words is read: `mtqg -C ../other todo done <TAB>` offers the
+  IDs of the repository in `../other`. The words are data: `candidates` does not
+  act on them the way the other commands do.
 
 ## Authors
 

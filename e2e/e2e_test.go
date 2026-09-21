@@ -10,6 +10,7 @@ package e2e
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -571,5 +572,117 @@ func TestBugsAndReplies(t *testing.T) {
 	}
 	if only := r.mtqg("log", "--kind", "b"); !strings.HasSuffix(only, "\n3 records\n") || strings.Contains(only, "question") {
 		t.Errorf("log --kind b =\n%s", only)
+	}
+}
+
+func TestJSONAndContext(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	agent := []string{"MTQG_AUTHOR_KIND=ai", "MTQG_AUTHOR_NAME=claude-code"}
+
+	todo := strings.TrimSpace(r.mtqg("t", "add", "--full-id", "Skip <block> comments & 日本語"))
+	question := strings.TrimSpace(r.mtqg("q", "add", "--full-id", "Should nested block comments be supported?"))
+	if res := r.run(agent, "", "q", "add", question[:10], "Not in the first version"); res.code != 0 {
+		t.Fatalf("%+v", res)
+	}
+	r.mtqg("g", "add", "lexing", "Reading source and turning it into tokens")
+	r.mtqg("g", "add", "lexing", "Splitting text into words")
+
+	// Every command that was built prints one JSON object, with no color and
+	// nothing on standard error, when its output is not a terminal.
+	for _, args := range [][]string{
+		{"t", "list"}, {"m", "list"}, {"q", "list", "--all"}, {"b", "list"}, {"g", "list"}, {"log"},
+		{"show", todo[:10]}, {"status"}, {"version"}, {"help"}, {"context"},
+	} {
+		res := r.run(nil, "", append([]string{"--json"}, args...)...)
+		if res.code != 0 || res.stderr != "" {
+			t.Errorf("%v --json: %+v", args, res)
+			continue
+		}
+		var obj map[string]any
+		if err := json.Unmarshal([]byte(res.stdout), &obj); err != nil {
+			t.Errorf("%v --json is not a JSON object: %v\n%s", args, err, res.stdout)
+			continue
+		}
+		if !strings.HasPrefix(res.stdout, "{\n  \"command\": ") || strings.Contains(res.stdout, "\x1b") {
+			t.Errorf("%v --json:\n%s", args, res.stdout)
+		}
+	}
+
+	// The full ID, the text as it was written, and the author.
+	var list struct {
+		Records []struct {
+			ID     string `json:"id"`
+			Text   string `json:"text"`
+			Status string `json:"status"`
+			Author struct{ Kind, Name string }
+		}
+		Open int
+	}
+	if err := json.Unmarshal([]byte(r.mtqg("--json", "t", "list")), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Records) != 1 || list.Records[0].ID != todo || list.Records[0].Text != "Skip <block> comments & 日本語" ||
+		list.Records[0].Status != "open" || list.Records[0].Author.Kind != "human" || list.Records[0].Author.Name != "yamada" || list.Open != 1 {
+		t.Errorf("todo list --json: %+v", list)
+	}
+
+	// An error is one line of JSON on standard error, and standard output is empty.
+	res := r.run(nil, "", "--json", "show", "ffff0000")
+	var failed struct {
+		Error struct{ Kind, Message, Prefix string }
+	}
+	if res.code != 1 || res.stdout != "" || json.Unmarshal([]byte(res.stderr), &failed) != nil || failed.Error.Kind != "not_found" || failed.Error.Prefix != "ffff0000" {
+		t.Errorf("an unknown ID with --json: %+v", res)
+	}
+	res = r.run(nil, "", "--json", "frobnicate")
+	if res.code != 2 || res.stdout != "" || !strings.HasPrefix(res.stderr, `{"error":{"kind":"usage"`) {
+		t.Errorf("an unknown command with --json: %+v", res)
+	}
+
+	// context: the branch, what is open, the answer, and the words that disagree.
+	out := r.mtqg("context")
+	repository := filepath.Base(r.dir)
+	for _, want := range []string{
+		"# mtqg context \u2014 " + repository + " (main)\n",
+		"## Attention\n- Glossary term \"lexing\" has conflicting definitions (see mtqg glossary list)\n- 5 mtqg records are not committed\n",
+		"## Open todos (1)\n- " + todo[:10] + " Skip <block> comments & 日本語 (yamada, ",
+		"## Open questions (1)\n- " + question[:10] + " Should nested block comments be supported? (awaiting confirmation, yamada, ",
+		"\u2514 Not in the first version (claude-code, ai)\n",
+		"## Glossary (2)\n",
+		"Read full entries with mtqg show <id>.\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("context lacks %q:\n%s", want, out)
+		}
+	}
+
+	// After a commit nothing is missing from git, and the branch is the one checked out.
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "records")
+	r.git("checkout", "-q", "-b", "feature/context")
+	out = r.mtqg("context")
+	if !strings.HasPrefix(out, "# mtqg context \u2014 "+repository+" (feature/context)\n") || strings.Contains(out, "not committed") {
+		t.Errorf("context on another branch:\n%s", out)
+	}
+
+	// The budget holds, and asking for less leaves out more.
+	for _, budget := range []string{"400", "0"} {
+		var ctx struct {
+			Truncated       bool `json:"truncated"`
+			EstimatedTokens int  `json:"estimated_tokens"`
+		}
+		if err := json.Unmarshal([]byte(r.mtqg("--json", "context", "--max-tokens", budget)), &ctx); err != nil {
+			t.Fatal(err)
+		}
+		if budget == "400" && (ctx.EstimatedTokens > 400 || ctx.EstimatedTokens == 0) {
+			t.Errorf("--max-tokens 400: %+v", ctx)
+		}
+		if ctx.Truncated {
+			t.Errorf("--max-tokens %s left something out of a small journal", budget)
+		}
+	}
+	if res := r.run(nil, "", "context", "--max-tokens", "many"); res.code != 2 || !strings.Contains(res.stderr, "Option --max-tokens needs a whole number") {
+		t.Errorf("a bad --max-tokens: %+v", res)
 	}
 }

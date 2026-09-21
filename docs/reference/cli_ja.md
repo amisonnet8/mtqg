@@ -92,6 +92,27 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `created` | 最初のイベントの時刻 |
 | `updated` | 最後のイベントの時刻 |
 
+```
+$ mtqg memo list --json
+{
+  "command": "memo list",
+  "records": [
+    {
+      "id": "81e74ef5e8e24d949ed904759531985d",
+      "kind": "memo",
+      "text": "エラーメッセージは英語で統一する方針",
+      "author": {
+        "kind": "human",
+        "name": "yamada"
+      },
+      "created": "2026-09-21T10:32:00Z",
+      "updated": "2026-09-21T10:32:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
 `qa list`・`bug list`・`show`に出る質問とバグは、`replies`（回答または返信を、古い順に、記録として）も持つ。（人間向けの`qa list`は最新の1件だけを出すが、`--json`は全件を返す。）
 
 `command`のあとに、コマンドごとに次のものが出る。
@@ -115,6 +136,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 **エラー**は、**標準エラー出力**に1行のJSONで出し、標準出力は空のまま。終了コードは`--json`なしと同じ。
 
 ```
+$ mtqg show zzzz --json
 {"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
 ```
 
@@ -136,6 +158,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 **警告**（飛ばした行、衝突マーカー、実行できないgit）も、1件ずつ1行で標準エラー出力に出し、終了コードは変えない。
 
 ```
+$ mtqg todo list --json >/dev/null
 {"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
 ```
 
@@ -555,39 +578,89 @@ This is the process record of this project. Read the following before you start 
 - Respect what has been decided (answered questions, memos stating a policy)
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
-- Record questions, decisions, findings, and todos with mtqg as they come up
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- 6cad4a268d  ブロックコメント /* */ の読み飛ばし (claude-code, 10:18)
+- 6cad4a268d ブロックコメント /* */ の読み飛ばし (claude-code, 10:18)
 - 6513270e26 文字列リテラル中の // を無視する (yamada, 10:52)
 - 1e27a1c08a エラー位置を行と列で表示する (claude-code, 11:06)
 - 1818e81189 READMEに対応している構文を書く (yamada, 11:30)
 - 2e44158bae コメント処理のテストケースを追加 (claude-code, 11:32)
 
 ## Open questions (2)
-- 2217beaddb エラー位置は行と列の両方を出しますか？ (unanswered, claude-code, 11:05)
-- 1012f037b6  ブロックコメントの入れ子に対応する？ (awaiting confirmation, 09:10)
+- 1012f037b6 ブロックコメントの入れ子に対応する？ (awaiting confirmation, claude-code, 09:10)
     └ 初版では非対応。需要が出たら再検討 (yamada, human)
+- 2217beaddb エラー位置は行と列の両方を出しますか？ (unanswered, claude-code, 11:05)
 
 ## Open bugs (1)
 - 7f3a2b1c09 空の入力でパーサーが落ちる (awaiting confirmation, yamada, 10:41)
     └ macOSでも再現した (claude-code, ai)
 
-## Recent records (10, newest first)
-- 11:24 claude-code glossary 字句解析：ソースを読み、トークンの並びに変換する処理
-- 10:32 yamada      memo     エラーメッセージは英語で統一する方針
-- 09:41 yamada      answer   初版では非対応。需要が出たら再検討 (to 1012f037b6)
-- ... (7 more; see mtqg log)
+## Recent records (newest first)
+- 11:32  claude-code  todo      2e44158bae  コメント処理のテストケースを追加
+- 11:30  yamada       todo      1818e81189  READMEに対応している構文を書く
+- 11:24  claude-code  glossary  f28c105d1f  字句解析: ソースを読み、トークンの並びに変換する処理
+- 11:06  claude-code  todo      1e27a1c08a  エラー位置を行と列で表示する
+- 11:05  claude-code  question  2217beaddb  エラー位置は行と列の両方を出しますか？
+- 10:52  yamada       todo      6513270e26  文字列リテラル中の // を無視する
+- 10:45  claude-code  reply     3d8e4a0b12  macOSでも再現した (to 7f3a2b1c09)
+- 10:41  yamada       bug       7f3a2b1c09  空の入力でパーサーが落ちる
+- 10:32  yamada       memo      81e74ef5e8  エラーメッセージは英語で統一する方針
+- 10:18  claude-code  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし
+- (10 more; see mtqg log)
 
 ## Glossary (4)
-- トークン：字句解析で切り出す最小単位
-- 字句解析：ソースを読み、トークンの並びに変換する処理
-- ブロックコメント：/* と */ で囲むコメント (2 definitions)
-- レキサ：字句解析を行う実装（Lexer構造体）
+- 5b7e2c9a41 トークン: 字句解析で切り出す最小単位
+- f29d0da995 ブロックコメント: /* と */ で囲むコメント
+- 0cb1e29c65 ブロックコメント: 複数行にわたって書けるコメント
+- f28c105d1f 字句解析: ソースを読み、トークンの並びに変換する処理
+
+---
+Read full entries with mtqg show <id>.
+```
+
+分量を小さくすると、削ったものはその区画の中で言う：
+
+```
+$ mtqg context --max-tokens 380
+# mtqg context — sample-parser (main)
+
+This is the process record of this project. Read the following before you start working.
+- Respect what has been decided (answered questions, memos stating a policy)
+- Do not decide open questions on your own; confirm them
+- Use terms as defined in the glossary
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
+
+## Attention
+- Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
+- 3 mtqg records are not committed
+
+## Open todos (5)
+- 6cad4a268d ブロックコメント /* */ の読み飛ばし (claude-code, 10:18)
+- 6513270e26 文字列リテラル中の // を無視する (yamada, 10:52)
+- 1e27a1c08a エラー位置を行と列で表示する (claude-code, 11:06)
+- 1818e81189 READMEに対応している構文を書く (yamada, 11:30)
+- 2e44158bae コメント処理のテストケースを追加 (claude-code, 11:32)
+
+## Open questions (2)
+- (1 older; see mtqg qa list)
+- 2217beaddb エラー位置は行と列の両方を出しますか？ (unanswered, claude-code, 11:05)
+
+## Open bugs (1)
+- (1 older; see mtqg bug list)
+
+## Recent records (newest first)
+- (20 more; see mtqg log)
+
+## Glossary (4)
+- トークン
+- ブロックコメント (2 definitions)
+- 字句解析
+- (definitions left out; see mtqg glossary list)
 
 ---
 Read full entries with mtqg show <id>.

@@ -53,7 +53,7 @@ mtqgの実装計画・進捗管理ドキュメント。実装が進むにつれ�
 5. **Step 5: CLI順3** — `context`、全コマンドの`--json`。AIに渡せる
 6. **Step 6: CLI順4** — `edit`、`delete`、`undo`、`search`、`review`、`format`
 7. **Step 7: CLI順5** — `archive`（`-n`を含む）
-8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を3回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。ここで、フィクスチャをGoのテストの側に置き、文書の例と突き合わせる仕組みにする（`testing.md`「e2eとdocsの例の確認」）
+8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5・5で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を4回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。ここで、フィクスチャをGoのテストの側に置き、文書の例と突き合わせる仕組みにする（`testing.md`「e2eとdocsの例の確認」）
 9. **Step 9: シェル補完**
 
 Step 3が動いた時点でサンプルPJ（段階2）を始められる。
@@ -64,13 +64,19 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 5（`context`と全コマンドの`--json`）：仕様を書いた（2026-09-21）。次は実装。** 計画は承認済み。`docs/reference/cli.md`・`cli_ja.md`に`## JSON output`と`### context`の仕様を書き（`context`の例は下書きのまま。**実装後に実際の出力へ差し替える**）、`.claude/rules/`4本と`docs/design/history.md`を更新した。
+**段階1 Step 5（`context`と全コマンドの`--json`）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。次はStep 6（`edit`・`delete`・`undo`・`search`・`review`・`format`、`tty`）。** これで**AIに渡せる**：`mtqg context`をセッションの始めに読ませ、`--json`で拡張やスクリプトがつながる。サンプルPJ（段階2）でAIにも使わせられる。
 
-**Step 5で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** `--json`は常にJSONオブジェクト1つ（最初のフィールドは`command`）。エラーと警告も、標準エラー出力に1行のJSON（`kind`で機械が見分ける）。`context`の分量は文字数からの近似（ASCII 4文字＝1トークン、ほかは1文字＝1トークン）で、近似であることを仕様に明記する。削る順序は仕様で固定。ブランチ名は`git branch --show-current`。
+**できたもの：** `--json`（実装済みの全コマンド。`internal/cli/json.go`に形を1か所）と、エラー・警告の報告（`report.go`。人間向けの文言とJSONの`kind`を1か所で作る。`describe`を`reportOf`に一般化し、既存の文言は変えていない）。`context`：ジャーナル層に`GitBranch`（`git branch --show-current`）、モデル層に`context.go`（中身と削る順序：`Context`・`Steps`・`Reduced(n)`）、CLIに`context.go`（文章にする、文字数からの見積もり、収まる最小の削りを二分探索）。`--max-tokens`（既定2000、`0`で上限なし）。`help --json`は、まだ作っていないコマンドも`available:false`で返す（Step 9のシェル補完の土台）。
 
-**進め方：** ①仕様（済）②`--json`の土台と既存コマンド③`context`（ジャーナル層に`GitBranch`、モデル層に`context.go`、CLIに`json.go`・`context.go`）④e2e・docsの実出力・全検証。
+**Step 5で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** `--json`は常にJSONオブジェクト1つ（最初のフィールドは`command`）。エラーと警告も、標準エラー出力に1行のJSON（`kind`で機械が見分ける）。`context`の分量は文字数からの近似（ASCII 4文字＝1トークン、ほかは1文字＝1トークン）で、近似であることを仕様に明記。削る順序は仕様で固定。ブランチ名は`git branch --show-current`。下書きの`(mtqg review)`は`(see mtqg glossary list)`にした（`review`はStep 6）。
 
-**Step 5に含めないもの：** `review`と、`status`・`context`の「並行した状態変更」（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、シェル補完（Step 9。`help --json`が土台になる）。種類をまたぐ`re`の行の読み方（A・B・C）はStep 6の`review`で決める。
+**手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`とテストのコンパイルが通る（**実行はCI**）。`--json`の4つの変異（本文を`sanitize`する、IDを短縮する、エラーを標準出力へ、UTCでなくする）と、`context`の4つの変異（todoを新しい順に削る、定義より先に質問を削る、予算を無視する、完了したtodoが混ざる）を、テストが検出した（最後の1つは、最初はフィクスチャに完了したtodoがなく検出できなかったので、足した）。`cli.md`・`cli_ja.md`の`--json`と`context`の例は、**日時とIDを固定した記録を本物のバイナリで動かした実際の出力**（英語版は中身も英語、日本語版は日本語）。
+
+**実装して見えたこと（サンプルPJで判断する）：** 仕様の削る順序では、質問とバグがすべて削られてから、初めてtodoが削られる。todoが多いと、予算が厳しいときに質問が全部消え、「勝手に決めさせない」ための情報が真っ先に失われる（設計§11.3の当初案は質問をtodoより先に残していた）。仕様の下書きに従ったが、見直す候補：質問とバグに下限（たとえば最新の数件）を持たせる、または、todoと質問を交互に削る。
+
+**Step 5に含めなかったもの：** `review`と、`status`・`context`の「並行した状態変更」（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、シェル補完（Step 9）。種類をまたぐ`re`の行の読み方（A・B・C）はStep 6の`review`で決める（今は今の振る舞いのまま`--json`に出る）。
+
+**CIで確かめられないこと：** Windowsの色と端末の幅（変わらず）。`context`のブランチ名は、e2eが本物のgitで確かめる（3OSで初めて動く）。
 
 **（前の状態）段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
 
@@ -174,7 +180,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 使ってみないと判断できないので、段階2〜3で決める。
 
-- `context`の出力内容と分量、上限を超えたときの優先順位（設計§9、§11.3）。冒頭の指示文を外すオプション（`--no-guide`）が要るか
+- `context`の出力内容と分量、上限を超えたときの優先順位（設計§9、§11.3）。**今の削る順序では、質問とバグがすべて削られてからtodoが削られる**（上の「実装して見えたこと」）。既定の2000トークンが多すぎ・少なすぎないか。冒頭の指示文を外すオプション（`--no-guide`）が要るか。「最近の記録」が上の区画と重なっている（同じ記録を2回読む）のが無駄でないか
 - qaの回答の「確定」をどう表現するか（設計§5.2）。`qa list`で確定待ちをどう見分けさせるか（記録者の種別で足りるか、確定の事実を別に持つか）
 - 変更前の状態（`from`）による並行した状態変更の判定方式の妥当性（設計§7.6）
 - 並行した回答を`review`で検出するか

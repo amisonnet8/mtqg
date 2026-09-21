@@ -107,6 +107,27 @@ A record is an object:
 | `created` | The time of the first event |
 | `updated` | The time of the last event |
 
+```
+$ mtqg memo list --json
+{
+  "command": "memo list",
+  "records": [
+    {
+      "id": "81e74ef5e8e24d949ed904759531985d",
+      "kind": "memo",
+      "text": "Policy: use English for all error messages",
+      "author": {
+        "kind": "human",
+        "name": "yamada"
+      },
+      "created": "2026-09-21T10:32:00Z",
+      "updated": "2026-09-21T10:32:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
 A question or a bug listed by `qa list`, `bug list` or `show` also has
 `replies`: its answers or replies, oldest first, as records. (The human form of
 `qa list` shows only the latest one; `--json` gives them all.)
@@ -133,6 +154,7 @@ What each command prints, after `command`:
 empty. The exit code is the same as without `--json`.
 
 ```
+$ mtqg show zzzz --json
 {"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
 ```
 
@@ -156,6 +178,7 @@ empty. The exit code is the same as without `--json`.
 are also one line each on standard error, and do not change the exit code:
 
 ```
+$ mtqg todo list --json >/dev/null
 {"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
 ```
 
@@ -648,39 +671,91 @@ This is the process record of this project. Read the following before you start 
 - Respect what has been decided (answered questions, memos stating a policy)
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
-- Record questions, decisions, findings, and todos with mtqg as they come up
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
 
 ## Attention
 - Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- 6cad4a268d  Skip block comments /* */ (claude-code, 10:18)
+- 6cad4a268d Skip block comments /* */ (claude-code, 10:18)
 - 6513270e26 Ignore // inside string literals (yamada, 10:52)
 - 1e27a1c08a Show error positions as line and column (claude-code, 11:06)
 - 1818e81189 List the supported syntax in the README (yamada, 11:30)
 - 2e44158bae Add test cases for comment handling (claude-code, 11:32)
 
 ## Open questions (2)
-- 2217beaddb Should error positions show both line and column? (unanswered, claude-code, 11:05)
-- 1012f037b6  Should nested block comments be supported? (awaiting confirmation, 09:10)
+- 1012f037b6 Should nested block comments be supported? (awaiting confirmation, claude-code, 09:10)
     └ Not in the first version. Revisit if there is demand (yamada, human)
+- 2217beaddb Should error positions show both line and column? (unanswered, claude-code, 11:05)
 
 ## Open bugs (1)
 - 7f3a2b1c09 Parser crashes on empty input (awaiting confirmation, yamada, 10:41)
     └ Reproduced on macOS too (claude-code, ai)
 
-## Recent records (10, newest first)
-- 11:24 claude-code glossary lexing: Reading source and turning it into a sequence of tokens
-- 10:32 yamada      memo     Policy: use English for all error messages
-- 09:41 yamada      answer   Not in the first version. Revisit if there is demand (to 1012f037b6)
-- ... (7 more; see mtqg log)
+## Recent records (newest first)
+- 11:32  claude-code  todo      2e44158bae  Add test cases for comment handling
+- 11:30  yamada       todo      1818e81189  List the supported syntax in the README
+- 11:24  claude-code  glossary  f28c105d1f  lexing: Reading source and turning it into a sequence of tokens
+- 11:06  claude-code  todo      1e27a1c08a  Show error positions as line and column
+- 11:05  claude-code  question  2217beaddb  Should error positions show both line and column?
+- 10:52  yamada       todo      6513270e26  Ignore // inside string literals
+- 10:45  claude-code  reply     3d8e4a0b12  Reproduced on macOS too (to 7f3a2b1c09)
+- 10:41  yamada       bug       7f3a2b1c09  Parser crashes on empty input
+- 10:32  yamada       memo      81e74ef5e8  Policy: use English for all error messages
+- 10:18  claude-code  todo      6cad4a268d  Skip block comments /* */
+- (10 more; see mtqg log)
 
 ## Glossary (4)
-- token: The smallest unit produced by lexing
-- lexing: Reading source and turning it into a sequence of tokens
-- block comment: A comment enclosed in /* and */ (2 definitions)
-- lexer: The implementation that does lexing (the Lexer struct)
+- 5b7e2c9a41 token: The smallest unit produced by lexing
+- f29d0da995 block comment: A comment enclosed in /* and */
+- 0cb1e29c65 block comment: A comment that can span multiple lines
+- f28c105d1f lexing: Reading source and turning it into a sequence of tokens
+
+---
+Read full entries with mtqg show <id>.
+```
+
+With a smaller budget, what is left out is said in its section:
+
+```
+$ mtqg context --max-tokens 380
+# mtqg context — sample-parser (main)
+
+This is the process record of this project. Read the following before you start working.
+- Respect what has been decided (answered questions, memos stating a policy)
+- Do not decide open questions on your own; confirm them
+- Use terms as defined in the glossary
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
+
+## Attention
+- Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
+- 3 mtqg records are not committed
+
+## Open todos (5)
+- 6cad4a268d Skip block comments /* */ (claude-code, 10:18)
+- 6513270e26 Ignore // inside string literals (yamada, 10:52)
+- 1e27a1c08a Show error positions as line and column (claude-code, 11:06)
+- 1818e81189 List the supported syntax in the README (yamada, 11:30)
+- 2e44158bae Add test cases for comment handling (claude-code, 11:32)
+
+## Open questions (2)
+- 1012f037b6 Should nested block comments be supported? (awaiting confirmation, claude-code, 09:10)
+- 2217beaddb Should error positions show both line and column? (unanswered, claude-code, 11:05)
+- (latest answers left out; see mtqg show <id>)
+
+## Open bugs (1)
+- 7f3a2b1c09 Parser crashes on empty input (awaiting confirmation, yamada, 10:41)
+- (latest replies left out; see mtqg show <id>)
+
+## Recent records (newest first)
+- (20 more; see mtqg log)
+
+## Glossary (4)
+- token
+- block comment (2 definitions)
+- lexing
+- (definitions left out; see mtqg glossary list)
 
 ---
 Read full entries with mtqg show <id>.

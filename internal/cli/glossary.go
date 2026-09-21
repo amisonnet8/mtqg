@@ -5,9 +5,8 @@ import (
 )
 
 // runAddGlossary defines a word. The first word of the command is the term, so a
-// term of several words needs quotes; the rest is the definition. There are at
-// least two of them (the table of commands sees to that), and the editor is never
-// opened: it is only for a text that was left out altogether.
+// term of several words needs quotes; the rest is the definition, which is written
+// in the editor if there is none.
 func runAddGlossary(c *ctx) int {
 	words := c.inv.words
 	j, err := c.writer()

@@ -126,6 +126,12 @@ type jsonChangeResult struct {
 	Changed bool       `json:"changed"`
 }
 
+type jsonDelete struct {
+	Command       string       `json:"command"`
+	Record        jsonRecord   `json:"record"`
+	HiddenReplies []jsonRecord `json:"hidden_replies"`
+}
+
 type jsonMemoList struct {
 	Command string       `json:"command"`
 	Records []jsonRecord `json:"records"`

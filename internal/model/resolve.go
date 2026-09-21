@@ -138,3 +138,23 @@ func SetStatus(rec *Record, status string) (journal.Event, error) {
 	}
 	return journal.Event{ID: rec.ID, Op: journal.OpStatus, From: rec.Status, Status: status}, nil
 }
+
+// EditText returns the event that replaces the text of a record. Only the text:
+// the word of a glossary entry and the state of a todo, a question or a bug are
+// not touched. A text that is empty is ErrEmptyText. A text that is the same as the
+// record has now is ErrNoChange, and nothing should be written for it.
+func EditText(rec *Record, text string) (journal.Event, error) {
+	if strings.TrimSpace(text) == "" {
+		return journal.Event{}, ErrEmptyText
+	}
+	if rec.Text == text {
+		return journal.Event{}, ErrNoChange
+	}
+	return journal.Event{ID: rec.ID, Op: journal.OpEdit, Text: text}, nil
+}
+
+// Delete returns the event that hides a record. Its answers or replies are hidden
+// with it: that is how the record is read (State.visible), not a second event.
+func Delete(rec *Record) (journal.Event, error) {
+	return journal.Event{ID: rec.ID, Op: journal.OpDelete}, nil
+}

@@ -161,15 +161,41 @@ func TestAddAnswer(t *testing.T) {
 		}
 	})
 
-	t.Run("the ID and no text is a mistake, and the editor is not opened", func(t *testing.T) {
+	t.Run("the ID and no text opens the editor for the answer", func(t *testing.T) {
+		h := setup(t)
+		h.vars["EDITOR"] = "myeditor"
+		h.env.RunEditor = func(argv []string) error {
+			return os.WriteFile(argv[len(argv)-1], []byte("Not in the first version.\nRevisit if there is demand\n"), 0o600)
+		}
+		code, out, errOut := h.run("q", "add", idQ2[:6])
+		wantExit(t, code, 0, out, errOut)
+		if !strings.Contains(h.readJournal(), `"re":"`+idQ2+`","text":"Not in the first version.\nRevisit if there is demand"`) {
+			t.Errorf("journal = %s", h.readJournal())
+		}
+	})
+
+	t.Run("an ID that matches nothing stops before the editor is opened", func(t *testing.T) {
 		h := setup(t)
 		h.vars["EDITOR"] = "myeditor"
 		opened := false
 		h.env.RunEditor = func([]string) error { opened = true; return nil }
 		before := h.readJournal()
-		code, out, errOut := h.run("q", "add", idQ2[:6])
-		wantExit(t, code, 2, out, errOut)
-		if !strings.Contains(errOut, "Missing argument. Usage: mtqg qa add") || out != "" || opened || h.readJournal() != before {
+		code, out, errOut := h.run("q", "add", "a8ec")
+		wantExit(t, code, 1, out, errOut)
+		if opened || out != "" || h.readJournal() != before || !strings.Contains(errOut, `No record matches "a8ec"`) {
+			t.Errorf("stdout %q, stderr %q, editor opened: %v", out, errOut, opened)
+		}
+	})
+
+	t.Run("an ID that is not a question stops before the editor is opened", func(t *testing.T) {
+		h := setup(t)
+		h.vars["EDITOR"] = "myeditor"
+		opened := false
+		h.env.RunEditor = func([]string) error { opened = true; return nil }
+		before := h.readJournal()
+		code, out, errOut := h.run("q", "add", idM[:6])
+		wantExit(t, code, 1, out, errOut)
+		if opened || out != "" || h.readJournal() != before || !strings.Contains(errOut, "is a memo") {
 			t.Errorf("stdout %q, stderr %q, editor opened: %v", out, errOut, opened)
 		}
 	})
@@ -480,17 +506,28 @@ func TestGlossary(t *testing.T) {
 		}
 	})
 
-	t.Run("a missing part is a mistake, and the editor is not opened", func(t *testing.T) {
+	t.Run("a word and no definition opens the editor for the definition", func(t *testing.T) {
+		h := initialized(t)
+		h.vars["EDITOR"] = "myeditor"
+		h.env.RunEditor = func(argv []string) error {
+			return os.WriteFile(argv[len(argv)-1], []byte("Reading source\nand making tokens\n"), 0o600)
+		}
+		code, out, errOut := h.run("g", "add", "lexing")
+		wantExit(t, code, 0, out, errOut)
+		if !strings.Contains(h.readJournal(), `"word":"lexing","text":"Reading source\nand making tokens"`) {
+			t.Errorf("journal = %s", h.readJournal())
+		}
+	})
+
+	t.Run("no word at all is a mistake, and the editor is not opened", func(t *testing.T) {
 		h := initialized(t)
 		h.vars["EDITOR"] = "myeditor"
 		opened := false
 		h.env.RunEditor = func([]string) error { opened = true; return nil }
-		for _, args := range [][]string{{"g", "add"}, {"g", "add", "token"}} {
-			code, out, errOut := h.run(args...)
-			wantExit(t, code, 2, out, errOut)
-			if !strings.Contains(errOut, "Missing argument. Usage: mtqg glossary add <word> <definition>") || out != "" {
-				t.Errorf("%v: stdout %q, stderr %q", args, out, errOut)
-			}
+		code, out, errOut := h.run("g", "add")
+		wantExit(t, code, 2, out, errOut)
+		if !strings.Contains(errOut, "Missing argument. Usage: mtqg glossary add <word> [<definition>]") || out != "" {
+			t.Errorf("stdout %q, stderr %q", out, errOut)
 		}
 		if opened || h.readJournal() != "" {
 			t.Errorf("editor opened: %v, journal %q", opened, h.readJournal())

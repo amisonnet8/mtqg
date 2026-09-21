@@ -477,7 +477,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 		for _, c := range records(t, obj, "commands") {
 			available[c["command"].(string)] = c["available"]
 		}
-		if available["bug done"] != true || available["context"] != true || available["edit"] != false {
+		if available["bug done"] != true || available["context"] != true || available["edit"] != true || available["undo"] != false {
 			t.Errorf("available %v", available)
 		}
 	})

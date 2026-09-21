@@ -203,6 +203,31 @@ func msgAlreadyInState(verb, id, text string) string {
 	return fmt.Sprintf("Already open: %s  %s", id, text)
 }
 
+// edit and delete
+
+func msgEdited(id, text string) string { return fmt.Sprintf("Edited: %s  %s", id, text) }
+
+func msgUnchanged(id, text string) string { return fmt.Sprintf("Unchanged: %s  %s", id, text) }
+
+func msgDeleted(id, text string) string { return fmt.Sprintf("Deleted: %s  %s", id, text) }
+
+// msgAlsoHidden says how many answers or replies went with a question or a bug
+// that was deleted, and whose they were.
+func msgAlsoHidden(typ string, n int, authors []string) string {
+	many, one := "answers are", "answer is"
+	if typ == journal.TypeBug {
+		many, one = "replies are", "reply is"
+	}
+	count := fmt.Sprintf("%d %s", n, many)
+	if n == 1 {
+		count = "1 " + one
+	}
+	return fmt.Sprintf("%s also hidden (%s)", count, strings.Join(authors, ", "))
+}
+
+// msgDeleteNote is said after every delete: nothing was removed.
+func msgDeleteNote() string { return "The lines remain in the journal and in git history" }
+
 // Reading the journal.
 
 // maxWarnings is how many skipped lines are named before the rest is counted.

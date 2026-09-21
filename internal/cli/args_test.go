@@ -168,7 +168,6 @@ func TestParseArgsMistakes(t *testing.T) {
 		{"--limit on a command that has none", []string{"t", "list", "--limit", "5"}, "Unknown option --limit"},
 		{"--limit before the command", []string{"--limit", "5", "log"}, "Unknown option --limit"},
 		{"a glossary entry with no word", []string{"g", "add"}, "Missing argument"},
-		{"a glossary entry with no definition", []string{"g", "add", "token"}, "Missing argument"},
 		{"words for log", []string{"log", "extra"}, "Too many arguments"},
 		{"--all where it means nothing", []string{"t", "add", "--all", "x"}, "Unknown option --all"},
 	}

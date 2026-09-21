@@ -116,15 +116,28 @@ func TestReplyToABug(t *testing.T) {
 		}
 	})
 
-	t.Run("the ID and no text is a mistake, and the editor is not opened", func(t *testing.T) {
+	t.Run("the ID and no text opens the editor for the reply", func(t *testing.T) {
+		h := setup(t)
+		h.vars["EDITOR"] = "myeditor"
+		h.env.RunEditor = func(argv []string) error {
+			return os.WriteFile(argv[len(argv)-1], []byte("Reproduced on macOS\nas well\n"), 0o600)
+		}
+		code, out, errOut := h.run("b", "add", idBug1[:6])
+		wantExit(t, code, 0, out, errOut)
+		if !strings.Contains(h.readJournal(), `"re":"`+idBug1+`","text":"Reproduced on macOS\nas well"`) {
+			t.Errorf("journal = %s", h.readJournal())
+		}
+	})
+
+	t.Run("an ID that matches nothing stops before the editor is opened", func(t *testing.T) {
 		h := setup(t)
 		h.vars["EDITOR"] = "myeditor"
 		opened := false
 		h.env.RunEditor = func([]string) error { opened = true; return nil }
 		before := h.readJournal()
-		code, out, errOut := h.run("b", "add", idBug1[:6])
-		wantExit(t, code, 2, out, errOut)
-		if !strings.Contains(errOut, "Missing argument. Usage: mtqg bug add") || out != "" || opened || h.readJournal() != before {
+		code, out, errOut := h.run("b", "add", "a8ec")
+		wantExit(t, code, 1, out, errOut)
+		if opened || out != "" || h.readJournal() != before || !strings.Contains(errOut, `No record matches "a8ec"`) {
 			t.Errorf("stdout %q, stderr %q, editor opened: %v", out, errOut, opened)
 		}
 	})

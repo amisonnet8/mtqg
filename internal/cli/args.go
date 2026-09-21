@@ -117,7 +117,7 @@ func init() {
 		{kind: "bug", name: "list", usage: "mtqg bug list [--all]", summary: "List the bugs that are open (--all: all)", args: argsNone, all: true, run: runListThread},
 		{kind: "bug", name: "done", usage: "mtqg bug done <bug-id>", summary: "Close a bug", args: argsID, run: runDone},
 		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, run: runReopen},
-		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> <definition>", summary: "Define a term", args: argsText, minWords: 2, run: runAddGlossary},
+		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> [<definition>]", summary: "Define a term", args: argsText, minWords: 1, run: runAddGlossary},
 		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
 
 		{name: "init", usage: "mtqg init", summary: "Create .mtqg/ in this repository", args: argsNone, run: runInit},
@@ -125,8 +125,8 @@ func init() {
 		{name: "version", usage: "mtqg version", summary: "Show the version of mtqg and of the repository's format", args: argsNone, run: runVersion},
 		{name: "help", usage: "mtqg help", summary: "List the commands", args: argsNone, run: runHelp},
 
-		{name: "edit", usage: "mtqg edit <id> <text>", summary: "Replace the text of a record", args: argsIDText},
-		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID},
+		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, run: runEdit},
+		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, run: runDelete},
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line written from this terminal", args: argsNone},
 		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind"}, run: runLog},
 		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
@@ -352,6 +352,11 @@ func checkArity(cmd *command, words []string) error {
 			return &usageError{msgMissingArgument(cmd.usage)}
 		case len(words) > 1:
 			return &usageError{msgTooManyArguments(cmd.usage)}
+		}
+	case argsIDText:
+		// The ID alone is enough: with no text, the editor opens.
+		if len(words) == 0 {
+			return &usageError{msgMissingArgument(cmd.usage)}
 		}
 	}
 	return nil

@@ -412,8 +412,13 @@ func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
 	if res.code != 1 || res.stdout != "" || !strings.Contains(res.stderr, `No record matches "a8ec0000"`) || !strings.Contains(res.stderr, "put the whole text in quotes") {
 		t.Errorf("a mistyped ID: %+v", res)
 	}
-	if res := r.run(nil, "", "q", "add", question[:10]); res.code != 2 || !strings.Contains(res.stderr, "Missing argument") {
+	// An ID and no answer opens the editor, which the test binary stands in for.
+	editor := `"` + os.Args[0] + `"`
+	if res := r.run([]string{"EDITOR=" + editor, "MTQG_E2E_EDITOR_TEXT=An answer written in the editor\n"}, "", "q", "add", question[:10]); res.code != 0 {
 		t.Errorf("an ID and no answer: %+v", res)
+	}
+	if res := r.run(nil, "", "q", "add", question[:10]); res.code != 1 || !strings.Contains(res.stderr, "$EDITOR is not set") {
+		t.Errorf("an ID and no answer, and no editor: %+v", res)
 	}
 
 	if got := r.mtqg("q", "done", question[:10]); !strings.HasPrefix(got, "Done: "+question[:10]+"  ") {
@@ -422,7 +427,7 @@ func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
 	if got := r.mtqg("q", "list"); got != "0 open (show done: --all)\n" {
 		t.Errorf("q list after done =\n%s", got)
 	}
-	if got := r.mtqg("q", "list", "--all"); !strings.Contains(got, "2 answers, done") || !strings.HasSuffix(got, "0 open, 1 done\n") {
+	if got := r.mtqg("q", "list", "--all"); !strings.Contains(got, "3 answers, done") || !strings.HasSuffix(got, "0 open, 1 done\n") {
 		t.Errorf("q list --all =\n%s", got)
 	}
 
@@ -442,17 +447,17 @@ func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
 	}
 
 	show := r.mtqg("show", question[:6])
-	for _, want := range []string{"question  " + question[:10] + "  done", "Should nested block comments be supported?", "Answers (2)", "Not in the first version", "claude-code (ai)", "-> done"} {
+	for _, want := range []string{"question  " + question[:10] + "  done", "Should nested block comments be supported?", "Answers (3)", "Not in the first version", "An answer written in the editor", "claude-code (ai)", "-> done"} {
 		if !strings.Contains(show, want) {
 			t.Errorf("show lacks %q:\n%s", want, show)
 		}
 	}
 
 	log := r.mtqg("log")
-	if !strings.HasSuffix(log, "\n6 records\n") || !strings.Contains(log, "(to "+question[:10]+")") {
+	if !strings.HasSuffix(log, "\n7 records\n") || !strings.Contains(log, "(to "+question[:10]+")") {
 		t.Errorf("log =\n%s", log)
 	}
-	if short := r.mtqg("log", "--limit", "2"); !strings.HasSuffix(short, "\n2 of 6 records (--limit 0 for all)\n") {
+	if short := r.mtqg("log", "--limit", "2"); !strings.HasSuffix(short, "\n2 of 7 records (--limit 0 for all)\n") {
 		t.Errorf("log --limit 2 =\n%s", short)
 	}
 	if only := r.mtqg("log", "--kind", "g"); !strings.HasSuffix(only, "\n3 records\n") || strings.Contains(only, "question") {

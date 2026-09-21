@@ -13,7 +13,11 @@ import (
 // standard input when the only word is "-", or what is written in $EDITOR when
 // there are no words. Trailing line breaks are dropped. A text that is empty, or
 // only white space, is refused.
-func (c *ctx) inputText(words []string) (string, error) {
+func (c *ctx) inputText(words []string) (string, error) { return c.inputTextFrom(words, "") }
+
+// inputTextFrom is inputText for a text that is changed: the editor opens on
+// initial, the text as it is now.
+func (c *ctx) inputTextFrom(words []string, initial string) (string, error) {
 	var text string
 	switch {
 	case len(words) == 1 && words[0] == "-":
@@ -23,7 +27,7 @@ func (c *ctx) inputText(words []string) (string, error) {
 		}
 		text = string(data)
 	case len(words) == 0:
-		edited, err := c.editText()
+		edited, err := c.editText(initial)
 		if err != nil {
 			return "", err
 		}
@@ -38,8 +42,9 @@ func (c *ctx) inputText(words []string) (string, error) {
 	return text, nil
 }
 
-// editText opens $EDITOR on an empty file and returns what was saved.
-func (c *ctx) editText() (string, error) {
+// editText opens $EDITOR on a file that holds initial (nothing, for a new text)
+// and returns what was saved.
+func (c *ctx) editText(initial string) (string, error) {
 	editor := strings.TrimSpace(c.env.Getenv("EDITOR"))
 	if editor == "" {
 		return "", &failure{kindEditor, msgNoEditor()}
@@ -54,7 +59,15 @@ func (c *ctx) editText() (string, error) {
 		return "", err
 	}
 	name := filepath.Clean(file.Name())
+	if initial != "" {
+		if _, err := file.WriteString(initial + "\n"); err != nil {
+			_ = file.Close()
+			_ = os.Remove(name)
+			return "", err
+		}
+	}
 	if err := file.Close(); err != nil {
+		_ = os.Remove(name)
 		return "", err
 	}
 	defer func() { _ = os.Remove(name) }()

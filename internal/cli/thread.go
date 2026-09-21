@@ -27,11 +27,6 @@ func runAddThread(c *ctx) int {
 	if len(words) == 0 || !model.IsIDLike(words[0]) {
 		return c.add(func(text string) (journal.Event, error) { return model.ParentCreate(typ, text) })
 	}
-	if len(words) < 2 {
-		// An ID and no reply. Nothing to write, and the editor is not opened for an
-		// answer: only "mtqg qa add" alone opens it, for a question.
-		return c.usageFailure(msgMissingArgument(c.inv.cmd.usage))
-	}
 
 	// Opening first means that a missing .mtqg/ or author is reported before the
 	// journal is read.
@@ -54,6 +49,8 @@ func runAddThread(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	// An ID and no reply opens the editor, once the ID is known to name a question
+	// (or a bug): nobody writes a long answer to be told that its ID was wrong.
 	text, err := c.inputText(words[1:])
 	if err != nil {
 		return c.fail(err)

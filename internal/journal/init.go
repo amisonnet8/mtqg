@@ -58,15 +58,23 @@ func createMtqg(root string, files []initFile) (Location, error) {
 		return Location{}, fmt.Errorf("journal: %w", err)
 	}
 
+	// The root is closed before the directory is removed: Windows does not remove
+	// a directory that is still open. If the directory cannot be removed, that
+	// is part of the error, so that a half-made .mtqg/ is not left behind unseen.
+	var r *os.Root
 	fail := func(err error) (Location, error) {
-		_ = os.RemoveAll(dir)
+		if r != nil {
+			_ = r.Close()
+		}
+		if rmErr := os.RemoveAll(dir); rmErr != nil {
+			return Location{}, errors.Join(fmt.Errorf("journal: %w", err), fmt.Errorf("journal: remove the half-made .mtqg/: %w", rmErr))
+		}
 		return Location{}, fmt.Errorf("journal: %w", err)
 	}
 	r, err := os.OpenRoot(dir)
 	if err != nil {
 		return fail(err)
 	}
-	defer func() { _ = r.Close() }()
 	for _, file := range files {
 		f, err := r.Create(file.name)
 		if err != nil {
@@ -79,6 +87,9 @@ func createMtqg(root string, files []initFile) (Location, error) {
 		if err := f.Close(); err != nil {
 			return fail(err)
 		}
+	}
+	if err := r.Close(); err != nil {
+		return fail(err)
 	}
 	return Location{Root: root, Dir: dir}, nil
 }

@@ -64,7 +64,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 9（シェル補完）：実装と手元の検証が済んだ（2026-09-21）。CIの3OSの確認待ち（人間がpushして確認）。これで段階1のステップはすべて終わった。CIがgreenなら、次は「段階1完了（v0.1）の判定」（下）。**
+**段階1 Step 9（シェル補完）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。これで段階1のステップはすべて終わった。次は「段階1完了（v0.1）の判定」（下）と、v0.1でタグを打つか・段階2（サンプルPJ）へ進むかの人間の判断。**
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。
@@ -78,9 +78,9 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **実際のシェルで動かして見つけた不具合（直した）：**fishのスクリプトで、語が0個のとき`printf '%s\n' $words`が空行を1つ出し、空の語が1つ渡って「未知のコマンド」になり、`mtqg t<TAB>`が何も出さなかった。
 
-**CIで確かめられること：** bashとPowerShellのe2eがWindows・macOS・Linuxで動くか（ランナーの画像にあるシェルだけが動く。**どのシェルがskipされたかは、`go test -v`でないと見えない**）。**確かめられないこと：**対話のシェルでの実際のTAB（bashが`=`で語を切ること、zshの補完のしくみ自体、fish 4系、PowerShell 5.1の引数の渡し方）。Windowsのbashが、WSLの起動用のものになりうる点は、Git for Windowsのbashを探す形にしたが、CIで動くかは分からない。
+**CIで確かめられたこと：** 3OSのCIがgreen（人間が確認）。**分からないこと：**どのシェルのe2eが実際に動き、どれがskipされたか（CIは`go test -v`ではないので、skipは見えない。見たくなったら`-run 'TestCompletionIn' -v`を足したジョブで確かめる）。**確かめられないこと：**対話のシェルでの実際のTAB（bashが`=`で語を切ること、zshの補完のしくみ自体、fish 4系、PowerShell 5.1の引数の渡し方）。
 
-**段階1完了（v0.1）の判定の進み具合：** `make check`・`make test`・`make race`は通る（手元）／3OSのCIがgreenか：Step 9の分は確認待ち／`go build`のバイナリの`mtqg version`は`v0.0.0-<コミット時刻>-<ハッシュ>+dirty`の疑似バージョンを出す（`go install ...@タグ`は、公開してタグを打つまで確かめられない）／`docs/reference/`の例は実際の出力と一致している（30個、`make docs-examples`が冪等）。
+**段階1完了（v0.1）の判定の進み具合：** `make check`・`make test`・`make race`は通る（手元）／**3OSのCIがgreen：確認済み（2026-09-21、人間）**／`go build`のバイナリの`mtqg version`は`v0.0.0-<コミット時刻>-<ハッシュ>+dirty`の疑似バージョンを出す。**`go install ...@タグ`で意味のあるバージョンが出るかは、タグを打つまで確かめられない**（`@main`で試すこともできるが、プロキシにコミットが記録されるので、人間の判断を待つ）／`docs/reference/`の例は実際の出力と一致している（30個、`make docs-examples`が冪等）。**判定の4項目のうち、`go install`の1つだけが未確認。**
 
 **Step 9に含めなかったもの：** 用語（`g add <TAB>`）・`archive`の期間・`search`の語・`--limit`の値の補完、`docs/tour/`・`docs/examples/`、看板としてのREADME（実装完了後）。
 

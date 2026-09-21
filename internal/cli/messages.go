@@ -382,6 +382,16 @@ func msgBadLimit(value string) string {
 	return fmt.Sprintf("Option --limit needs a whole number of 0 or more, not %q. Use 0 for all.", value)
 }
 
+// completion
+
+func msgNoShell(shells []string) string {
+	return "Missing shell: `mtqg completion` needs one of " + strings.Join(shells, ", ") + "."
+}
+
+func msgUnknownShell(word string, shells []string) string {
+	return fmt.Sprintf("Unknown shell %q: `mtqg completion` needs one of %s.", word, strings.Join(shells, ", "))
+}
+
 func msgBadKind(value string) string {
 	names := make([]string, len(kinds))
 	for i, k := range kinds {

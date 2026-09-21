@@ -308,6 +308,23 @@ type jsonCommandInfo struct {
 	Available bool   `json:"available"`
 }
 
+type jsonCompletion struct {
+	Command string `json:"command"`
+	Shell   string `json:"shell"`
+	Script  string `json:"script"`
+}
+
+type jsonCandidates struct {
+	Command    string          `json:"command"`
+	Candidates []jsonCandidate `json:"candidates"`
+	Count      int             `json:"count"`
+}
+
+type jsonCandidate struct {
+	Value       string `json:"value"`
+	Description string `json:"description,omitempty"`
+}
+
 // What context prints with --json: the same content as the text, after the same
 // cuts, in sections that each say how many there were.
 

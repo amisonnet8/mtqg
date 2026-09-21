@@ -46,6 +46,23 @@ const (
 	argsAny
 )
 
+// idSet says which records the ID that a command takes is completed from.
+type idSet int
+
+const (
+	// idsNone: the command takes no ID, or one that is not completed.
+	idsNone idSet = iota
+	// idsOpen: the open ones of the command's kind (done).
+	idsOpen
+	// idsDone: the done ones of the command's kind (reopen).
+	idsDone
+	// idsAll: every record in view (show, edit, delete).
+	idsAll
+	// idsParents: the questions or the bugs, open or done: the word that may be the
+	// ID of the one to answer or reply to (add of qa and bug).
+	idsParents
+)
+
 // command is one command of mtqg. A command with no run is known, so that it
 // can be named and asked for, but not yet available.
 type command struct {
@@ -65,6 +82,11 @@ type command struct {
 	// command that takes text and no minimum opens the editor when it is given
 	// none (memo add).
 	minWords int
+
+	// ids and choices are what the first word after the command is completed from
+	// (candidates): the IDs of some records, or a fixed list of words.
+	ids     idSet
+	choices []string
 
 	run func(c *ctx) int
 }
@@ -108,17 +130,17 @@ func init() {
 		{kind: "memo", name: "list", usage: "mtqg memo list", summary: "List the memos", args: argsNone, run: runListMemos},
 		{kind: "todo", name: "add", usage: "mtqg todo add <text>", summary: "Record something to do", args: argsText, run: runAddTodo},
 		{kind: "todo", name: "list", usage: "mtqg todo list [--all]", summary: "List the todos that are open (--all: all)", args: argsNone, all: true, run: runListTodos},
-		{kind: "todo", name: "done", usage: "mtqg todo done <id>", summary: "Mark a todo as done", args: argsID, run: runDone},
-		{kind: "todo", name: "reopen", usage: "mtqg todo reopen <id>", summary: "Mark a todo as open again", args: argsID, run: runReopen},
+		{kind: "todo", name: "done", usage: "mtqg todo done <id>", summary: "Mark a todo as done", args: argsID, ids: idsOpen, run: runDone},
+		{kind: "todo", name: "reopen", usage: "mtqg todo reopen <id>", summary: "Mark a todo as open again", args: argsID, ids: idsDone, run: runReopen},
 
-		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, run: runAddThread},
+		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, ids: idsParents, run: runAddThread},
 		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open (--all: all)", args: argsNone, all: true, run: runListThread},
-		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID, run: runDone},
-		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID, run: runReopen},
-		{kind: "bug", name: "add", usage: "mtqg bug add <bug> | mtqg bug add <bug-id> <reply>", summary: "Report a bug, or reply to one", args: argsText, run: runAddThread},
+		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID, ids: idsOpen, run: runDone},
+		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID, ids: idsDone, run: runReopen},
+		{kind: "bug", name: "add", usage: "mtqg bug add <bug> | mtqg bug add <bug-id> <reply>", summary: "Report a bug, or reply to one", args: argsText, ids: idsParents, run: runAddThread},
 		{kind: "bug", name: "list", usage: "mtqg bug list [--all]", summary: "List the bugs that are open (--all: all)", args: argsNone, all: true, run: runListThread},
-		{kind: "bug", name: "done", usage: "mtqg bug done <bug-id>", summary: "Close a bug", args: argsID, run: runDone},
-		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, run: runReopen},
+		{kind: "bug", name: "done", usage: "mtqg bug done <bug-id>", summary: "Close a bug", args: argsID, ids: idsOpen, run: runDone},
+		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, ids: idsDone, run: runReopen},
 		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> [<definition>]", summary: "Define a term", args: argsText, minWords: 1, run: runAddGlossary},
 		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
 
@@ -127,16 +149,19 @@ func init() {
 		{name: "version", usage: "mtqg version", summary: "Show the version of mtqg and of the repository's format", args: argsNone, run: runVersion},
 		{name: "help", usage: "mtqg help", summary: "List the commands", args: argsNone, run: runHelp},
 
-		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, run: runEdit},
-		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, run: runDelete},
+		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, ids: idsAll, run: runEdit},
+		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, ids: idsAll, run: runDelete},
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line you wrote from this terminal", args: argsNone, run: runUndo},
 		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind"}, run: runLog},
-		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
+		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, ids: idsAll, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Find the records whose text contains a text", args: argsText, minWords: 1, run: runSearch},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes, duplicate definitions and answers with no parent", args: argsNone, run: runReview},
 		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsNone, values: []string{"--max-tokens"}, run: runContext},
 		{name: "format", usage: "mtqg format [--mark] [file]", summary: "Show the event lines found in any text", args: argsAny, mark: true, run: runFormat},
 		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move the items of a date range out of view (-n: only report)", args: argsAny, dryRun: true, run: runArchive},
+
+		{name: "completion", usage: "mtqg completion <shell>", summary: "Print the completion script of a shell (" + strings.Join(shells, ", ") + ")", args: argsAny, choices: shells, run: runCompletion},
+		{name: "candidates", usage: "mtqg candidates [--word=<partial>] -- <word>...", summary: "List what can come next on a command line (the completion scripts call it)", args: argsAny, values: []string{"--word"}, run: runCandidates},
 	}
 }
 

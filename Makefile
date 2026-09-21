@@ -44,4 +44,4 @@ trivy:
 	trivy fs --config trivy.yaml .
 
 shellcheck:
-	git ls-files '*.sh' | xargs -r shellcheck
+	git ls-files '*.sh' '*.bash' | xargs -r shellcheck

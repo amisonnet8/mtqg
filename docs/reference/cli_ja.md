@@ -995,6 +995,37 @@ mtqg completion powershell >> $PROFILE
 - **語がどう言っていても、リポジトリがどうなっていても、終了コードは0で、標準エラー出力には何も出さない**（警告も）。`.mtqg/`がない、未来の形式、読めない行、衝突マーカー。どれでも、出せるものは出す（コマンドとオプションはリポジトリが要らない）。TABのたびに警告が出ると、打っている行が壊れるため。`candidates`自身のオプションの誤りは、ほかと同じくコマンドラインの誤り
 - 語の中の`-C`は読む。`mtqg -C ../other todo done <TAB>`は、`../other`のリポジトリのIDを出す。語はデータであり、`candidates`は、ほかのコマンドのようにはそれを解釈して動かない
 
+`mtqg t`、`mtqg todo re`、`mtqg todo done `、`mtqg log --kind `のあとでTABを押したとき、シェルに出るもの（値と説明はタブで区切る）：
+
+<!-- mtqg:example repo=parser_ja -->
+```
+$ mtqg candidates --word=t --
+todo
+$ mtqg candidates --word=re -- todo
+reopen	Mark a todo as open again
+$ mtqg candidates --word= -- todo done
+2e44158bae	コメント処理のテストケースを追加
+1818e81189	READMEに対応している構文を書く
+1e27a1c08a	エラー位置を行と列で表示する
+6513270e26	文字列リテラル中の // を無視する
+6cad4a268d	ブロックコメント /* */ の読み飛ばし
+$ mtqg candidates --word= -- log --kind
+memo
+todo
+qa
+bug
+glossary
+```
+
+先頭10桁が同じ2件の記録は、完全なIDで出す：
+
+<!-- mtqg:example repo=ambiguous_ja -->
+```
+$ mtqg candidates --word=7043 -- show
+70430f77ff4b475185d5cae12dff1a17	ブロックコメント /* */ の読み飛ばし
+70430f77ff91c2e04a8b33f1d7e6a025	行末の // も読み飛ばすようにした
+```
+
 ## 記録者
 
 | 項目 | 値 |

@@ -1236,6 +1236,39 @@ use it too.
   IDs of the repository in `../other`. The words are data: `candidates` does not
   act on them the way the other commands do.
 
+What the shell offers when TAB is pressed after `mtqg t`, `mtqg todo re`,
+`mtqg todo done ` and `mtqg log --kind ` (the value and the description are
+separated by a tab):
+
+<!-- mtqg:example repo=parser -->
+```
+$ mtqg candidates --word=t --
+todo
+$ mtqg candidates --word=re -- todo
+reopen	Mark a todo as open again
+$ mtqg candidates --word= -- todo done
+2e44158bae	Add test cases for comment handling
+1818e81189	List the supported syntax in the README
+1e27a1c08a	Show error positions as line and column
+6513270e26	Ignore // inside string literals
+6cad4a268d	Skip block comments /* */
+$ mtqg candidates --word= -- log --kind
+memo
+todo
+qa
+bug
+glossary
+```
+
+Two records whose first 10 digits are the same are given in full:
+
+<!-- mtqg:example repo=ambiguous -->
+```
+$ mtqg candidates --word=7043 -- show
+70430f77ff4b475185d5cae12dff1a17	Skip block comments /* */
+70430f77ff91c2e04a8b33f1d7e6a025	Parser now skips // at line end
+```
+
 ## Authors
 
 | Item | Value |

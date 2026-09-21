@@ -70,7 +70,7 @@
 - `trivy fs`で、依存モジュールの**既知の脆弱性（CVE）**と**ライセンス**を検査する（`make trivy`）
 - mtqgはMITで配布する。**MIT・BSD・Apache-2.0等は許可、GPL・AGPL等の互換性のないライセンスは失敗**にする
 - 何を失敗とみなすか（深刻度、禁止するライセンスの種類）は`trivy.yaml`で固定する。HIGH・CRITICALで失敗し、ライセンスはTrivyの既定の分類に従う（forbidden＝CRITICAL、restricted＝HIGHなのでGPL系は失敗、reciprocal＝MEDIUMのMPLや、notice＝LOWのMIT・BSD・Apacheは通る）。分類を上書きするときは理由を`PLAN.md`に記録する
-- `go get`で依存を足したら、必ずTrivyを通す。**依存は少なく保つ**。依存を足すこと自体が設計の判断なので、足す前に理由を説明して確認を取ること（`go get`は確認が出る設定になっている）
+- `go get`で依存を足したら、必ずTrivyを通す。**依存は、Goの標準ライブラリと`golang.org/x/`だけ**（`CLAUDE.md`）。それ以外は「どうしても必要な場合」の例外で、足す前に理由を説明して確認を取り、`PLAN.md`に記録する（`go get`は確認が出る設定になっている）。`x/`に限るので、ライセンスは実質BSD-3-Clauseだけになる
 - Trivyは脆弱性データベースの取得に通信が要る
 - ソースコード自体のコピペ検出は対象外（人間のレビューに委ねる）
 

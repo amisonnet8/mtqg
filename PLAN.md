@@ -63,7 +63,11 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 2（ジャーナル層）：完了（2026-09-20、CIの3OSがgreen）。次はStep 3（CLI順1）。** Step 1（足場）は完了済み（コミット`9e3bc6f`・`4bc8efd`、CIの3OSがgreen、`PostToolUse`フックの反映）。
+**段階1 Step 3（CLI順1）：着手（2026-09-21）。** 計画は承認済み。**依存の基準を決めた：Goの標準ライブラリと`golang.org/x/`だけ**（`CLAUDE.md`。例外は理由を説明して確認を取り、ここに記録する）。決めたこと：引数の解釈は標準ライブラリ（cobraは使わない）、文字幅は`golang.org/x/text/width`（East Asian Widthのプロパティ）＋標準の`unicode`（表示幅の関数は自前の約20行）、端末は`golang.org/x/term`、AIの記録者は環境変数`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`、e2eは本物のバイナリを`exec`するGoのテスト（ビルドタグ`e2e`。`testscript`は基準に合わない）。進め方は9つの区切り（0：依存の基準、1：仕様、2：`go get`、3：ジャーナル層、4：モデル層、5：CLIの土台、6：コマンド、7：e2eとCI、8：確認）。
+
+**依存の例外の記録：** なし。
+
+**（前の状態）段階1 Step 2（ジャーナル層）：完了（2026-09-20、CIの3OSがgreen）。** Step 1（足場）は完了済み（コミット`9e3bc6f`・`4bc8efd`、CIの3OSがgreen、`PostToolUse`フックの反映）。
 
 **ジャーナル層（`internal/journal/`）にあるもの**（計画は承認済み。JSONは`encoding/json/v2`、ロックの待ち時間は5秒、`golang.org/x/sys`を追加）：`errors.go`（エラーの種類）、`id.go`（UUIDv4）、`event.go`（書き出し・読み取り。JSONを触るのはここだけ）、`read.go`（`Scan`）、`find.go`（`.mtqg/`の探索）、`version.go`、`journal.go`（`Open`・`Read`）、`lock*.go`（`flock`／`LockFileEx`）、`append.go`、`rewrite.go`＋`replace_*.go`。テストは`*_test.go`（ゴールデン、別プロセスの並行、ロックを持つプロセスの`Kill`、シンボリックリンク、ベンチ）。
 

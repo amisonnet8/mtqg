@@ -265,7 +265,6 @@ $ mtqg status
 Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
-Conflicts           1  -> mtqg review
 
 Uncommitted records 3
 ```
@@ -294,10 +293,18 @@ $ mtqg todo list --all
 2 open, 1 done
 
 $ mtqg qa list
-2217beaddb  エラー位置は行と列の両方を出しますか？   claude-code  11:05  unanswered
-1012f037b6  ブロックコメントの入れ子に対応する？     claude-code  09:10  2 answers, awaiting confirmation
-           └ 初版では非対応。需要が出たら再検討     yamada       09:41
-2 open (show all: --all)
+1012f037b6  ブロックコメントの入れ子に対応する？    claude-code  09:10  2 answers, awaiting confirmation
+          └ 初版では非対応。需要が出たら再検討      yamada       09:41
+2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code  11:05  unanswered
+2 open (show done: --all)
+
+$ mtqg qa list --all
+c3b1f0d2e4  ライセンスは何にしますか？              yamada       2026-09-19  1 answer, done
+          └ MITが一番単純です                       claude-code  2026-09-19
+1012f037b6  ブロックコメントの入れ子に対応する？    claude-code  09:10       2 answers, awaiting confirmation
+          └ 初版では非対応。需要が出たら再検討      yamada       09:41
+2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code  11:05       unanswered
+2 open, 1 done
 ```
 
 `qa list`は、質問の末尾に状態を表示し、その下に最新の回答を、字下げして、記録者と時刻とともに表示する。
@@ -313,9 +320,11 @@ $ mtqg qa list
 
 ```
 $ mtqg glossary list
-f28c105d1f  トークン        字句解析で切り出す最小単位  yamada       09:00
-0cb1e29c65  ブロックコメント  複数行にわたって書けるコメント  claude-code  09:30
-4 terms
+5b7e2c9a41  トークン          字句解析で切り出す最小単位                  yamada       09:00
+f29d0da995  ブロックコメント  /* と */ で囲むコメント                     yamada       09:30
+0cb1e29c65  ブロックコメント  複数行にわたって書けるコメント              claude-code  10:00
+f28c105d1f  字句解析          ソースを読み、トークンの並びに変換する処理  claude-code  11:24
+4 terms (1 with duplicate definitions)
 ```
 
 `glossary list`は、すべての項目を表示する：ID、用語、定義、記録者、時刻。同じ用語の項目は、書かれた順に2行
@@ -339,20 +348,20 @@ mtqgはどちらかを選ばない。
 ```
 $ mtqg show 1012f037b6
 question  1012f037b6  open
-by claude-code (ai), 2026-09-17 09:10
+by claude-code (ai), 2026-09-21 09:10
 
   ブロックコメントの入れ子に対応する？
 
 Answers (2)
-  ae2eb1547f  claude-code (ai)  2026-09-17 09:15
+  ae2eb1547f  claude-code (ai)  2026-09-21 09:15
     一般的には対応するのが望ましい
-  95e761d177  yamada (human)    2026-09-17 09:41
+  95e761d177  yamada (human)    2026-09-21 09:41
     初版では非対応。需要が出たら再検討
 
 Events
-  2026-09-17 09:10  create  claude-code (ai)
-  2026-09-17 09:15  create  claude-code (ai)  answer ae2eb1547f
-  2026-09-17 09:41  create  yamada (human)    answer 95e761d177
+  2026-09-21 09:10  create  claude-code (ai)
+  2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
+  2026-09-21 09:41  create  yamada (human)    answer 95e761d177
 ```
 
 - 1行目は、種類（`memo`、`todo`、`question`、`answer`、`glossary`）、ID、todoと質問なら状態。2行目は、誰がいつ
@@ -366,16 +375,27 @@ Events
 ### log
 
 ```
-$ mtqg log --limit 4
-11:24  glossary  f28c105d1f  字句解析  ソースを読み、トークンの並びに変換する処理  yamada
-10:32  memo      81e74ef5e8  エラーメッセージは英語で統一する方針  yamada
-09:41  answer    95e761d177  (to 1012f037b6) 初版では非対応  yamada
-09:10  question  1012f037b6  ブロックコメントの入れ子に対応する？  claude-code  done
-4 of 137 records (--limit 0 for all)
+$ mtqg log --limit 6
+11:32  todo      2e44158bae  コメント処理のテストケースを追加                      claude-code
+11:30  todo      1818e81189  READMEに対応している構文を書く                        yamada
+11:24  glossary  f28c105d1f  字句解析: ソースを読み、トークンの並びに変換する処理  claude-code
+11:06  todo      1e27a1c08a  エラー位置を行と列で表示する                          claude-code
+11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？                claude-code
+10:52  todo      6513270e26  文字列リテラル中の // を無視する                      yamada
+6 of 16 records (--limit 0 for all)
+
+$ mtqg log --kind qa
+11:05       question  2217beaddb  エラー位置は行と列の両方を出しますか？              claude-code
+09:41       answer    95e761d177  (to 1012f037b6) 初版では非対応。需要が出たら再検討  yamada
+09:15       answer    ae2eb1547f  (to 1012f037b6) 一般的には対応するのが望ましい      claude-code
+09:10       question  1012f037b6  ブロックコメントの入れ子に対応する？                claude-code
+2026-09-19  answer    d4c2a1e3f5  (to c3b1f0d2e4) MITが一番単純です                   claude-code
+2026-09-19  question  c3b1f0d2e4  ライセンスは何にしますか？                          yamada       done
+6 records
 ```
 
 - 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、
-  `question`、`answer`、`glossary`）、ID、本文、記録者。glossaryの項目は、用語のあとに定義を表示する。回答は、
+  `question`、`answer`、`glossary`）、ID、本文、記録者。glossaryの項目は、用語、コロン、定義の順に表示する。回答は、
   属する質問の`(to <id>)`で始まる。終わったtodoと質問は、末尾に`done`が付く
 - 時刻は、今日なら`HH:MM`、それ以外の日は`YYYY-MM-DD`で、記録を作った時刻。本文は一覧の決まりに従う（1行目だけ、
   端末に出すときだけ切る、制御文字は置き換える）

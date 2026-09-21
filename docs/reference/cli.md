@@ -302,7 +302,6 @@ $ mtqg status
 Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
-Conflicts           1  -> mtqg review
 
 Uncommitted records 3
 ```
@@ -334,10 +333,18 @@ $ mtqg todo list --all
 2 open, 1 done
 
 $ mtqg qa list
-2217beaddb  Should error positions show both line and column?   claude-code  11:05  unanswered
-1012f037b6  Should nested block comments be supported?          claude-code  09:10  2 answers, awaiting confirmation
-           └ Not in the first version. Revisit if there is ...  yamada       09:41
-2 open (show all: --all)
+1012f037b6  Should nested block comments be supported?            claude-code  09:10  2 answers, awaiting confirmation
+          └ Not in the first version. Revisit if there is demand  yamada       09:41
+2217beaddb  Should error positions show both line and column?     claude-code  11:05  unanswered
+2 open (show done: --all)
+
+$ mtqg qa list --all
+c3b1f0d2e4  Which license should the parser use?                  yamada       2026-09-19  1 answer, done
+          └ MIT is the simplest choice                            claude-code  2026-09-19
+1012f037b6  Should nested block comments be supported?            claude-code  09:10       2 answers, awaiting confirmation
+          └ Not in the first version. Revisit if there is demand  yamada       09:41
+2217beaddb  Should error positions show both line and column?     claude-code  11:05       unanswered
+2 open, 1 done
 ```
 
 `qa list` ends each question with its state, and shows the latest answer under
@@ -354,9 +361,11 @@ An answer whose question is not in the journal is not listed.
 
 ```
 $ mtqg glossary list
-f28c105d1f  token          The smallest unit produced by lexing  yamada       09:00
-0cb1e29c65  block comment  A comment that can span lines         claude-code  09:30
-4 terms
+5b7e2c9a41  token          The smallest unit produced by lexing                     yamada       09:00
+f29d0da995  block comment  A comment enclosed in /* and */                          yamada       09:30
+0cb1e29c65  block comment  A comment that can span multiple lines                   claude-code  10:00
+f28c105d1f  lexing         Reading source and turning it into a sequence of tokens  claude-code  11:24
+4 terms (1 with duplicate definitions)
 ```
 
 `glossary list` shows every entry: the ID, the word, the definition, the author
@@ -385,20 +394,20 @@ How a list is shown:
 ```
 $ mtqg show 1012f037b6
 question  1012f037b6  open
-by claude-code (ai), 2026-09-17 09:10
+by claude-code (ai), 2026-09-21 09:10
 
   Should nested block comments be supported?
 
 Answers (2)
-  ae2eb1547f  claude-code (ai)  2026-09-17 09:15
+  ae2eb1547f  claude-code (ai)  2026-09-21 09:15
     Supporting them is generally preferable
-  95e761d177  yamada (human)    2026-09-17 09:41
+  95e761d177  yamada (human)    2026-09-21 09:41
     Not in the first version. Revisit if there is demand
 
 Events
-  2026-09-17 09:10  create  claude-code (ai)
-  2026-09-17 09:15  create  claude-code (ai)  answer ae2eb1547f
-  2026-09-17 09:41  create  yamada (human)    answer 95e761d177
+  2026-09-21 09:10  create  claude-code (ai)
+  2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
+  2026-09-21 09:41  create  yamada (human)    answer 95e761d177
 ```
 
 - The first line names the kind (`memo`, `todo`, `question`, `answer` or
@@ -416,18 +425,29 @@ Events
 ### log
 
 ```
-$ mtqg log --limit 4
-11:24  glossary  f28c105d1f  lexing  Reading source and turning it into tokens  yamada
-10:32  memo      81e74ef5e8  Policy: use English for all error messages  yamada
-09:41  answer     95e761d177  (to 1012f037b6) Not in the first version  yamada
-09:10  question   1012f037b6  Should nested block comments be supported?  claude-code  done
-4 of 137 records (--limit 0 for all)
+$ mtqg log --limit 6
+11:32  todo      2e44158bae  Add test cases for comment handling                              claude-code
+11:30  todo      1818e81189  List the supported syntax in the README                          yamada
+11:24  glossary  f28c105d1f  lexing: Reading source and turning it into a sequence of tokens  claude-code
+11:06  todo      1e27a1c08a  Show error positions as line and column                          claude-code
+11:05  question  2217beaddb  Should error positions show both line and column?                claude-code
+10:52  todo      6513270e26  Ignore // inside string literals                                 yamada
+6 of 16 records (--limit 0 for all)
+
+$ mtqg log --kind qa
+11:05       question  2217beaddb  Should error positions show both line and column?                     claude-code
+09:41       answer    95e761d177  (to 1012f037b6) Not in the first version. Revisit if there is demand  yamada
+09:15       answer    ae2eb1547f  (to 1012f037b6) Supporting them is generally preferable               claude-code
+09:10       question  1012f037b6  Should nested block comments be supported?                            claude-code
+2026-09-19  answer    d4c2a1e3f5  (to c3b1f0d2e4) MIT is the simplest choice                            claude-code
+2026-09-19  question  c3b1f0d2e4  Which license should the parser use?                                  yamada       done
+6 records
 ```
 
 - Every record that is not hidden, of every kind, one line each, **newest
   first**: the time, the kind (`memo`, `todo`, `question`, `answer`,
-  `glossary`), the ID, the text and the author. A glossary entry shows its word
-  and then its definition. An answer starts with `(to <id>)`, the question it
+  `glossary`), the ID, the text and the author. A glossary entry shows its word,
+  a colon and its definition. An answer starts with `(to <id>)`, the question it
   belongs to. A finished todo or question ends with `done`.
 - The time is `HH:MM` for today and `YYYY-MM-DD` for any other day, the time the
   record was created. The text follows the rules of a list (first line only, cut

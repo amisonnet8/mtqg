@@ -63,9 +63,17 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4（CLI順2）：進行中（2026-09-21）。** 4種類（memo・todo・qa・glossary）を揃え、`show`・`log`を作る。計画は承認済み（区切り6つ：仕様→モデル層→オプションの表→qa・glossary→`show`・`log`→e2eと実測）。**今は区切り1（仕様）が済んだところ**：`cli.md`・`cli_ja.md`（IDの4桁以上、`q add`の質問と回答の見分け、`qa list`・`glossary list`・`show`・`log`・`status`の形）、`cli-output.md`・`naming.md`、`history.md`。**仕様の出力例のうち、`qa list`・`glossary list`・`show`・`log`・`q add`のエラーは、まだ実際に動かしたものではない**（区切り6で、本物のバイナリの出力に差し替える。`status`の例の`Conflicts`行はStep 6まで出ないので、その時に外す）。
+**段階1 Step 4（CLI順2）：手元では完了（2026-09-21）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
 
-**Step 4で決めたこと（この会話で確認済み）：** IDは**4桁以上**で受け付ける（今までは下限なし）。`q add`は**最初の引数が16進数の4桁以上だけでできていれば回答先のID**（当てはまる記録がなければエラーにして、引用符で括るよう案内する）。IDだけで本文がなければエラー（結果、`$EDITOR`が開くのは引数がまったくないときだけ）。`log`は**新しい順・20件**（暫定。サンプルPJで判断する）。glossaryの重複は`word`の完全一致。理由は`docs/design/history.md`。
+**できたもの：** モデル層に、質問と回答（`Questions`・`Answers`・`HasQuestion`）、`Glossary`、`DuplicateWords`、`All`、`History`、`QuestionCreate`・`AnswerCreate`・`GlossaryCreate`、`Summary`の拡張、IDの最短4桁（`MinIDDigits`・`IsIDLike`・`TooShortError`）。質問を消すと回答も隠れる判定（`visible`）。CLIの層に、`q add`（質問と回答）・`q list`・`q done`／`reopen`、`g add`・`g list`、`show`、`log`（`--limit`・`--kind`）、`status`の`Open questions`・`Glossary`の行。一覧の整形は表の関数1つ（`formatTable`）にまとめ、todo・質問・用語・`log`が使う。コマンドごとの「値を取るオプション」と「必須の語数」を文法の表に持たせた。
+
+**手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`とテストのコンパイルが通る（**実行はCI**）。モデル層とCLIの新しい振る舞いは、壊して確かめた（打ち間違えたIDが黙って質問になる、回答が最古になる、`log`が古い順になる、質問を消しても回答が残る、など、13の変異をテストが検出）。`cli.md`・`cli_ja.md`の新しい例（`status`・`qa list`・`glossary list`・`show`・`log`・`q add`のエラー）は、**日時とIDを固定した記録を本物のバイナリで動かした実際の出力**。
+
+**Step 4で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** IDは**4桁以上**で受け付ける（今までは下限なし）。`q add`は、**最初の引数が16進数の4桁以上だけでできていれば回答先のID**（当てはまる記録がなければ質問にせずエラーにして、引用符で括るよう案内する）。IDだけで本文がなければエラー（結果、`$EDITOR`が開くのは引数がまったくないときだけで、回答と定義を`$EDITOR`で書く方法は無い。Step 6の`edit`で見直す）。`log`は**新しい順・20件**（暫定。サンプルPJで判断する）。glossaryの重複は`word`の完全一致。
+
+**Step 4に含めなかったもの：** `--json`（Step 5）、`status`の`Conflicts`の行と`review`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、`tty`（Step 6）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`に揃える。
+
+**CIで確かめること：** Windows・macOSでの、新しいコマンドの出力（特にe2eの`TestQuestionsAnswersAndTheGlossary`が使う`└`の文字と、日本語の桁揃え）。Windowsの色と端末の幅は、CIに端末が無いので確かめられない（Step 3から変わらない）。
 
 **（前の状態）段階1 Step 3（CLI順1）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。** Windowsで見つかった`Init`の後片付けの不具合（開いたままの`os.Root`が`RemoveAll`を妨げる）は、閉じてから消すよう直した（`testing.md`）。これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）を始められる。
 

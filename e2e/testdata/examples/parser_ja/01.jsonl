@@ -1,0 +1,19 @@
+{"id":"c3b1f0d2e4a54b6d9f7e8a1b2c3d4e5f","op":"create","type":"qa","status":"open","text":"ライセンスは何にしますか？","v":0,"ts":"2026-09-19T08:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"d4c2a1e3f5b64c7e8a9b0c1d2e3f4a56","op":"create","type":"qa","re":"c3b1f0d2e4a54b6d9f7e8a1b2c3d4e5f","text":"MITが一番単純です","v":0,"ts":"2026-09-19T08:30:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"c3b1f0d2e4a54b6d9f7e8a1b2c3d4e5f","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-19T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"b2c3d4e5f6a74b8c9d0e1f2a3b4c5d6e","op":"create","type":"bug","status":"open","text":"タブ文字でリンターが落ちる","v":0,"ts":"2026-09-19T09:30:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"d4e5f6a7b8c94d0e1f2a3b4c5d6e7f80","op":"create","type":"bug","re":"b2c3d4e5f6a74b8c9d0e1f2a3b4c5d6e","text":"タブを1桁として数えるよう直した","v":0,"ts":"2026-09-19T09:45:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"b2c3d4e5f6a74b8c9d0e1f2a3b4c5d6e","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-19T10:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"5b7e2c9a41d04f3e8a6c1d0b9e8f7a65","op":"create","type":"glossary","word":"トークン","text":"字句解析で切り出す最小単位","v":0,"ts":"2026-09-21T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"ブロックコメントの入れ子に対応する？","v":0,"ts":"2026-09-21T09:10:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"ae2eb1547f00411c8e9d3a7b5c6d7e81","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"一般的には対応するのが望ましい","v":0,"ts":"2026-09-21T09:15:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"f29d0da9955c4e0a8b3d1c2e4f5a6b78","op":"create","type":"glossary","word":"ブロックコメント","text":"/* と */ で囲むコメント","v":0,"ts":"2026-09-21T09:30:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"初版では非対応。需要が出たら再検討","v":0,"ts":"2026-09-21T09:41:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"行コメント // の読み飛ばし","v":0,"ts":"2026-09-21T09:50:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"0cb1e29c65a04b7d8f3e1c2d4b5a6978","op":"create","type":"glossary","word":"ブロックコメント","text":"複数行にわたって書けるコメント","v":0,"ts":"2026-09-21T10:00:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-21T10:15:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"空の入力でパーサーが落ちる","v":0,"ts":"2026-09-21T10:41:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"macOSでも再現した","v":0,"ts":"2026-09-21T10:45:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"9a8b7c6d5e4f4a3b2c1d0e9f8a7b6c5d","op":"create","type":"bug","re":"1012f037b64c44228c38fb2918f135d2","text":"空のファイルでも落ちる","v":0,"ts":"2026-09-21T10:46:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6513270e26a14c7b9d5e3f1a2b4c6d70","op":"create","type":"todo","status":"open","text":"文字列リテラル中の // を無視する","v":0,"ts":"2026-09-21T10:52:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-21T14:30:00Z","author":{"kind":"human","name":"yamada"}}

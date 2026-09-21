@@ -1,0 +1,4 @@
+{"id":"6cad4a268d0f4e2f8c1b7a3d5e9f0a11","op":"create","type":"todo","status":"open","text":"ブロックコメント /* */ の読み飛ばし","v":0,"ts":"2026-09-21T10:18:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"81e74ef5e8e24d949ed904759531985d","op":"create","type":"memo","text":"エラーメッセージは英語で統一する方針","v":0,"ts":"2026-09-21T10:32:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"2217beaddb1f4b6e9c0d1e2f3a4b5c66","op":"create","type":"qa","status":"open","text":"エラー位置は行と列の両方を出しますか？","v":0,"ts":"2026-09-21T11:05:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"1e27a1c08a3b4c5d8e9f0a1b2c3d4e33","op":"create","type":"todo","status":"open","text":"エラー位置を行と列で表示する","v":0,"ts":"2026-09-21T11:06:00Z","author":{"kind":"ai","name":"claude-code"}}

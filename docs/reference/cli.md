@@ -107,6 +107,7 @@ A record is an object:
 | `created` | The time of the first event |
 | `updated` | The time of the last event |
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg memo list --json
 {
@@ -160,6 +161,7 @@ What each command prints, after `command`:
 **Errors** are one line of JSON on **standard error**, and standard output stays
 empty. The exit code is the same as without `--json`.
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg show zzzz --json
 {"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
@@ -186,6 +188,7 @@ $ mtqg show zzzz --json
 **Warnings** (a line that was skipped, a conflict marker, git that cannot be run)
 are also one line each on standard error, and do not change the exit code:
 
+<!-- mtqg:example repo=broken -->
 ```
 $ mtqg todo list --json >/dev/null
 {"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
@@ -221,6 +224,7 @@ mtqg never looks above the repository root. Outside a git repository it stops
 with an error. There is one `.mtqg/` per git repository; a submodule has its
 own.
 
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
 ```
 $ mtqg t add Add tests for comment handling
 No .mtqg/ found. Run `mtqg init` (will be created at /home/me/sample-parser)
@@ -231,7 +235,7 @@ No command creates `.mtqg/` except `mtqg init`.
 ## init
 
 ```
-$ mtqg init
+mtqg init
 ```
 
 - Walks up the same way. At the repository root (`.git`), it creates `.mtqg/`
@@ -244,6 +248,7 @@ $ mtqg init
 - Does not change git configuration and does not commit. It tells you to commit
   `.mtqg/`:
 
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
 ```
 $ mtqg init
 Created .mtqg/ in /home/me/sample-parser
@@ -287,6 +292,7 @@ mtqg g add token The smallest unit produced by lexing
   (`Aborting: the text is empty`). Nothing is written.
 - Output is only the new record's ID:
 
+<!-- mtqg:example repo=empty ids=any -->
 ```
 $ mtqg t add Skip block comments
 6cad4a268d
@@ -294,6 +300,7 @@ $ mtqg t add Skip block comments
 
 ## done, reopen
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg t done 6cad4a268d
 Done: 6cad4a268d  Skip block comments /* */
@@ -352,6 +359,7 @@ argument makes the whole text a new question (or bug).
 | more than one record | error that lists the candidates with their full IDs |
 | no record | error, and nothing is written |
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg q add a8ec What does this mean?
 No record matches "a8ec". A first word of 4 or more hex digits is read as the ID of the question to answer.
@@ -399,6 +407,7 @@ A question or a bug is in one of four states:
 - If a prefix matches more than one record, mtqg stops and lists the candidates
   with their full IDs:
 
+<!-- mtqg:example repo=ambiguous -->
 ```
 $ mtqg t done 70430f77ff
 Ambiguous ID "70430f77ff" matches 2 records:
@@ -413,6 +422,7 @@ Ambiguous ID "70430f77ff" matches 2 records:
 
 ## edit, delete
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg edit 6cad4a268d Skip block comments and line comments
 Edited: 6cad4a268d  Skip block comments and line comments
@@ -451,6 +461,7 @@ Removes the **last line the current author wrote from the current terminal**, fo
 mistake just made (for example an answer added as a new question because the
 question ID was left out).
 
+<!-- mtqg:example repo=empty ids=any -->
 ```
 $ mtqg q add Not in the first version. Revisit if there is demand
 64ce08e71a
@@ -482,6 +493,7 @@ Undone: qa add "Not in the first version. Revisit if there is demand" (64ce08e71
   how many there are and points to `mtqg delete`. A line of `status`, `edit` or
   `delete` is removed whatever follows it.
 
+<!-- mtqg:example repo=refuse -->
 ```
 $ mtqg undo
 Cannot undo: todo 4ffb865902 has 2 other events, and undoing its creation would leave them without a record
@@ -498,6 +510,7 @@ To hide it instead: mtqg delete 4ffb865902
 
 ### status
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg status
 Open todos          5
@@ -525,18 +538,24 @@ Uncommitted records 3
 
 ### list
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg todo list
 6cad4a268d  Skip block comments /* */                claude-code  10:18
 6513270e26  Ignore // inside string literals         yamada       10:52
 1e27a1c08a  Show error positions as line and column  claude-code  11:06
-3 open (show done: --all)
+1818e81189  List the supported syntax in the README  yamada       11:30
+2e44158bae  Add test cases for comment handling      claude-code  11:32
+5 open (show done: --all)
 
 $ mtqg todo list --all
-6cad4a268d  Skip block comments /* */                claude-code  10:18  done
+6b0d549b6f  Skip line comments //                    yamada       09:50  done
+6cad4a268d  Skip block comments /* */                claude-code  10:18
 6513270e26  Ignore // inside string literals         yamada       10:52
 1e27a1c08a  Show error positions as line and column  claude-code  11:06
-2 open, 1 done
+1818e81189  List the supported syntax in the README  yamada       11:30
+2e44158bae  Add test cases for comment handling      claude-code  11:32
+5 open, 1 done
 
 $ mtqg qa list
 1012f037b6  Should nested block comments be supported?            claude-code  09:10  2 answers, awaiting confirmation
@@ -579,6 +598,7 @@ its author and time:
 An answer whose question is not in the journal, or a reply whose bug is not, is
 not listed.
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg glossary list
 5b7e2c9a41  token          The smallest unit produced by lexing                     yamada       09:00
@@ -611,6 +631,7 @@ How a list is shown:
 
 ### show
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg show 1012f037b6
 question  1012f037b6  open
@@ -663,6 +684,7 @@ Events
 
 ### log
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg log --limit 6
 11:32  todo      2e44158bae  Add test cases for comment handling                              claude-code
@@ -710,6 +732,7 @@ $ mtqg log --kind bug
 
 ### search
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg search comment
 11:32  todo      2e44158bae  Add test cases for comment handling                    claude-code
@@ -740,6 +763,7 @@ mtqg shows them and does not decide which one is right. A section with nothing i
 it is left out; with nothing at all the output is `Nothing to review`. The exit code
 is 0 either way.
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg review
 Concurrent status changes (1)
@@ -782,6 +806,7 @@ what is open, what was answered, which terms are agreed. It does not contain the
 project description, the current specification or build instructions; those
 belong to the README and the agent's instruction files.
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg context
 # mtqg context — sample-parser (main)
@@ -838,6 +863,7 @@ Read full entries with mtqg show <id>.
 
 With a smaller budget, what is left out is said in its section:
 
+<!-- mtqg:example repo=parser -->
 ```
 $ mtqg context --max-tokens 380
 # mtqg context — sample-parser (main)
@@ -935,6 +961,7 @@ Picks event lines out of any text and prints them as one table in time order,
 with local times. It reads a file, or standard input (no argument, or `-`), and
 does not need `.mtqg/`: it can run anywhere.
 
+<!-- mtqg:example repo=parser -->
 ```
 $ git show HEAD | mtqg format
 2026-09-21 10:18  todo      6cad4a268d  Skip block comments /* */                          claude-code
@@ -971,9 +998,9 @@ $ git show HEAD | mtqg format
 ## archive
 
 ```
-$ mtqg archive 2021-01-01..2024-09-18
-$ mtqg archive 2021..2023
-$ mtqg archive 202404..2024-09 -n
+mtqg archive 2021-01-01..2024-09-18
+mtqg archive 2021..2023
+mtqg archive 202404..2024-09 -n
 ```
 
 Moves the items whose last event falls in the range from `journal.jsonl` to
@@ -1004,6 +1031,7 @@ Errors (exit code 2, like any mistake in the command line): no `..`; a side that
 is not 8, 6 or 4 digits; different units on the two sides; a date that does not
 exist; start after end; any character other than digits, `-` and `.`.
 
+<!-- mtqg:example repo=years binary -->
 ```
 $ mtqg archive 2024-0101..202412-31
 Range: 2024-01-01..2024-12-31
@@ -1033,6 +1061,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 With `-n`, the report of the example above is printed and nothing moves
 (`Archived:` says what would):
 
+<!-- mtqg:example repo=years binary -->
 ```
 $ mtqg archive 2024..2024 -n
 Range: 2024-01-01..2024-12-31 (dry run)
@@ -1043,6 +1072,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 When nothing moves, no file is made or changed. Here the range above is
 archived again, and only what stays is left:
 
+<!-- mtqg:example repo=years binary setup="mtqg archive 2024..2024" -->
 ```
 $ mtqg archive 2024..2024
 Range: 2024-01-01..2024-12-31
@@ -1054,6 +1084,7 @@ A thread is dated by its last event, so a question that was closed in 2024 and
 answered in 2025 is left by `2024..2024`, and moved, with its answer, by
 `2025..2025` (here a dry run with `--json`, which counts and does not list):
 
+<!-- mtqg:example repo=years binary -->
 ```
 $ mtqg archive --json 2025..2025 -n
 {
@@ -1086,6 +1117,7 @@ $ mtqg archive --json 2025..2025 -n
 
 An archive file is read with `mtqg format`:
 
+<!-- mtqg:example repo=years binary setup="mtqg archive 2024..2024" -->
 ```
 $ mtqg format .mtqg/archive/2024-01-01..2024-12-31.jsonl
 2024-01-15 09:10  memo      cafa0631b6  Policy: use English for all error messages                             yamada
@@ -1109,6 +1141,7 @@ To bring a range back, append its file to `journal.jsonl` and delete it (see
 `mtqg version` prints the mtqg version and the format version declared in
 `.mtqg/version`, kept apart:
 
+<!-- mtqg:example skip="the version depends on how mtqg was built" -->
 ```
 $ mtqg version
 mtqg v0.1.0

@@ -92,6 +92,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `created` | 最初のイベントの時刻 |
 | `updated` | 最後のイベントの時刻 |
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg memo list --json
 {
@@ -142,6 +143,7 @@ $ mtqg memo list --json
 
 **エラー**は、**標準エラー出力**に1行のJSONで出し、標準出力は空のまま。終了コードは`--json`なしと同じ。
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg show zzzz --json
 {"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
@@ -166,6 +168,7 @@ $ mtqg show zzzz --json
 
 **警告**（飛ばした行、衝突マーカー、実行できないgit）も、1件ずつ1行で標準エラー出力に出し、終了コードは変えない。
 
+<!-- mtqg:example repo=broken -->
 ```
 $ mtqg todo list --json >/dev/null
 {"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
@@ -193,6 +196,7 @@ mtqgはカレントディレクトリ（または`-C <パス>`）から上にた
 
 mtqgはリポジトリのルートより上は見ない。gitリポジトリの外ではエラーで止まる。`.mtqg/`は1つのgitリポジトリに1つ。サブモジュールは独自の`.mtqg/`を持つ。
 
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
 ```
 $ mtqg t add コメント処理のテストを足す
 No .mtqg/ found. Run `mtqg init` (will be created at /home/me/sample-parser)
@@ -203,7 +207,7 @@ No .mtqg/ found. Run `mtqg init` (will be created at /home/me/sample-parser)
 ## init
 
 ```
-$ mtqg init
+mtqg init
 ```
 
 - 同じように上にたどる。リポジトリのルート（`.git`）で、どこで実行したかに関係なく、`.git`の隣に`.mtqg/`を作る
@@ -212,6 +216,7 @@ $ mtqg init
 - `.mtqg/journal.jsonl`、`.mtqg/.gitattributes`、`.mtqg/.gitignore`、`.mtqg/version`、`.mtqg/SCHEMA.md`を作る
 - gitの設定を変えず、コミットもしない。`.mtqg/`をコミットするよう案内する：
 
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
 ```
 $ mtqg init
 Created .mtqg/ in /home/me/sample-parser
@@ -245,6 +250,7 @@ mtqg g add トークン 字句解析で切り出す最小単位
 - 本文が空、または空白だけのときはエラー（`Aborting: the text is empty`）。何も書かない
 - 出力は、作られた記録のIDだけ
 
+<!-- mtqg:example repo=empty ids=any -->
 ```
 $ mtqg t add ブロックコメントの読み飛ばし
 6cad4a268d
@@ -252,6 +258,7 @@ $ mtqg t add ブロックコメントの読み飛ばし
 
 ## done、reopen
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg t done 6cad4a268d
 Done: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
@@ -297,6 +304,7 @@ Reopened: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
 | 複数の記録 | エラー。候補を完全なIDで並べる |
 | 記録がない | エラー。何も書かない |
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg q add a8ec はどういう意味ですか？
 No record matches "a8ec". A first word of 4 or more hex digits is read as the ID of the question to answer.
@@ -339,6 +347,7 @@ To ask a question that starts with it, put the whole text in quotes: mtqg qa add
   するため
 - 前方一致が複数の記録に当てはまるときは、止まって、候補を完全なIDで並べる
 
+<!-- mtqg:example repo=ambiguous_ja -->
 ```
 $ mtqg t done 70430f77ff
 Ambiguous ID "70430f77ff" matches 2 records:
@@ -352,6 +361,7 @@ Ambiguous ID "70430f77ff" matches 2 records:
 
 ## edit、delete
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg edit 6cad4a268d ブロックコメントと行コメントの読み飛ばし
 Edited: 6cad4a268d  ブロックコメントと行コメントの読み飛ばし
@@ -380,6 +390,7 @@ The lines remain in the journal and in git history
 
 **今の記録者が今の端末から書いた最後の行**を消す。直前のミス（たとえば、質問IDを付け忘れて、回答を新しい質問として足してしまった）のためのもの。
 
+<!-- mtqg:example repo=empty ids=any -->
 ```
 $ mtqg q add 初版では非対応。需要が出たら再検討
 acbf90978f
@@ -401,10 +412,11 @@ Undone: qa add "初版では非対応。需要が出たら再検討" (acbf90978f
   その記録への回答・返信）を持つ記録の`create`なら、何も消さず、いくつあるかを言って、`mtqg delete`を案内する。`status`・`edit`・
   `delete`の行は、その後に何があっても消す
 
+<!-- mtqg:example repo=refuse -->
 ```
 $ mtqg undo
-Cannot undo: todo c4a225e916 has 2 other events, and undoing its creation would leave them without a record
-To hide it instead: mtqg delete c4a225e916
+Cannot undo: todo 4ffb865902 has 2 other events, and undoing its creation would leave them without a record
+To hide it instead: mtqg delete 4ffb865902
 ```
 
 - 対象の行がなければ、`Nothing to undo: ...`。終了コードは1
@@ -415,6 +427,7 @@ To hide it instead: mtqg delete c4a225e916
 
 ### status
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg status
 Open todos          5
@@ -437,18 +450,24 @@ Uncommitted records 3
 
 ### list
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg todo list
 6cad4a268d  ブロックコメント /* */ の読み飛ばし  claude-code  10:18
 6513270e26  文字列リテラル中の // を無視する     yamada       10:52
 1e27a1c08a  エラー位置を行と列で表示する         claude-code  11:06
-3 open (show done: --all)
+1818e81189  READMEに対応している構文を書く       yamada       11:30
+2e44158bae  コメント処理のテストケースを追加     claude-code  11:32
+5 open (show done: --all)
 
 $ mtqg todo list --all
-6cad4a268d  ブロックコメント /* */ の読み飛ばし  claude-code  10:18  done
+6b0d549b6f  行コメント // の読み飛ばし           yamada       09:50  done
+6cad4a268d  ブロックコメント /* */ の読み飛ばし  claude-code  10:18
 6513270e26  文字列リテラル中の // を無視する     yamada       10:52
 1e27a1c08a  エラー位置を行と列で表示する         claude-code  11:06
-2 open, 1 done
+1818e81189  READMEに対応している構文を書く       yamada       11:30
+2e44158bae  コメント処理のテストケースを追加     claude-code  11:32
+5 open, 1 done
 
 $ mtqg qa list
 1012f037b6  ブロックコメントの入れ子に対応する？    claude-code  09:10  2 answers, awaiting confirmation
@@ -489,6 +508,7 @@ b2c3d4e5f6  タブ文字でリンターが落ちる       yamada       2026-09-1
 
 質問がジャーナルにない回答、バグがジャーナルにない返信は、表示しない。
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg glossary list
 5b7e2c9a41  トークン          字句解析で切り出す最小単位                  yamada       09:00
@@ -516,6 +536,7 @@ mtqgはどちらかを選ばない。
 
 ### show
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg show 1012f037b6
 question  1012f037b6  open
@@ -561,6 +582,7 @@ Events
 
 ### log
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg log --limit 6
 11:32  todo      2e44158bae  コメント処理のテストケースを追加                      claude-code
@@ -601,6 +623,7 @@ $ mtqg log --kind bug
 
 ### search
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg search コメント
 11:32  todo      2e44158bae  コメント処理のテストケースを追加                  claude-code
@@ -625,6 +648,7 @@ $ mtqg search コメント
 人の目が要るところ：ジャーナルに、食い違う事実があるところ。mtqgはそれを見せるだけで、どれが正しいかは決めない。
 中身のない区画は出さず、何もなければ`Nothing to review`。終了コードはどちらでも0。
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg review
 Concurrent status changes (1)
@@ -655,6 +679,7 @@ Answers and replies with no parent (1)
 
 AIエージェントがセッションの始めに読むもの。ここまでの過程（何が未完了か、何に答えが出たか、どの用語が合意されているか）を渡す。プロジェクトの説明、現在の仕様、ビルドの手順は含めない。それらはREADMEやエージェントの指示ファイルの役目。
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg context
 # mtqg context — sample-parser (main)
@@ -711,6 +736,7 @@ Read full entries with mtqg show <id>.
 
 分量を小さくすると、削ったものはその区画の中で言う：
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg context --max-tokens 380
 # mtqg context — sample-parser (main)
@@ -766,6 +792,7 @@ Read full entries with mtqg show <id>.
 任意のテキストからイベント行を拾い、時刻順の1つの表にして、ローカル時間で表示する。ファイルか標準入力を読み、
 `.mtqg/`は要らない：どこでも動く（引数がないか`-`なら標準入力）。
 
+<!-- mtqg:example repo=parser_ja -->
 ```
 $ git show HEAD | mtqg format
 2026-09-21 10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし     claude-code
@@ -790,9 +817,9 @@ $ git show HEAD | mtqg format
 ## archive
 
 ```
-$ mtqg archive 2021-01-01..2024-09-18
-$ mtqg archive 2021..2023
-$ mtqg archive 202404..2024-09 -n
+mtqg archive 2021-01-01..2024-09-18
+mtqg archive 2021..2023
+mtqg archive 202404..2024-09 -n
 ```
 
 最後のイベントが期間に入る項目を、`journal.jsonl`から`.mtqg/archive/<開始>..<終了>.jsonl`に移す（どの項目が移るかは[schema_ja.md](schema_ja.md#アーカイブ)：終わったtodo・質問・bug、memo、削除した記録）。どのコマンドも`archive/`を自分から読むことはなく、アーカイブ済みのIDは単に見つからない。アーカイブのファイルを読むときは、`mtqg format`に渡す。
@@ -816,6 +843,7 @@ $ mtqg archive 202404..2024-09 -n
 
 エラーになるもの（終了コード2。コマンドラインの誤りと同じ）：`..`がない、8・6・4桁でない側がある、左右の単位が違う、存在しない日付、開始が終了より後、数字・`-`・`.`以外の文字がある。
 
+<!-- mtqg:example repo=years_ja binary -->
 ```
 $ mtqg archive 2024-0101..202412-31
 Range: 2024-01-01..2024-12-31
@@ -834,6 +862,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 
 `-n`は、上の例と同じ報告を、何も移さずに表示する（`Archived:`は「移すもの」を言う）。
 
+<!-- mtqg:example repo=years_ja binary -->
 ```
 $ mtqg archive 2024..2024 -n
 Range: 2024-01-01..2024-12-31 (dry run)
@@ -843,6 +872,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 
 何も移さないときは、ファイルを作らず、変えもしない。次は、上の期間をもう一度アーカイブした例で、残るものだけが出る。
 
+<!-- mtqg:example repo=years_ja binary setup="mtqg archive 2024..2024" -->
 ```
 $ mtqg archive 2024..2024
 Range: 2024-01-01..2024-12-31
@@ -852,6 +882,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 
 スレッドは最後のイベントで日付を決めるので、2024年に閉じた質問に2025年に回答が付いていたら、`2024..2024`では残り、`2025..2025`で回答と一緒に移る（次は`--json`の`-n`。数えるだけで一覧は出さない）。
 
+<!-- mtqg:example repo=years_ja binary -->
 ```
 $ mtqg archive --json 2025..2025 -n
 {
@@ -884,6 +915,7 @@ $ mtqg archive --json 2025..2025 -n
 
 アーカイブのファイルは`mtqg format`で読む。
 
+<!-- mtqg:example repo=years_ja binary setup="mtqg archive 2024..2024" -->
 ```
 $ mtqg format .mtqg/archive/2024-01-01..2024-12-31.jsonl
 2024-01-15 09:10  memo      cafa0631b6  エラーメッセージは英語で統一する方針                       yamada
@@ -905,6 +937,7 @@ $ mtqg format .mtqg/archive/2024-01-01..2024-12-31.jsonl
 
 `mtqg version`は、mtqgのバージョンと、`.mtqg/version`が宣言する形式のバージョンを表示する。mtqgは、自分の知るものより新しい形式のリポジトリは読み書きを断り、mtqgの更新を促す。
 
+<!-- mtqg:example skip="the version depends on how mtqg was built" -->
 ```
 $ mtqg version
 mtqg v0.1.0

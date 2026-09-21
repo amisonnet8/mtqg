@@ -19,7 +19,7 @@ mtqg/
 │   ├── journal/            ← 【ジャーナル層】journal.jsonl の読み書きだけ
 │   ├── model/              ← 【モデル層】イベントの意味
 │   └── cli/                ← 【入口】引数の解釈、英語の文言、表の整形、--json
-├── e2e/                    ← ビルドした本物のバイナリと本物のgitで動かすテスト（ビルドタグ e2e）
+├── e2e/                    ← ビルドした本物のバイナリと本物のgitで動かすテスト（ビルドタグ e2e）。`examples_test.go`は`docs/reference/`の例の確認で、フィクスチャは`testdata/examples/`
 ├── docs/
 │   ├── reference/          ← 仕様。英語版 schema.md・cli.md と日本語版 *_ja.md
 │   ├── design/             ← 設計判断と理由の記録（日本語）

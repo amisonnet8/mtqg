@@ -1,0 +1,3 @@
+{"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"字句解析","text":"ソースを読み、トークンの並びに変換する処理","v":0,"ts":"2026-09-21T11:24:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"1818e811894d4a3c9e2b5f6a7c8d9e01","op":"create","type":"todo","status":"open","text":"READMEに対応している構文を書く","v":0,"ts":"2026-09-21T11:30:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"2e44158bae7c4b1d8a9f0e1d2c3b4a59","op":"create","type":"todo","status":"open","text":"コメント処理のテストケースを追加","v":0,"ts":"2026-09-21T11:32:00Z","author":{"kind":"ai","name":"claude-code"}}

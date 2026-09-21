@@ -1,0 +1,20 @@
+{"id":"cafa0631b6bf9f136db9d3ea674de798","op":"create","type":"memo","text":"Policy: use English for all error messages","v":0,"ts":"2024-01-15T09:10:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"2ab7a082223db9f2f162376204de61ab","op":"create","type":"glossary","word":"token","text":"The smallest unit produced by lexing","v":0,"ts":"2024-01-20T10:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"ecbc755106ee14b6adb7f3ac6cb61f17","op":"create","type":"glossary","word":"lexing","text":"Reading source text and turning it into tokens","v":0,"ts":"2024-02-01T10:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"546c4b471107035f676e0b4fabbe3776","op":"create","type":"todo","status":"open","text":"Add tests for comment handling","v":0,"ts":"2024-02-05T11:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"546c4b471107035f676e0b4fabbe3776","op":"status","from":"open","status":"done","v":0,"ts":"2024-03-11T15:30:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"1a1cc7a6ab10bfff70de4accf3a216fb","op":"create","type":"qa","status":"open","text":"Should nested block comments be supported?","v":0,"ts":"2024-04-02T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"64f59967e393d56e95678480f9196b0f","op":"create","type":"qa","re":"1a1cc7a6ab10bfff70de4accf3a216fb","text":"Supporting them is preferable, since C code uses them","v":0,"ts":"2024-04-02T09:20:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"869916a85bfce299f48440288923c99f","op":"create","type":"qa","re":"1a1cc7a6ab10bfff70de4accf3a216fb","text":"Not in the first version. Revisit if there is demand","v":0,"ts":"2024-04-03T10:15:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"1a1cc7a6ab10bfff70de4accf3a216fb","op":"status","from":"open","status":"done","v":0,"ts":"2024-04-05T16:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"0594ffe3cabb533c85fc4f415119a86f","op":"create","type":"todo","status":"open","text":"Support nested block comments","v":0,"ts":"2024-05-20T13:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"2e8a4b4d62215bc64cbccbfd202dcd71","op":"create","type":"memo","text":"Tokens carry their line and column","v":0,"ts":"2024-06-02T14:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"74ede9841aa698678562bcf937f45fc8","op":"create","type":"bug","status":"open","text":"Parser crashes on empty input","v":0,"ts":"2024-07-10T09:30:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"9383a1dad2222436ab32903f2af50dbb","op":"create","type":"bug","re":"74ede9841aa698678562bcf937f45fc8","text":"Fixed by checking for the end of input first","v":0,"ts":"2024-07-11T10:00:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"74ede9841aa698678562bcf937f45fc8","op":"status","from":"open","status":"done","v":0,"ts":"2024-07-12T17:45:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"e0efbdf7ef266e7799e164659e5241ba","op":"create","type":"bug","status":"open","text":"Lexer is slow on very long lines","v":0,"ts":"2024-09-03T11:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"15defc09a357e37590318b81ce4733b2","op":"create","type":"qa","status":"open","text":"Is a tab one column or four?","v":0,"ts":"2024-11-04T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"15defc09a357e37590318b81ce4733b2","op":"status","from":"open","status":"done","v":0,"ts":"2024-11-05T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"52b6291a2e888a346016fc587bb11a02","op":"create","type":"qa","re":"15defc09a357e37590318b81ce4733b2","text":"One column. Show it as four only when printing","v":0,"ts":"2025-02-10T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"5d835c9a2dab3e9039734fa9d7d5d2b2","op":"create","type":"memo","text":"Release notes go in CHANGELOG.md","v":0,"ts":"2025-03-01T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"674d9650bee8a4f8c9858bcd5fa0ec18","op":"create","type":"todo","status":"open","text":"Add a --version flag","v":0,"ts":"2025-05-10T09:00:00Z","author":{"kind":"human","name":"yamada"}}

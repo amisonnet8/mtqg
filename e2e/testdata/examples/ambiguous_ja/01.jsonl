@@ -1,0 +1,2 @@
+{"id":"70430f77ff91c2e04a8b33f1d7e6a025","op":"create","type":"memo","text":"行末の // も読み飛ばすようにした","v":0,"ts":"2026-03-02T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"70430f77ff4b475185d5cae12dff1a17","op":"create","type":"todo","status":"open","text":"ブロックコメント /* */ の読み飛ばし","v":0,"ts":"2026-09-21T10:18:00Z","author":{"kind":"ai","name":"claude-code"}}

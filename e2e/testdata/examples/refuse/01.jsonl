@@ -1,0 +1,3 @@
+{"id":"4ffb865902a84d6f9b3c5e7a1d2f8c40","op":"create","type":"todo","status":"open","text":"Skip block comments","v":0,"ts":"2026-09-21T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"4ffb865902a84d6f9b3c5e7a1d2f8c40","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-21T09:30:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"4ffb865902a84d6f9b3c5e7a1d2f8c40","op":"edit","text":"Skip block comments /* */","v":0,"ts":"2026-09-21T09:40:00Z","author":{"kind":"ai","name":"claude-code"}}

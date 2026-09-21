@@ -51,7 +51,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | Option | Description |
 |---|---|
 | `-C <path>` | Start looking for `.mtqg/` from `<path>` instead of the current directory |
-| `--json` | Machine-readable output (all commands) |
+| `--json` | Machine-readable output (all commands). See [JSON output](#json-output) |
 | `--all` | In lists, include finished items |
 | `--full-id` | Show full 32-digit IDs instead of the first 10 digits |
 | `--no-color` | Disable color. `NO_COLOR` is also honored |
@@ -71,6 +71,98 @@ Color is only decoration and is used only when the output is a terminal.
 - Options that are not tied to one command (`-C`, `--no-color`) may also come
   before the kind: `mtqg -C ../other t list`.
 - An option that is not listed here is an error.
+
+## JSON output
+
+`--json` is for programs: an editor extension, a hook, a script. What it prints
+is a promise: it changes only by adding fields, so a reader ignores the fields it
+does not know. (The format is `0` until v1; see [schema.md](schema.md#versioning).
+Until then this promise is not yet frozen either.)
+
+- The output is **one JSON object**, indented with two spaces and ending with a
+  line feed. Its first field is `command`, the command as it was typed without
+  the abbreviation (`todo list`, `qa add`, `log`).
+- Keys are `snake_case`. A field that has no value is left out, as in
+  `journal.jsonl`; a count is never left out.
+- **IDs are always the full 32 digits**, whatever `--full-id` says. **Times are
+  UTC**, as in `journal.jsonl` (`2026-09-21T10:18:00Z`); showing them in local
+  time is up to the reader.
+- **Text is exactly what was written**: control characters are not replaced, a
+  text is never cut to the width of the window, and there is no color. `--no-color`
+  and `--full-id` change nothing.
+- The output goes to standard output and, on success, nothing goes to standard
+  error except warnings (below). Records that are hidden do not appear.
+
+A record is an object:
+
+| Field | Meaning |
+|---|---|
+| `id` | The full ID |
+| `kind` | `memo`, `todo`, `question`, `answer`, `bug`, `reply` or `glossary` |
+| `word` | The word (glossary only) |
+| `text` | The full text (the definition, for glossary) |
+| `re` | The ID of the question or bug this answers or replies to (answer and reply only) |
+| `status` | `open` or `done` (todo, question and bug only) |
+| `author` | `{"kind": "human" or "ai", "name": "..."}` |
+| `created` | The time of the first event |
+| `updated` | The time of the last event |
+
+A question or a bug listed by `qa list`, `bug list` or `show` also has
+`replies`: its answers or replies, oldest first, as records. (The human form of
+`qa list` shows only the latest one; `--json` gives them all.)
+
+What each command prints, after `command`:
+
+| Command | Fields |
+|---|---|
+| `memo add`, `todo add`, `qa add`, `bug add`, `glossary add` | `record`: the record that was written |
+| `todo done`, `todo reopen`, `qa done`, ... | `record`, and `changed`: `false` if the record was in that state already and nothing was written |
+| `memo list` | `records`, `count` |
+| `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
+| `qa list`, `bug list` | as `todo list`; each record has `replies` |
+| `glossary list` | `records`, `entries` (their number), `duplicate_words` |
+| `log` | `records` (newest first), `shown`, `total` |
+| `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply) |
+| `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `uncommitted_records` (`null` if git cannot be run) |
+| `init` | `root`: where `.mtqg/` was created |
+| `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
+| `help`, or `-h` on a command | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}`. `available` is `false` for a command that is known and not yet built |
+| `context` | See [context](#context) |
+
+**Errors** are one line of JSON on **standard error**, and standard output stays
+empty. The exit code is the same as without `--json`.
+
+```
+{"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
+```
+
+`kind` says what went wrong, and `message` is the text mtqg would have printed
+(lines joined with a line feed). The other fields depend on the kind:
+
+| `kind` | Exit code | Other fields |
+|---|---|---|
+| `usage` (a mistake in the command line) | 2 | |
+| `not_available` (a command that is not built yet) | 1 | |
+| `not_in_repository`, `not_initialized`, `already_initialized`, `format_too_new`, `conflict_markers`, `lock_timeout` | 1 | |
+| `no_author`, `bad_author_kind`, `empty_text`, `empty_word`, `invalid_text`, `input`, `editor`, `git_unavailable` | 1 | |
+| `not_found` | 1 | `prefix` |
+| `id_too_short` | 1 | `prefix` |
+| `ambiguous` | 1 | `prefix`, `candidates`: the records the ID could mean |
+| `wrong_kind` | 1 | `record`: what the ID is, `wanted`: the kind the command is for |
+| `no_state`, `no_replies` | 1 | `record` |
+| `unknown` (anything else) | 1 | |
+
+**Warnings** (a line that was skipped, a conflict marker, git that cannot be run)
+are also one line each on standard error, and do not change the exit code:
+
+```
+{"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
+```
+
+`kind` is `invalid_json`, `invalid_utf8`, `missing_field`, `conflict_marker`,
+`no_trailing_newline`, `unreadable` or `git_unavailable`, and `line` is the line of
+`journal.jsonl` where there is one. After the first five, one line says how many
+more there were (`kind` `more`, with `count`).
 
 ## Exit codes
 
@@ -559,7 +651,7 @@ This is the process record of this project. Read the following before you start 
 - Record questions, decisions, findings, and todos with mtqg as they come up
 
 ## Attention
-- Glossary term "block comment" has conflicting definitions (mtqg review)
+- Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -595,14 +687,50 @@ Read full entries with mtqg show <id>.
 ```
 
 - Sections, in order: Attention, Open todos, Open questions, Open bugs, Recent
-  records, Glossary. Empty sections are omitted.
-- Every item carries its ID, author and time. Text is cut to one line.
-- Default budget: about 2000 tokens (`--max-tokens N` to change). Over budget,
-  mtqg drops, in order: recent records (10 → 5 → 3 → 0), glossary definitions
-  (then glossary words), answer and reply texts, older questions and bugs. Open todos are not
-  dropped; if still over budget, the list is shortened and ends with `(N more)`.
-- Omissions always say how many were left out and where to read them.
-- With `--json`: one array per section, whether it was cut, and the total counts.
+  records, Glossary. A section with nothing in it is omitted.
+- The first line is the repository (the name of the directory that holds
+  `.mtqg/`) and the branch (`git branch --show-current`; left out when there is
+  none, as on a detached HEAD). Then come the instructions for the reader, then
+  the sections, then a line on how to read more.
+- **Attention** names what needs action: each glossary word with more than one
+  definition (the first five; then how many more) and how many records are not
+  committed (`git` cannot be run: this line is left out).
+- Open todos, questions and bugs are oldest first, each with its ID, its author
+  and the time (`HH:MM` for today, a date for another day, in local time). A
+  question or a bug says `unanswered` (`no replies`) or `awaiting confirmation`
+  (it has answers or replies and is not closed) and, under it, the latest answer
+  or reply with its author and the kind of author.
+- Recent records are the newest records of every kind, newest first, as `log`
+  shows them, with the kind and the ID; an answer or a reply ends with the
+  question or bug it belongs to. Glossary lists every entry, with its ID.
+- A text is its first line, cut to 100 characters with `...`, and control
+  characters are replaced as in a list.
+- **Budget.** `--max-tokens N` sets it (default 2000; `0` means no limit). It is
+  **an estimate from the number of characters, not a token count**: 4 ASCII
+  characters count as 1 token, and every other character counts as 1. The
+  header, the instructions, Attention, the headings and the last line are never
+  left out. When the text is over budget, mtqg leaves out, in this order and
+  only as much as it takes: recent records (10, then 5, then 3, then none), the
+  definitions of the glossary (leaving each word), the latest answers and
+  replies, the oldest questions and bugs (of both sections together, one at a
+  time), the oldest todos (one at a time). If that is not enough, the text is
+  printed as it is.
+- What is left out is always said, in its section, with where to read it:
+  `- (7 more; see mtqg log)`, `- (3 older; see mtqg todo list)`,
+  `- (definitions left out; see mtqg glossary list)`,
+  `- (latest answers left out; see mtqg show <id>)`. The heading of a section
+  counts everything in it, not what was shown.
+- `--json` gives the same content, structured, after the same reduction. Besides
+  `command`, the fields are `repository`, `branch`, `attention`, `truncated` (true
+  if anything was left out), `max_tokens` (`null` with `0`) and
+  `estimated_tokens` (of the text form), and one object for each section:
+  `open_todos`, `open_questions`, `open_bugs`, `recent`, `glossary`, each with
+  `total` and `records`. In `open_questions` and `open_bugs` a record has
+  `reply_count` and, if it was not left out, `latest_reply`. A glossary record has
+  `definitions` (how many the word has) and, if the definitions were left out,
+  no `id` and no `text`. `attention` holds `{"kind": "duplicate_word", "word": ...}`
+  and `{"kind": "uncommitted", "count": N}`.
+- Concurrent status changes (`mtqg review`) are not in Attention yet.
 
 ## format
 

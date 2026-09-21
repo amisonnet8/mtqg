@@ -64,7 +64,15 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
+**段階1 Step 5（`context`と全コマンドの`--json`）：仕様を書いた（2026-09-21）。次は実装。** 計画は承認済み。`docs/reference/cli.md`・`cli_ja.md`に`## JSON output`と`### context`の仕様を書き（`context`の例は下書きのまま。**実装後に実際の出力へ差し替える**）、`.claude/rules/`4本と`docs/design/history.md`を更新した。
+
+**Step 5で決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** `--json`は常にJSONオブジェクト1つ（最初のフィールドは`command`）。エラーと警告も、標準エラー出力に1行のJSON（`kind`で機械が見分ける）。`context`の分量は文字数からの近似（ASCII 4文字＝1トークン、ほかは1文字＝1トークン）で、近似であることを仕様に明記する。削る順序は仕様で固定。ブランチ名は`git branch --show-current`。
+
+**進め方：** ①仕様（済）②`--json`の土台と既存コマンド③`context`（ジャーナル層に`GitBranch`、モデル層に`context.go`、CLIに`json.go`・`context.go`）④e2e・docsの実出力・全検証。
+
+**Step 5に含めないもの：** `review`と、`status`・`context`の「並行した状態変更」（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、シェル補完（Step 9。`help --json`が土台になる）。種類をまたぐ`re`の行の読み方（A・B・C）はStep 6の`review`で決める。
+
+**（前の状態）段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
 
 **決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** 返信の呼び名は`reply`（`show`・`log`の種類の列は memo / todo / question / answer / bug / reply / glossary）。Step 4.5として独立させ、CIを通してからStep 5に入る。仕様書でのbugは「不具合そのもの」（不具合の報告と、そのやり取り。`done`は、直った／もう追わない）。**名前は`mtqg`のまま**（設計§3の「要判断」を「改名しない」と決定）。課題管理への線引きは設計§2.7に足した：bugはqaと同じ形（親＋返信、open/doneだけ）に留め、重要度・担当者・再現手順・影響バージョンの欄は持たない。
 

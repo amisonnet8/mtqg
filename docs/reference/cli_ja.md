@@ -49,7 +49,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | オプション | 内容 |
 |---|---|
 | `-C <パス>` | カレントディレクトリの代わりに`<パス>`から`.mtqg/`を探す |
-| `--json` | 機械可読の出力（すべてのコマンド） |
+| `--json` | 機械可読の出力（すべてのコマンド）。[JSON出力](#json出力)を参照 |
 | `--all` | 一覧で、終わった項目も含める |
 | `--full-id` | IDを先頭10桁ではなく、完全な32桁で表示する |
 | `--no-color` | 色を付けない。`NO_COLOR`にも従う |
@@ -67,6 +67,79 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 - 特定のコマンドに結び付かないオプション（`-C`、`--no-color`）は、種類の前にも置ける：
   `mtqg -C ../other t list`
 - 一覧にないオプションはエラー
+
+## JSON出力
+
+`--json`はプログラム（エディタの拡張、フック、スクリプト）のためのもの。出力は約束であり、変えるときはフィールドを足すだけにする。読む側は、知らないフィールドを無視する。（形式はv1まで`0`で、[schema_ja.md](schema_ja.md#バージョン)にある。それまではこの約束もまだ固定ではない。）
+
+- 出力は**JSONオブジェクト1つ**。2スペースで字下げし、改行で終える。最初のフィールドは`command`で、打ったコマンドを略さずに書く（`todo list`、`qa add`、`log`）
+- キーは`snake_case`。値のないフィールドは`journal.jsonl`と同じく省く。件数は省かない
+- **IDは、`--full-id`の有無にかかわらず、常に完全な32桁。** **時刻はUTC**で、`journal.jsonl`と同じ形（`2026-09-21T10:18:00Z`）。ローカル時間で見せるのは読む側の仕事
+- **本文は書かれたとおり。** 制御文字を置き換えず、窓の幅で切らず、色も付けない。`--no-color`と`--full-id`は何も変えない
+- 出力は標準出力へ。成功したとき、標準エラー出力へは警告（後述）のほか何も出さない。隠された記録は出ない
+
+記録はオブジェクトで、次のフィールドを持つ。
+
+| フィールド | 意味 |
+|---|---|
+| `id` | 完全なID |
+| `kind` | `memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`のいずれか |
+| `word` | 用語（glossaryのみ） |
+| `text` | 本文の全文（glossaryでは定義） |
+| `re` | 回答・返信が向かう質問・バグのID（回答と返信のみ） |
+| `status` | `open`または`done`（todo、質問、バグのみ） |
+| `author` | `{"kind": "human"または"ai", "name": "..."}` |
+| `created` | 最初のイベントの時刻 |
+| `updated` | 最後のイベントの時刻 |
+
+`qa list`・`bug list`・`show`に出る質問とバグは、`replies`（回答または返信を、古い順に、記録として）も持つ。（人間向けの`qa list`は最新の1件だけを出すが、`--json`は全件を返す。）
+
+`command`のあとに、コマンドごとに次のものが出る。
+
+| コマンド | フィールド |
+|---|---|
+| `memo add`、`todo add`、`qa add`、`bug add`、`glossary add` | `record`：書いた記録 |
+| `todo done`、`todo reopen`、`qa done`、... | `record`と`changed`（すでにその状態で、何も書かなかったときは`false`） |
+| `memo list` | `records`、`count` |
+| `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
+| `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
+| `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
+| `log` | `records`（新しい順）、`shown`、`total` |
+| `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む） |
+| `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`uncommitted_records`（gitを実行できなければ`null`） |
+| `init` | `root`：`.mtqg/`を作った場所 |
+| `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
+| `help`、またはコマンドへの`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
+| `context` | [context](#context)を参照 |
+
+**エラー**は、**標準エラー出力**に1行のJSONで出し、標準出力は空のまま。終了コードは`--json`なしと同じ。
+
+```
+{"error":{"kind":"not_found","message":"No record matches \"zzzz\"","prefix":"zzzz"}}
+```
+
+`kind`は何が起きたかを、`message`はmtqgが出したはずの文章（複数行は改行でつないだもの）を表す。ほかのフィールドは`kind`による。
+
+| `kind` | 終了コード | ほかのフィールド |
+|---|---|---|
+| `usage`（コマンドラインの誤り） | 2 | |
+| `not_available`（まだ作っていないコマンド） | 1 | |
+| `not_in_repository`、`not_initialized`、`already_initialized`、`format_too_new`、`conflict_markers`、`lock_timeout` | 1 | |
+| `no_author`、`bad_author_kind`、`empty_text`、`empty_word`、`invalid_text`、`input`、`editor`、`git_unavailable` | 1 | |
+| `not_found` | 1 | `prefix` |
+| `id_too_short` | 1 | `prefix` |
+| `ambiguous` | 1 | `prefix`、`candidates`：IDが指しうる記録 |
+| `wrong_kind` | 1 | `record`：IDが実際に指すもの、`wanted`：コマンドが対象とする種類 |
+| `no_state`、`no_replies` | 1 | `record` |
+| `unknown`（それ以外） | 1 | |
+
+**警告**（飛ばした行、衝突マーカー、実行できないgit）も、1件ずつ1行で標準エラー出力に出し、終了コードは変えない。
+
+```
+{"warning":{"kind":"invalid_json","line":12,"message":"warning: .mtqg/journal.jsonl line 12 is not a valid JSON object; skipped it"}}
+```
+
+`kind`は`invalid_json`、`invalid_utf8`、`missing_field`、`conflict_marker`、`no_trailing_newline`、`unreadable`、`git_unavailable`のいずれかで、`line`は`journal.jsonl`の行がある場合にその行。最初の5件のあとは、あと何件あったかを1行で言う（`kind`は`more`で、`count`を持つ）。
 
 ## 終了コード
 
@@ -485,7 +558,7 @@ This is the process record of this project. Read the following before you start 
 - Record questions, decisions, findings, and todos with mtqg as they come up
 
 ## Attention
-- Glossary term "ブロックコメント" has conflicting definitions (mtqg review)
+- Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -521,10 +594,15 @@ Read full entries with mtqg show <id>.
 ```
 
 - 区画はこの順：Attention、Open todos、Open questions、Open bugs、Recent records、Glossary。空の区画は出さない
-- どの項目もID、記録者、時刻を持つ。本文は1行に切り詰める
-- 既定の分量：約2000トークン（`--max-tokens N`で変える）。超えたときは、次の順に削る：最近の記録（10→5→3→0件）、用語の定義（次に用語ごと）、回答と返信の本文、古い質問とバグ。未完了のtodoは削らない。それでも超える場合は一覧を短くし、`(N more)`で終える
-- 省略するときは、必ず何件省いたかと、どこで読めるかを書く
-- `--json`では、区画ごとの配列、削ったかどうか、全体の件数を返す
+- 最初の行はリポジトリ（`.mtqg/`のあるディレクトリの名前）とブランチ（`git branch --show-current`。detached HEADなどで無いときは出さない）。次に読み手への指示、区画、続きの読み方の行が並ぶ
+- **Attention**は、行動が要るものを名指しする：定義が2つ以上ある用語（先頭の5つ。残りは件数）と、コミットされていない記録の数（gitを実行できないときは、この行は出さない）
+- 未完了のtodo・質問・バグは古い順で、ID、記録者、時刻（今日は`HH:MM`、別の日は日付。ローカル時間）を持つ。質問とバグは`unanswered`（バグは`no replies`）または`awaiting confirmation`（回答・返信があり、閉じていない）と書き、その下に最新の回答・返信を、記録者と記録者の種別とともに出す
+- 最近の記録は、`log`と同じく、全種類の新しい記録を新しい順に、種類とIDとともに出す。回答・返信の終わりに、向かう質問・バグを書く。Glossaryは全項目を、IDとともに出す
+- 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える
+- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、見出し、最後の行は削らない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、古い質問とバグ（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ）。それでも収まらないときは、そのまま出す
+- 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 older; see mtqg todo list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
+- `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`と`{"kind": "uncommitted", "count": N}`
+- 並行した状態変更（`mtqg review`）は、まだAttentionに出ない
 
 ## format
 

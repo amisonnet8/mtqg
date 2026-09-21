@@ -64,10 +64,10 @@ func TestEncodeLineGolden(t *testing.T) {
 		{
 			name: "angle brackets, ampersand and the JavaScript separators are not escaped",
 			ev: Event{
-				ID: idA, Op: OpEdit, Text: "a<b>&c d e",
+				ID: idA, Op: OpEdit, Text: "a<b>&c\xe2\x80\xa8d\xe2\x80\xa9e",
 				V: 0, TS: "2026-09-17T03:00:00Z", Author: yamada,
 			},
-			want: "{\"id\":\"6b0d549b6f03475a8600a35a099950d8\",\"op\":\"edit\",\"text\":\"a<b>&c d e\",\"v\":0,\"ts\":\"2026-09-17T03:00:00Z\",\"author\":{\"kind\":\"human\",\"name\":\"yamada\"}}\n",
+			want: "{\"id\":\"6b0d549b6f03475a8600a35a099950d8\",\"op\":\"edit\",\"text\":\"a<b>&c\xe2\x80\xa8d\xe2\x80\xa9e\",\"v\":0,\"ts\":\"2026-09-17T03:00:00Z\",\"author\":{\"kind\":\"human\",\"name\":\"yamada\"}}\n",
 		},
 		{
 			name: "newline, tab, quote, backslash and control characters are escaped",
@@ -126,7 +126,7 @@ func TestEncodeLineRefusesInvalidUTF8(t *testing.T) {
 func TestParseEvent(t *testing.T) {
 	t.Run("a line written by encodeLine reads back", func(t *testing.T) {
 		want := Event{
-			ID: idA, Op: OpCreate, Type: "memo", Text: "a<b>&c  日本語\n2行目",
+			ID: idA, Op: OpCreate, Type: "memo", Text: "a<b>&c\xe2\x80\xa8 日本語\n2行目",
 			At: &At{Path: "a.go", Line: 3, Head: "abc"},
 			V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada, TTY: "3e9a0b12",
 		}
@@ -155,7 +155,7 @@ func TestParseEvent(t *testing.T) {
 	}{
 		{
 			name: "key order, spaces and escapes do not matter",
-			line: ` { "author" : {"name":"yamada","kind":"human"}, "ts":"2026-09-17T00:00:00Z", "v":0, "text":"日本語 <", "op":"create", "id":"` + idA + `" } `,
+			line: ` { "author" : {"name":"yamada","kind":"human"}, "ts":"2026-09-17T00:00:00Z", "v":0, "text":"\u65e5\u672c\u8a9e \u003c", "op":"create", "id":"` + idA + `" } `,
 			check: func(t *testing.T, ev Event) {
 				if ev.ID != idA || ev.Op != OpCreate || ev.Text != "日本語 <" || ev.Author != yamada {
 					t.Errorf("unexpected event %+v", ev)

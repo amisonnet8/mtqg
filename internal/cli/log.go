@@ -1,0 +1,106 @@
+package cli
+
+import (
+	"slices"
+	"strconv"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
+	"github.com/amisonnet8/mtqg/internal/model"
+)
+
+// defaultLogLimit is how many records log shows when it is not told: enough to
+// see what has been going on, and few enough to read.
+const defaultLogLimit = 20
+
+// runLog shows the newest records of every kind, one line each, newest first.
+func runLog(c *ctx) int {
+	limit := defaultLogLimit
+	if v, ok := c.inv.values["--limit"]; ok {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return c.usageFailure(msgBadLimit(v))
+		}
+		limit = n
+	}
+	typ := "" // every type
+	if v, ok := c.inv.values["--kind"]; ok {
+		k, found := findKind(v)
+		if !found {
+			return c.usageFailure(msgBadKind(v))
+		}
+		typ = typeOfKind(k)
+	}
+
+	j, err := c.reader()
+	if err != nil {
+		return c.fail(err)
+	}
+	state, err := c.load(j)
+	if err != nil {
+		return c.fail(err)
+	}
+
+	var records []*model.Record
+	for _, r := range state.All() {
+		if typ == "" || r.Type == typ {
+			records = append(records, r)
+		}
+	}
+	slices.Reverse(records) // newest first
+	total := len(records)
+	if limit > 0 && total > limit {
+		records = records[:limit]
+	}
+
+	now := c.env.Now()
+	rows := make([]tableRow, len(records))
+	for i, r := range records {
+		done := r.Status == journal.StatusDone
+		tail := ""
+		if done {
+			tail = "done"
+		}
+		rows[i] = tableRow{
+			cells: []string{
+				formatTime(r.Created, now, c.env.Location),
+				showKind(r),
+				shortID(r.ID, c.inv.fullID),
+				c.logText(r),
+				oneLine(r.Author.Name),
+				tail,
+			},
+			dim: done,
+		}
+	}
+	c.printLines(formatTable(rows, 3, 2, c.listWidth(), c.st))
+	c.println(msgLogFooter(len(records), total))
+	return exitOK
+}
+
+// logText is the text of a record for the line of log: an answer says which
+// question it is for, and a glossary entry gives the word before its definition.
+func (c *ctx) logText(r *model.Record) string {
+	switch r.Kind() {
+	case model.KindAnswer:
+		return "(to " + shortID(r.Re, c.inv.fullID) + ") " + oneLine(r.Text)
+	case model.KindGlossary:
+		return oneLine(r.Word) + ": " + oneLine(r.Text)
+	default:
+		return oneLine(r.Text)
+	}
+}
+
+// typeOfKind is the type field of the format that a kind of the command line
+// stands for.
+func typeOfKind(k kindSpec) string {
+	switch k.name {
+	case "memo":
+		return journal.TypeMemo
+	case "todo":
+		return journal.TypeTodo
+	case "glossary":
+		return journal.TypeGlossary
+	default:
+		return journal.TypeQA
+	}
+}

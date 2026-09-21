@@ -187,7 +187,7 @@ func TestKeepInTheRepository(t *testing.T) {
 	}
 
 	status := r.mtqg("status")
-	if status != "Open todos          1\n\nUncommitted records 3\n" {
+	if status != "Open todos          1\nOpen questions      0\nGlossary            0\n\nUncommitted records 3\n" {
 		t.Errorf("status = %q", status)
 	}
 
@@ -276,7 +276,9 @@ func TestExitCodesAndStreams(t *testing.T) {
 		{"an unknown option", []string{"t", "add", "-x"}, 2, "Unknown option -x"},
 		{"no command", nil, 2, "No command given"},
 		{"an ID that matches nothing", []string{"t", "done", "ffff"}, 1, `No record matches "ffff"`},
-		{"a command that is not built yet", []string{"q", "add", "why?"}, 1, "not available yet"},
+		{"a command that is not built yet", []string{"undo"}, 1, "not available yet"},
+		{"an ID that is too short", []string{"t", "done", "ffa"}, 1, "too short"},
+		{"an option that takes no value", []string{"log", "--limit"}, 2, "needs a value"},
 	}
 	for _, tt := range tests {
 		res := r.run(nil, "", tt.args...)
@@ -367,4 +369,126 @@ func readFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+var fullIDPattern = regexp.MustCompile(`^[0-9a-f]{32}\n$`)
+
+// The four kinds, end to end: a question is answered and closed, terms are
+// defined (one of them twice), and show, log and status read them back. The
+// answer holds the full ID of its question in the journal, however short the
+// ID that was typed.
+func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+
+	full := r.mtqg("q", "add", "--full-id", "Should nested block comments be supported?")
+	if !fullIDPattern.MatchString(full) {
+		t.Fatalf("q add --full-id printed %q", full)
+	}
+	question := strings.TrimSpace(full)
+
+	// Four digits of the ID are enough, and the journal keeps all 32.
+	answer := r.mtqg("q", "add", question[:4], "Not", "in", "the", "first", "version")
+	if !idPattern.MatchString(answer) {
+		t.Fatalf("an answer printed %q", answer)
+	}
+	agent := []string{"MTQG_AUTHOR_KIND=ai", "MTQG_AUTHOR_NAME=claude-code"}
+	if res := r.run(agent, "", "q", "add", question[:10], "Supporting them is generally preferable"); res.code != 0 {
+		t.Fatalf("%+v", res)
+	}
+	journal := readFile(t, filepath.Join(r.dir, ".mtqg", "journal.jsonl"))
+	if strings.Count(journal, `"re":"`+question+`"`) != 2 {
+		t.Errorf("both answers should hold the full ID of the question:\n%s", journal)
+	}
+
+	list := r.mtqg("q", "list")
+	if !strings.Contains(list, "2 answers, awaiting confirmation") || !strings.Contains(list, "\u2514 ") || !strings.HasSuffix(list, "1 open (show done: --all)\n") {
+		t.Errorf("q list =\n%s", list)
+	}
+
+	// A mistyped ID does not turn into a new question.
+	res := r.run(nil, "", "q", "add", "a8ec0000", "What", "does", "this", "mean?")
+	if res.code != 1 || res.stdout != "" || !strings.Contains(res.stderr, `No record matches "a8ec0000"`) || !strings.Contains(res.stderr, "put the whole text in quotes") {
+		t.Errorf("a mistyped ID: %+v", res)
+	}
+	if res := r.run(nil, "", "q", "add", question[:10]); res.code != 2 || !strings.Contains(res.stderr, "Missing argument") {
+		t.Errorf("an ID and no answer: %+v", res)
+	}
+
+	if got := r.mtqg("q", "done", question[:10]); !strings.HasPrefix(got, "Done: "+question[:10]+"  ") {
+		t.Errorf("q done printed %q", got)
+	}
+	if got := r.mtqg("q", "list"); got != "0 open (show done: --all)\n" {
+		t.Errorf("q list after done =\n%s", got)
+	}
+	if got := r.mtqg("q", "list", "--all"); !strings.Contains(got, "2 answers, done") || !strings.HasSuffix(got, "0 open, 1 done\n") {
+		t.Errorf("q list --all =\n%s", got)
+	}
+
+	// The glossary, with a word that is defined twice.
+	r.mtqg("g", "add", "token", "The", "smallest", "unit", "produced", "by", "lexing")
+	r.mtqg("g", "add", "block comment", "A comment enclosed in /* and */")
+	if res := r.run(agent, "", "g", "add", "block comment", "A comment that can span lines"); res.code != 0 {
+		t.Fatalf("%+v", res)
+	}
+	glossary := r.mtqg("g", "list")
+	if !strings.HasSuffix(glossary, "3 terms (1 with duplicate definitions)\n") || strings.Count(glossary, "block comment") != 2 {
+		t.Errorf("g list =\n%s", glossary)
+	}
+
+	if status := r.mtqg("status"); !strings.HasPrefix(status, "Open todos          0\nOpen questions      0\nGlossary            3  (1 with duplicate definitions)\n") {
+		t.Errorf("status = %q", status)
+	}
+
+	show := r.mtqg("show", question[:6])
+	for _, want := range []string{"question  " + question[:10] + "  done", "Should nested block comments be supported?", "Answers (2)", "Not in the first version", "claude-code (ai)", "-> done"} {
+		if !strings.Contains(show, want) {
+			t.Errorf("show lacks %q:\n%s", want, show)
+		}
+	}
+
+	log := r.mtqg("log")
+	if !strings.HasSuffix(log, "\n6 records\n") || !strings.Contains(log, "(to "+question[:10]+")") {
+		t.Errorf("log =\n%s", log)
+	}
+	if short := r.mtqg("log", "--limit", "2"); !strings.HasSuffix(short, "\n2 of 6 records (--limit 0 for all)\n") {
+		t.Errorf("log --limit 2 =\n%s", short)
+	}
+	if only := r.mtqg("log", "--kind", "g"); !strings.HasSuffix(only, "\n3 records\n") || strings.Contains(only, "question") {
+		t.Errorf("log --kind g =\n%s", only)
+	}
+}
+
+// Two branches answer the same question and are merged: the union merge keeps
+// both answers, and both belong to the question, because each holds its full ID.
+func TestTwoBranchesAnswerTheSameQuestion(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	question := r.mtqg("q", "add", "Should nested block comments be supported?")
+	question = strings.TrimSpace(question)
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "question")
+
+	r.git("checkout", "-q", "-b", "feature")
+	r.mtqg("q", "add", question, "Yes, they are common")
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "feature answer")
+
+	r.git("checkout", "-q", "main")
+	r.mtqg("q", "add", question, "No, not in the first version")
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "main answer")
+
+	r.git("merge", "-q", "--no-edit", "feature")
+
+	list := r.mtqg("q", "list")
+	if !strings.Contains(list, "2 answers, awaiting confirmation") {
+		t.Errorf("both answers should be there:\n%s", list)
+	}
+	show := r.mtqg("show", question)
+	for _, want := range []string{"Answers (2)", "Yes, they are common", "No, not in the first version"} {
+		if !strings.Contains(show, want) {
+			t.Errorf("show lacks %q:\n%s", want, show)
+		}
+	}
 }

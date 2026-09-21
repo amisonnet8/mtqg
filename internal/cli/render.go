@@ -91,63 +91,112 @@ const gap = "  "
 // away.
 const minTextWidth = 12
 
-// listRow is one line of a list.
-type listRow struct {
-	ID     string
-	Text   string // one line, already made safe
-	Author string
-	When   string
-	Done   bool
+// tableRow is one line of a table: one cell for each column.
+type tableRow struct {
+	cells []string
+	// reply marks a line under another one (the latest answer under its question).
+	// A "└" is put in the gap after the first column, so that the text of the
+	// answer lines up with the text of the question.
+	reply bool
+	// dim draws the line faint: it is finished.
+	dim bool
 }
 
-// formatList lays rows out as columns: ID, text, author, time, and "done" for a
-// finished item. The columns are aligned by display width. When termWidth is
-// more than 0 the text is cut to fit the window; when it is 0, as for a pipe or a
-// file, the text is never cut.
-func formatList(rows []listRow, termWidth int, st style) []string {
-	var idW, textW, authorW, whenW int
-	anyDone := false
+// formatTable lays rows out as columns, aligned by display width. The column flex
+// is the one that is cut with "..." to fit termWidth; the column id is colored as
+// an ID. When termWidth is 0, as for a pipe or a file, nothing is cut. A column
+// that has nothing in it in any row is left out, gap and all. Lines have no
+// trailing spaces.
+func formatTable(rows []tableRow, flex, id, termWidth int, st style) []string {
+	if len(rows) == 0 {
+		return nil
+	}
+	widths := make([]int, len(rows[0].cells))
 	for _, r := range rows {
-		idW = max(idW, displayWidth(r.ID))
-		textW = max(textW, displayWidth(r.Text))
-		authorW = max(authorW, displayWidth(r.Author))
-		whenW = max(whenW, displayWidth(r.When))
-		anyDone = anyDone || r.Done
+		for c, cell := range r.cells {
+			widths[c] = max(widths[c], displayWidth(cell))
+		}
 	}
 	if termWidth > 0 {
 		// The last column of the window is left free: a character written there
 		// makes many terminals move to the next line.
-		fixed := idW + len(gap) + len(gap) + authorW + len(gap) + whenW
-		if anyDone {
-			fixed += len(gap) + len("done")
+		fixed, columns := 0, 0
+		for c, w := range widths {
+			if w > 0 && c != flex {
+				fixed += w
+				columns++
+			}
 		}
-		textW = min(textW, max(termWidth-1-fixed, minTextWidth))
+		fixed += columns * len(gap) // a gap before the text, and between the others
+		widths[flex] = min(widths[flex], max(termWidth-1-fixed, minTextWidth))
 	}
 
 	lines := make([]string, len(rows))
 	for i, r := range rows {
 		var b strings.Builder
-		b.WriteString(st.id(padRight(r.ID, idW)))
-		b.WriteString(gap)
-		b.WriteString(padRight(truncate(r.Text, textW), textW))
-		b.WriteString(gap)
-		b.WriteString(padRight(r.Author, authorW))
-		b.WriteString(gap)
-		if anyDone {
-			b.WriteString(padRight(r.When, whenW))
-			if r.Done {
-				b.WriteString(gap + "done")
+		shown := 0
+		for c, w := range widths {
+			if w == 0 {
+				continue
 			}
-		} else {
-			b.WriteString(r.When)
+			if shown > 0 {
+				if shown == 1 && r.reply {
+					b.WriteString("\u2514 ") // U+2514, the corner that leads the eye to the answer
+				} else {
+					b.WriteString(gap)
+				}
+			}
+			cell := r.cells[c]
+			if c == flex {
+				cell = truncate(cell, w)
+			}
+			cell = padRight(cell, w)
+			if c == id {
+				cell = st.id(cell)
+			}
+			b.WriteString(cell)
+			shown++
 		}
 		line := strings.TrimRight(b.String(), " ")
-		if r.Done {
+		if r.dim {
 			line = st.dim(line)
 		}
 		lines[i] = line
 	}
 	return lines
+}
+
+// listRow is one line of a list of todos, memos, questions or glossary entries.
+type listRow struct {
+	ID     string
+	Word   string // a glossary entry's word, before its text
+	Text   string // one line, already made safe
+	Author string
+	When   string
+	// Tail ends the line: the state of a question. A finished item that has none
+	// ends with "done".
+	Tail  string
+	Done  bool // finished: drawn faint
+	Reply bool // the latest answer, under its question (ID and Tail are empty)
+}
+
+// formatList lays list rows out: ID, word, text, author, time and tail. When
+// termWidth is more than 0 the text is cut to fit the window; when it is 0, as
+// for a pipe or a file, the text is never cut.
+func formatList(rows []listRow, termWidth int, st style) []string {
+	table := make([]tableRow, len(rows))
+	for i, r := range rows {
+		tail := r.Tail
+		if tail == "" && r.Done && !r.Reply {
+			tail = "done"
+		}
+		table[i] = tableRow{
+			cells: []string{r.ID, r.Word, r.Text, r.Author, r.When, tail},
+			reply: r.Reply,
+			dim:   r.Done,
+		}
+	}
+	return formatTable(table, 2, 0, termWidth, st)
 }
 
 // shortID is the first 10 digits of an ID, which is what mtqg shows, or the whole

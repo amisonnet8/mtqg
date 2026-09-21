@@ -1,0 +1,41 @@
+package model
+
+import (
+	"sort"
+	"time"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
+)
+
+// Entry is one line of the history of a record.
+type Entry struct {
+	Event journal.Event
+	At    time.Time // the time of the event, or the zero time if it could not be read
+
+	// Answer is set on the create event of an answer, in the history of its
+	// question. It is nil for the events of the record itself.
+	Answer *Record
+}
+
+// History returns what happened to a record, oldest first: its own events (the
+// create, the changes of state, the edits, the delete) and, for a question, the
+// creation of each of its answers that is in view. Events with the same time keep
+// the order the record has them in, and the record's own events come before the
+// answers that arrived at the same moment.
+func (s *State) History(rec *Record) []Entry {
+	entries := make([]Entry, 0, len(rec.Events))
+	for _, ev := range rec.Events {
+		entries = append(entries, Entry{Event: ev, At: parseTime(ev.TS)})
+	}
+	if rec.Kind() == KindQuestion {
+		for _, answer := range s.Answers(rec.ID) {
+			if len(answer.Events) == 0 {
+				continue
+			}
+			ev := answer.Events[0] // its create: the record starts with it
+			entries = append(entries, Entry{Event: ev, At: parseTime(ev.TS), Answer: answer})
+		}
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].At.Before(entries[j].At) })
+	return entries
+}

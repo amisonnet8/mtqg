@@ -48,7 +48,27 @@ type command struct {
 	summary string
 	args    argMode
 	all     bool // accepts --all
-	run     func(c *ctx) int
+
+	// values are the options that take a value, as --limit 5 or --limit=5.
+	values []string
+
+	// minWords is how many words a command that takes a text must be given. A
+	// command that takes text and no minimum opens the editor when it is given
+	// none (memo add).
+	minWords int
+
+	run func(c *ctx) int
+}
+
+// takesValue says whether the command has an option of this name that takes a
+// value.
+func (cmd *command) takesValue(name string) bool {
+	for _, v := range cmd.values {
+		if v == name {
+			return true
+		}
+	}
+	return false
 }
 
 // full names the command as one types it: "mtqg todo done".
@@ -75,12 +95,12 @@ func init() {
 		{kind: "todo", name: "done", usage: "mtqg todo done <id>", summary: "Mark a todo as done", args: argsID, run: runDone},
 		{kind: "todo", name: "reopen", usage: "mtqg todo reopen <id>", summary: "Mark a todo as open again", args: argsID, run: runReopen},
 
-		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText},
-		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open", args: argsNone, all: true},
-		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID},
-		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID},
-		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> <definition>", summary: "Define a term", args: argsText},
-		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone},
+		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, run: runAddQA},
+		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open (--all: all)", args: argsNone, all: true, run: runListQA},
+		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID, run: runDone},
+		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID, run: runReopen},
+		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> <definition>", summary: "Define a term", args: argsText, minWords: 2, run: runAddGlossary},
+		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
 
 		{name: "init", usage: "mtqg init", summary: "Create .mtqg/ in this repository", args: argsNone, run: runInit},
 		{name: "status", usage: "mtqg status", summary: "Show what is open and what is not committed", args: argsNone, run: runStatus},
@@ -90,8 +110,8 @@ func init() {
 		{name: "edit", usage: "mtqg edit <id> <text>", summary: "Replace the text of a record", args: argsIDText},
 		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID},
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line written from this terminal", args: argsNone},
-		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show all kinds in time order", args: argsAny},
-		{name: "show", usage: "mtqg show <id>", summary: "Show a record with its history", args: argsID},
+		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind"}, run: runLog},
+		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Search the text of the records", args: argsText},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes and duplicate definitions", args: argsNone},
 		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsAny},
@@ -130,6 +150,9 @@ type invocation struct {
 	noColor bool
 	help    bool
 
+	// values holds the options that take a value, by their names (--limit).
+	values map[string]string
+
 	// words are what follows the command: the text of a record, or the ID.
 	words []string
 }
@@ -159,7 +182,22 @@ func parseArgs(args []string) (*invocation, error) {
 		if len(arg) < 2 || arg[0] != '-' || arg == "--" {
 			return false, nil
 		}
+		name, value, hasValue := strings.Cut(arg, "=")
 		switch {
+		case inv.cmd != nil && inv.cmd.takesValue(name):
+			// --limit 5 or --limit=5. The value is the next word, whatever it looks
+			// like.
+			if !hasValue {
+				if i+1 >= len(args) {
+					return true, &usageError{msgOptionNeedsValue(name)}
+				}
+				value = args[i+1]
+				i++
+			}
+			if inv.values == nil {
+				inv.values = map[string]string{}
+			}
+			inv.values[name] = value
 		case strings.HasPrefix(arg, "-C"):
 			if arg == "-C" {
 				if i+1 >= len(args) {
@@ -264,6 +302,10 @@ func parseArgs(args []string) (*invocation, error) {
 // checkArity says whether a command was given the right number of words.
 func checkArity(cmd *command, words []string) error {
 	switch cmd.args {
+	case argsText:
+		if len(words) < cmd.minWords {
+			return &usageError{msgMissingArgument(cmd.usage)}
+		}
 	case argsNone:
 		if len(words) > 0 {
 			return &usageError{msgTooManyArguments(cmd.usage)}

@@ -18,7 +18,7 @@ func runListTodos(c *ctx) int {
 	todos := state.Todos(all)
 	c.printRows(todos)
 	open := len(state.Todos(false))
-	c.println(msgTodoFooter(open, len(state.Todos(true))-open, all))
+	c.println(msgOpenFooter(open, len(state.Todos(true))-open, all))
 	return exitOK
 }
 
@@ -52,11 +52,20 @@ func (c *ctx) printRows(records []*model.Record) {
 			Done:   r.Status == journal.StatusDone,
 		}
 	}
-	width := 0
+	c.printLines(formatList(rows, c.listWidth(), c.st))
+}
+
+// listWidth is the width to cut the text of a list to: the window, when the
+// output is a terminal, and otherwise 0, which means never.
+func (c *ctx) listWidth() int {
 	if c.env.StdoutIsTerminal {
-		width = c.env.StdoutWidth
+		return c.env.StdoutWidth
 	}
-	for _, line := range formatList(rows, width, c.st) {
+	return 0
+}
+
+func (c *ctx) printLines(lines []string) {
+	for _, line := range lines {
 		c.println(line)
 	}
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/amisonnet8/mtqg/internal/journal"
@@ -114,6 +115,22 @@ func msgStdinFailed(err error) string { return fmt.Sprintf("Cannot read standard
 
 func msgNotFound(prefix string) string { return fmt.Sprintf("No record matches %q", prefix) }
 
+func msgIDTooShort(prefix string) string {
+	return fmt.Sprintf("The ID %q is too short: give at least %d digits", prefix, model.MinIDDigits)
+}
+
+// msgNoQuestionToAnswer is what `qa add` says when its first word looks like an
+// ID and names no record: a mistyped ID must not turn into a new question, and the
+// way to ask a question that really starts with such a word is to quote it.
+func msgNoQuestionToAnswer(word string) []string {
+	return []string{
+		fmt.Sprintf("No record matches %q. A first word of %d or more hex digits is read as the ID of the question to answer.", word, model.MinIDDigits),
+		fmt.Sprintf("To ask a question that starts with it, put the whole text in quotes: mtqg qa add \"%s ...\"", word),
+	}
+}
+
+func msgEmptyWord() string { return "Aborting: the word is empty" }
+
 func msgAmbiguousHeader(prefix string, n int) string {
 	return fmt.Sprintf("Ambiguous ID %q matches %d records:", prefix, n)
 }
@@ -197,9 +214,27 @@ func msgStatusLine(label string, value string) string {
 	return padRight(label, statusLabelWidth) + value
 }
 
+// msgQuestionsValue is the count of open questions, and how many of them have an
+// answer that nobody has confirmed by closing the question.
+func msgQuestionsValue(open, awaiting int) string {
+	if awaiting == 0 {
+		return strconv.Itoa(open)
+	}
+	return fmt.Sprintf("%d  (%d awaiting confirmation)", open, awaiting)
+}
+
+// msgGlossaryValue is the count of entries, and of the words that more than one
+// entry defines.
+func msgGlossaryValue(entries, duplicateWords int) string {
+	if duplicateWords == 0 {
+		return strconv.Itoa(entries)
+	}
+	return fmt.Sprintf("%d  (%d with duplicate definitions)", entries, duplicateWords)
+}
+
 // list footers
 
-func msgTodoFooter(open, done int, all bool) string {
+func msgOpenFooter(open, done int, all bool) string {
 	if all {
 		return fmt.Sprintf("%d open, %d done", open, done)
 	}
@@ -212,6 +247,83 @@ func msgMemoFooter(n int) string {
 	}
 	return fmt.Sprintf("%d memos", n)
 }
+
+func msgGlossaryFooter(n, duplicateWords int) string {
+	line := fmt.Sprintf("%d terms", n)
+	if n == 1 {
+		line = "1 term"
+	}
+	if duplicateWords > 0 {
+		line += fmt.Sprintf(" (%d with duplicate definitions)", duplicateWords)
+	}
+	return line
+}
+
+// msgQuestionState is the state of a question in a list: whether it has answers,
+// and whether it is closed.
+func msgQuestionState(answers int, done bool) string {
+	count := fmt.Sprintf("%d answers", answers)
+	if answers == 1 {
+		count = "1 answer"
+	}
+	switch {
+	case done && answers == 0:
+		return "done without answers"
+	case done:
+		return count + ", done"
+	case answers == 0:
+		return "unanswered"
+	default:
+		return count + ", awaiting confirmation"
+	}
+}
+
+// log
+
+func msgLogFooter(shown, total int) string {
+	switch {
+	case shown < total:
+		return fmt.Sprintf("%d of %d records (--limit 0 for all)", shown, total)
+	case total == 1:
+		return "1 record"
+	default:
+		return fmt.Sprintf("%d records", total)
+	}
+}
+
+func msgBadLimit(value string) string {
+	return fmt.Sprintf("Option --limit needs a whole number of 0 or more, not %q. Use 0 for all.", value)
+}
+
+func msgBadKind(value string) string {
+	names := make([]string, len(kinds))
+	for i, k := range kinds {
+		names[i] = k.name
+	}
+	return fmt.Sprintf("Option --kind needs one of %s (or its letter), not %q.", strings.Join(names, ", "), value)
+}
+
+// show
+
+const (
+	msgShowAnswers = "Answers"
+	msgShowEvents  = "Events"
+)
+
+func msgShowAnswerCount(n int) string { return fmt.Sprintf("%s (%d)", msgShowAnswers, n) }
+
+func msgShowBy(author, when string) string { return fmt.Sprintf("by %s, %s", author, when) }
+
+func msgShowToQuestion(id, text string) string {
+	if text == "" {
+		return "to question " + id
+	}
+	return "to question " + id + "  " + text
+}
+
+func msgShowWord(word string) string { return "Word: " + word }
+
+func msgShowAnswerEvent(id string) string { return "answer " + id }
 
 // version
 

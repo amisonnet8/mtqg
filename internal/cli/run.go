@@ -128,6 +128,14 @@ func (c *ctx) warn(warnings []journal.Warning) {
 	}
 }
 
+// usageFailure prints a mistake in the command line that only the command itself
+// could see (it depends on what the words mean), and returns the exit code for
+// one.
+func (c *ctx) usageFailure(msg string) int {
+	c.eprintln(msg)
+	return exitUsage
+}
+
 // fail prints what went wrong, in words, and returns the exit code.
 func (c *ctx) fail(err error) int {
 	for _, l := range c.describe(err) {
@@ -149,6 +157,7 @@ func (c *ctx) describe(err error) []string {
 		wrongKind  *model.WrongKindError
 		noState    *model.NoStateError
 		notFound   *model.NotFoundError
+		tooShort   *model.TooShortError
 		gitMissing *journal.GitUnavailableError
 	)
 	verb := ""
@@ -180,6 +189,10 @@ func (c *ctx) describe(err error) []string {
 		return []string{msgNoState(noState, verb)}
 	case errors.As(err, &notFound):
 		return []string{msgNotFound(notFound.Prefix)}
+	case errors.As(err, &tooShort):
+		return []string{msgIDTooShort(tooShort.Prefix)}
+	case errors.Is(err, model.ErrEmptyWord):
+		return []string{msgEmptyWord()}
 	case errors.As(err, &gitMissing):
 		return []string{msgGitUnavailable(gitMissing.Err)}
 	default:

@@ -311,3 +311,56 @@ func TestIsIDLike(t *testing.T) {
 		}
 	}
 }
+
+func TestHistory(t *testing.T) {
+	state := Build([]journal.Event{
+		create(idQ, journal.TypeQA, "Nested block comments?", 0),
+		answer(idAns, idQ, "one", 2, agent),
+		status(idQ, "open", "done", 4, human),
+		answer(idAns2, idQ, "two", 3, human),
+		{ID: idQ, Op: journal.OpEdit, Text: "Nested block comments, please?", TS: at(5), Author: human},
+		create(idMemo, journal.TypeMemo, "m", 6),
+	})
+
+	// A question: its own events and the creation of its answers, by time.
+	var got []string
+	for _, e := range state.History(state.Record(idQ)) {
+		what := e.Event.Op
+		if e.Answer != nil {
+			what += " " + e.Answer.ID[:4]
+		}
+		got = append(got, what)
+	}
+	want := []string{"create", "create a1a1", "create 7043", "status", "edit"}
+	if len(got) != len(want) {
+		t.Fatalf("history = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("history = %v, want %v", got, want)
+		}
+	}
+	for _, e := range state.History(state.Record(idQ)) {
+		if e.At.IsZero() {
+			t.Errorf("an entry has no time: %+v", e)
+		}
+	}
+
+	// An answer or a memo has only its own events.
+	if h := state.History(state.Record(idAns)); len(h) != 1 || h[0].Answer != nil {
+		t.Errorf("history of an answer = %+v", h)
+	}
+	if h := state.History(state.Record(idMemo)); len(h) != 1 {
+		t.Errorf("history of a memo = %+v", h)
+	}
+
+	// An answer that was deleted is not part of the question's history.
+	deleted := Build([]journal.Event{
+		create(idQ, journal.TypeQA, "q", 0),
+		answer(idAns, idQ, "one", 1, agent),
+		del(idAns, 2),
+	})
+	if h := deleted.History(deleted.Record(idQ)); len(h) != 1 {
+		t.Errorf("history = %+v, want the question's create only", h)
+	}
+}

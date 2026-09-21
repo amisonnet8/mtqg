@@ -89,6 +89,34 @@ func TestParseArgs(t *testing.T) {
 				t.Error("--no-color should be set")
 			}
 		}},
+		{
+			name: "an option that takes a value, as two words",
+			args: []string{"log", "--limit", "5", "--kind", "q"}, cmd: "mtqg log",
+			check: func(t *testing.T, inv *invocation) {
+				if inv.values["--limit"] != "5" || inv.values["--kind"] != "q" {
+					t.Errorf("values = %v", inv.values)
+				}
+			},
+		},
+		{
+			name: "an option that takes a value, joined with =",
+			args: []string{"log", "--limit=0", "--kind=glossary", "--full-id"}, cmd: "mtqg log",
+			check: func(t *testing.T, inv *invocation) {
+				if inv.values["--limit"] != "0" || inv.values["--kind"] != "glossary" || !inv.fullID {
+					t.Errorf("values = %v, fullID %v", inv.values, inv.fullID)
+				}
+			},
+		},
+		{
+			name: "the value is the next word, whatever it looks like",
+			args: []string{"log", "--kind", "-1"}, cmd: "mtqg log",
+			check: func(t *testing.T, inv *invocation) {
+				if inv.values["--kind"] != "-1" {
+					t.Errorf("values = %v", inv.values)
+				}
+			},
+		},
+		{name: "a glossary entry with a word and a definition", args: []string{"g", "add", "token", "a", "unit"}, cmd: "mtqg glossary add", words: []string{"token", "a", "unit"}},
 		{name: "help asked for by -h", args: []string{"-h"}, cmd: "mtqg help", check: func(t *testing.T, inv *invocation) {
 			if !inv.help {
 				t.Error("help should be set")
@@ -136,6 +164,12 @@ func TestParseArgsMistakes(t *testing.T) {
 		{"an unknown option before the command", []string{"--bogus", "status"}, "Unknown option --bogus"},
 		{"a text that starts with an option", []string{"t", "add", "-x", "flag"}, "Unknown option -x"},
 		{"-C without a path", []string{"status", "-C"}, "needs a value"},
+		{"--limit with no value", []string{"log", "--limit"}, "Option --limit needs a value"},
+		{"--limit on a command that has none", []string{"t", "list", "--limit", "5"}, "Unknown option --limit"},
+		{"--limit before the command", []string{"--limit", "5", "log"}, "Unknown option --limit"},
+		{"a glossary entry with no word", []string{"g", "add"}, "Missing argument"},
+		{"a glossary entry with no definition", []string{"g", "add", "token"}, "Missing argument"},
+		{"words for log", []string{"log", "extra"}, "Too many arguments"},
 		{"--all where it means nothing", []string{"t", "add", "--all", "x"}, "Unknown option --all"},
 	}
 	for _, tt := range tests {

@@ -8,9 +8,8 @@ import (
 	"github.com/amisonnet8/mtqg/internal/model"
 )
 
-// runStatus shows what is open and how many records are not committed. The lines
-// for questions, glossary entries and conflicts come with the commands that make
-// them.
+// runStatus shows what is open and how many records are not committed. The line
+// for conflicts comes with the command that finds them (review).
 func runStatus(c *ctx) int {
 	j, err := c.reader()
 	if err != nil {
@@ -23,6 +22,8 @@ func runStatus(c *ctx) int {
 	summary := state.Summary()
 
 	c.println(msgStatusLine("Open todos", strconv.Itoa(summary.OpenTodos)))
+	c.println(msgStatusLine("Open questions", msgQuestionsValue(summary.OpenQuestions, summary.AwaitingConfirmation)))
+	c.println(msgStatusLine("Glossary", msgGlossaryValue(summary.GlossaryEntries, summary.DuplicateWords)))
 	c.println()
 
 	uncommitted := "unknown"

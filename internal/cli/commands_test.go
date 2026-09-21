@@ -584,7 +584,7 @@ func TestStatus(t *testing.T) {
 		)
 		code, out, errOut := h.run("status")
 		wantExit(t, code, 0, out, errOut)
-		want := "Open todos          1\n\nUncommitted records 3\n"
+		want := "Open todos          1\nOpen questions      0\nGlossary            0\n\nUncommitted records 3\n"
 		if out != want {
 			t.Errorf("stdout %q, want %q", out, want)
 		}
@@ -707,9 +707,9 @@ func TestHelpAndMistakes(t *testing.T) {
 	}
 
 	// A command that exists but is not built yet says so.
-	code, out, errOut = h.run("q", "add", "why?")
+	code, out, errOut = h.run("undo")
 	wantExit(t, code, 1, out, errOut)
-	if !strings.Contains(errOut, "`mtqg qa add` is not available yet") {
+	if !strings.Contains(errOut, "`mtqg undo` is not available yet") {
 		t.Errorf("stderr %q", errOut)
 	}
 }

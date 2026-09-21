@@ -11,12 +11,16 @@ func runDone(c *ctx) int { return c.changeStatus(journal.StatusDone) }
 
 func runReopen(c *ctx) int { return c.changeStatus(journal.StatusOpen) }
 
-// changeStatus marks a todo as done or open again and prints one line saying
-// what it did, so that the ID typed can be seen to be the one meant. If the todo
-// is in that state already, nothing is written: repeating a change is not an
-// error.
+// changeStatus marks a todo or a question (whichever the command is for) as done
+// or open again and prints one line saying what it did, so that the ID typed can
+// be seen to be the one meant. If the record is in that state already, nothing is
+// written: repeating a change is not an error.
 func (c *ctx) changeStatus(status string) int {
 	verb := c.inv.cmd.name
+	kind := model.KindTodo
+	if c.inv.cmd.kind == "qa" {
+		kind = model.KindQuestion
+	}
 	j, err := c.reader()
 	if err != nil {
 		return c.fail(err)
@@ -25,7 +29,7 @@ func (c *ctx) changeStatus(status string) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	rec, err := state.ResolveKind(c.inv.words[0], model.KindTodo)
+	rec, err := state.ResolveKind(c.inv.words[0], kind)
 	if err != nil {
 		return c.fail(err)
 	}

@@ -26,17 +26,26 @@ func runFormat(c *ctx) int {
 		return c.fail(&failure{kindInput, msgStdinFailed(err)})
 	}
 
-	found := eventsIn(string(data))
-	events := make([]journal.Event, len(found))
-	for i, f := range found {
+	all := eventsIn(string(data))
+	events := make([]journal.Event, len(all))
+	for i, f := range all {
 		events[i] = f.event
 	}
 	order := model.EventOrder(events)
 
+	// What is shown is what the text is about: the lines of a diff that it did not
+	// leave unchanged. The others are only looked at for the text of a record.
+	var shown []int
+	for _, at := range order {
+		if !all[at].context {
+			shown = append(shown, at)
+		}
+	}
+
 	if c.inv.json {
-		out := jsonFormat{Command: c.inv.cmd.label(), Events: make([]jsonFormatEvent, len(order)), Count: len(order)}
-		for i, at := range order {
-			out.Events[i] = jsonFormatEvent{Mark: found[at].mark, Event: found[at].event}
+		out := jsonFormat{Command: c.inv.cmd.label(), Events: make([]jsonFormatEvent, len(shown)), Count: len(shown)}
+		for i, at := range shown {
+			out.Events[i] = jsonFormatEvent{Mark: all[at].mark, Event: all[at].event}
 		}
 		return c.emit(out)
 	}
@@ -51,12 +60,12 @@ func runFormat(c *ctx) int {
 			}
 		}
 	}
-	rows := make([]tableRow, len(order))
-	for i, at := range order {
+	rows := make([]tableRow, len(shown))
+	for i, at := range shown {
 		ev := events[at]
 		mark := ""
-		if found[at].mark == "-" || (c.inv.mark && found[at].mark != "") {
-			mark = found[at].mark
+		if all[at].mark == "-" || (c.inv.mark && all[at].mark != "") {
+			mark = all[at].mark
 		}
 		what, text := c.formatEvent(ev, created)
 		rows[i] = tableRow{cells: []string{
@@ -104,6 +113,10 @@ func (c *ctx) formatEvent(ev journal.Event, created map[string]journal.Event) (w
 type foundEvent struct {
 	event journal.Event
 	mark  string // "+", "-" or ""
+
+	// context is a line that a diff shows unchanged: not part of what the diff is
+	// about. It is not shown, and only lends its text to the changes of its record.
+	context bool
 }
 
 // eventsIn picks the event lines out of a text, in the order they are in it. A line
@@ -114,7 +127,7 @@ type foundEvent struct {
 func eventsIn(text string) []foundEvent {
 	var (
 		candidates strings.Builder
-		marks      []string
+		found      []foundEvent // the marks; the events are filled in below
 	)
 	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSuffix(line, "\r")
@@ -123,26 +136,30 @@ func eventsIn(text string) []foundEvent {
 			continue
 		}
 		prefix := line[:len(line)-len(rest)]
-		mark := ""
+		f := foundEvent{}
 		switch {
 		case strings.Contains(prefix, "-"):
-			mark = "-"
+			f.mark = "-"
 		case strings.Contains(prefix, "+"):
-			mark = "+"
+			f.mark = "+"
+		case prefix != "":
+			f.context = true
 		}
 		candidates.WriteString(rest)
 		candidates.WriteByte('\n')
-		marks = append(marks, mark)
+		found = append(found, f)
 	}
 
 	// The lines are read by the same code as journal.jsonl. Every candidate is a
 	// line of its own, so the number of a line says which it was.
 	lines, _, _ := journal.Scan(strings.NewReader(candidates.String()))
-	var found []foundEvent
+	var events []foundEvent
 	for _, l := range lines {
 		if l.Event != nil {
-			found = append(found, foundEvent{event: *l.Event, mark: marks[l.Number-1]})
+			f := found[l.Number-1]
+			f.event = *l.Event
+			events = append(events, f)
 		}
 	}
-	return found
+	return events
 }

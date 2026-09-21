@@ -413,10 +413,10 @@ Ambiguous ID "70430f77ff" matches 2 records:
 ## edit, delete
 
 ```
-$ mtqg edit 6cad4a268d Skip block comments /* */ and line comments //
-Edited: 6cad4a268d  Skip block comments /* */ and line comments //
-$ mtqg edit 6cad4a268d Skip block comments /* */ and line comments //
-Unchanged: 6cad4a268d  Skip block comments /* */ and line comments //
+$ mtqg edit 6cad4a268d Skip block comments and line comments
+Edited: 6cad4a268d  Skip block comments and line comments
+$ mtqg edit 6cad4a268d Skip block comments and line comments
+Unchanged: 6cad4a268d  Skip block comments and line comments
 
 $ mtqg delete 1012f037b6
 Deleted: 1012f037b6  Should nested block comments be supported?
@@ -452,9 +452,9 @@ question ID was left out).
 
 ```
 $ mtqg q add Not in the first version. Revisit if there is demand
-301850c5a3
+64ce08e71a
 $ mtqg undo
-Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a3)
+Undone: qa add "Not in the first version. Revisit if there is demand" (64ce08e71a)
 ```
 
 - Target: of the lines in `journal.jsonl` with this author (kind and name, as for
@@ -462,7 +462,9 @@ Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a
   `ts`; among lines of the same second, the one written last in the file. Any
   line counts: what `add`, `done`, `reopen`, `edit` and `delete` wrote. The
   words after `Undone:` are the type of the record, what the line did (`add`,
-  `done`, `reopen`, `edit`, `delete`), the text and the ID.
+  `done`, `reopen`, `edit`, `delete`), the text and the ID. The time is the one the
+  line was written with: a line written by a clock that runs ahead is the latest
+  until the time catches up with it.
 - **The terminal.** `tty` is 8 hex digits of a hash, so that the terminal can be
   told apart and nothing else is learned from it. It comes from `MTQG_TTY` if that
   is set (any text: give two sessions different values to keep them apart, or one
@@ -481,8 +483,8 @@ Undone: qa add "Not in the first version. Revisit if there is demand" (301850c5a
 
 ```
 $ mtqg undo
-Cannot undo: todo 6cad4a268d has 2 other events, and undoing its creation would leave them without a record
-To hide it instead: mtqg delete 6cad4a268d
+Cannot undo: todo 4ffb865902 has 2 other events, and undoing its creation would leave them without a record
+To hide it instead: mtqg delete 4ffb865902
 ```
 
 - If there is no such line: `Nothing to undo: ...`. The exit code is 1.
@@ -668,7 +670,7 @@ $ mtqg log --limit 6
 11:06  todo      1e27a1c08a  Show error positions as line and column                          claude-code
 11:05  question  2217beaddb  Should error positions show both line and column?                claude-code
 10:52  todo      6513270e26  Ignore // inside string literals                                 yamada
-6 of 20 records (--limit 0 for all)
+6 of 22 records (--limit 0 for all)
 
 $ mtqg log --kind qa
 11:05       question  2217beaddb  Should error positions show both line and column?                     claude-code
@@ -680,11 +682,12 @@ $ mtqg log --kind qa
 6 records
 
 $ mtqg log --kind bug
+10:46       reply  9a8b7c6d5e  (to 1012f037b6) Also fails with an empty file          claude-code
 10:45       reply  3d8e4a0b12  (to 7f3a2b1c09) Reproduced on macOS too                claude-code
 10:41       bug    7f3a2b1c09  Parser crashes on empty input                          yamada
 2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) Fixed by treating a tab as one column  claude-code
 2026-09-19  bug    b2c3d4e5f6  Linter crashes on tab characters                       yamada       done
-4 records
+5 records
 ```
 
 - Every record that is not hidden, of every kind, one line each, **newest
@@ -708,9 +711,13 @@ $ mtqg log --kind bug
 
 ```
 $ mtqg search comment
-11:32  todo      2e44158bae  Add test cases for comment handling  claude-code
-10:18  todo      6cad4a268d  Skip block comments /* */            claude-code
-4 records contain "comment"
+11:32  todo      2e44158bae  Add test cases for comment handling                    claude-code
+10:18  todo      6cad4a268d  Skip block comments /* */                              claude-code
+10:00  glossary  0cb1e29c65  block comment: A comment that can span multiple lines  claude-code
+09:50  todo      6b0d549b6f  Skip line comments //                                  yamada       done
+09:30  glossary  f29d0da995  block comment: A comment enclosed in /* and */         yamada
+09:10  question  1012f037b6  Should nested block comments be supported?             claude-code
+6 records contain "comment"
 ```
 
 - `mtqg search <text>` lists the records whose text contains `<text>`: the text of
@@ -745,7 +752,7 @@ Duplicate glossary definitions (1)
     0cb1e29c65  claude-code  A comment that can span multiple lines
 
 Answers and replies with no parent (1)
-  3d8e4a0b12  reply  claude-code  Reproduced on macOS too
+  9a8b7c6d5e  reply  claude-code  Also fails with an empty file
     re 1012f037b6: a question, not a bug
 ```
 
@@ -812,11 +819,11 @@ This is the process record of this project. Read the following before you start 
 - 11:06  claude-code  todo      1e27a1c08a  Show error positions as line and column
 - 11:05  claude-code  question  2217beaddb  Should error positions show both line and column?
 - 10:52  yamada       todo      6513270e26  Ignore // inside string literals
+- 10:46  claude-code  reply     9a8b7c6d5e  Also fails with an empty file (to 1012f037b6)
 - 10:45  claude-code  reply     3d8e4a0b12  Reproduced on macOS too (to 7f3a2b1c09)
 - 10:41  yamada       bug       7f3a2b1c09  Parser crashes on empty input
 - 10:32  yamada       memo      81e74ef5e8  Policy: use English for all error messages
-- 10:18  claude-code  todo      6cad4a268d  Skip block comments /* */
-- (10 more; see mtqg log)
+- (12 more; see mtqg log)
 
 ## Glossary (4)
 - 5b7e2c9a41 token: The smallest unit produced by lexing
@@ -846,8 +853,7 @@ This is the process record of this project. Read the following before you start 
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- 6cad4a268d Skip block comments /* */ (claude-code, 10:18)
-- 6513270e26 Ignore // inside string literals (yamada, 10:52)
+- (2 older; see mtqg todo list)
 - 1e27a1c08a Show error positions as line and column (claude-code, 11:06)
 - 1818e81189 List the supported syntax in the README (yamada, 11:30)
 - 2e44158bae Add test cases for comment handling (claude-code, 11:32)
@@ -862,7 +868,7 @@ This is the process record of this project. Read the following before you start 
 - (latest replies left out; see mtqg show <id>)
 
 ## Recent records (newest first)
-- (20 more; see mtqg log)
+- (22 more; see mtqg log)
 
 ## Glossary (4)
 - token
@@ -929,11 +935,11 @@ with local times. It reads a file, or standard input (no argument, or `-`), and
 does not need `.mtqg/`: it can run anywhere.
 
 ```
-$ git show 3f9a1c0 | mtqg format
+$ git show HEAD | mtqg format
 2026-09-21 10:18  todo      6cad4a268d  Skip block comments /* */                          claude-code
 2026-09-21 10:32  memo      81e74ef5e8  Policy: use English for all error messages         yamada
 2026-09-21 11:05  question  2217beaddb  Should error positions show both line and column?  claude-code
-2026-09-21 11:32  todo      2e44158bae  Add test cases for comment handling                claude-code
+2026-09-21 11:06  todo      1e27a1c08a  Show error positions as line and column            claude-code
 ```
 
 - The columns are the local date and time, what the line did, the ID, the text
@@ -946,7 +952,10 @@ $ git show 3f9a1c0 | mtqg format
   and nothing otherwise.
 - Lines are in time order (`ts`, then `id`, a creation before the changes of the
   same record), whatever order they were in.
-- A leading `+` or `-` (unified diff) is removed before parsing.
+- A leading `+` or `-` (unified diff) is removed before parsing. A line that a
+  diff shows unchanged (it starts with a space) is not part of the change, so it
+  is not shown; it only lends its text to a change of state or a delete of the same
+  record in the same input.
 - A line that is not a JSON event is skipped silently, so whole `git show` /
   `git diff` output can be passed. There are no warnings.
 - Lines from any source work: `git diff`, `git diff main...feature`,

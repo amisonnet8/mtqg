@@ -135,6 +135,22 @@ func TestFormat(t *testing.T) {
 		}
 	})
 
+	t.Run("a line the diff shows unchanged is not shown, and lends its text to a change", func(t *testing.T) {
+		h := newHarness(t)
+		other := record(idM, "memo", "an unchanged memo", "yamada", "2026-09-17T08:00:00Z")
+		h.stdin = diff(" "+todo, " "+other, "+"+done)
+		_, out, _ := h.run("format")
+		want := "2026-09-17 09:30  done  " + idA[:10] + "  Skip block comments  claude-code\n"
+		if out != want {
+			t.Errorf("stdout\n%s\nwant\n%s", out, want)
+		}
+		h.stdin = diff(" "+todo, "+"+done)
+		_, out, _ = h.run("--json", "format")
+		if obj := jsonObject(t, out); obj["count"] != float64(1) {
+			t.Errorf("--json counts the unchanged line: %v", obj)
+		}
+	})
+
 	t.Run("what is not an event is skipped without a word", func(t *testing.T) {
 		h := newHarness(t)
 		h.stdin = "not json at all\n{\"a\":1}\n{broken\n+{\"id\":\"x\"}\n" + diff("+"+todo) + "\n"

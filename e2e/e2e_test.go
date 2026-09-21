@@ -766,7 +766,9 @@ func TestFormatReadsGitShowAndDiff(t *testing.T) {
 	// creation of its todo as context, so its text is known.
 	diffed := r.git("diff", "-U9", "HEAD")
 	res = r.run(nil, diffed, "format")
-	if res.code != 0 || res.stderr != "" || !strings.Contains(res.stdout, "done  "+todo+"  Skip block comments") {
+	// One line: the change. The lines the diff shows unchanged are not shown, and the
+	// creation of the todo among them lends its text.
+	if res.code != 0 || res.stderr != "" || strings.Count(res.stdout, "\n") != 1 || !strings.Contains(res.stdout, "done  "+todo+"  Skip block comments") {
 		t.Errorf("git diff | format: %+v", res)
 	}
 

@@ -352,10 +352,10 @@ Ambiguous ID "70430f77ff" matches 2 records:
 ## edit、delete
 
 ```
-$ mtqg edit 6cad4a268d ブロックコメント /* */ と行コメント // の読み飛ばし
-Edited: 6cad4a268d  ブロックコメント /* */ と行コメント // の読み飛ばし
-$ mtqg edit 6cad4a268d ブロックコメント /* */ と行コメント // の読み飛ばし
-Unchanged: 6cad4a268d  ブロックコメント /* */ と行コメント // の読み飛ばし
+$ mtqg edit 6cad4a268d ブロックコメントと行コメントの読み飛ばし
+Edited: 6cad4a268d  ブロックコメントと行コメントの読み飛ばし
+$ mtqg edit 6cad4a268d ブロックコメントと行コメントの読み飛ばし
+Unchanged: 6cad4a268d  ブロックコメントと行コメントの読み飛ばし
 
 $ mtqg delete 1012f037b6
 Deleted: 1012f037b6  ブロックコメントの入れ子に対応する？
@@ -381,15 +381,15 @@ The lines remain in the journal and in git history
 
 ```
 $ mtqg q add 初版では非対応。需要が出たら再検討
-301850c5a3
+acbf90978f
 $ mtqg undo
-Undone: qa add "初版では非対応。需要が出たら再検討" (301850c5a3)
+Undone: qa add "初版では非対応。需要が出たら再検討" (acbf90978f)
 ```
 
 - 対象：`journal.jsonl`の行のうち、この記録者（種別と名前。記録を書くときと同じ決め方）と、この端末の`tty`の値を持つものの
   中で`ts`が最後のもの。同じ秒のものは、ファイルの中で最後に書かれたもの。どの行でもよい：`add`、`done`、`reopen`、
   `edit`、`delete`が書いた行。`Undone:`の後には、記録の`type`、その行がしたこと（`add`、`done`、`reopen`、`edit`、
-  `delete`）、本文、IDを出す
+  `delete`）、本文、IDを出す。時刻は、その行が書かれたときの時刻：進んだ時計で書かれた行は、時刻が追いつくまで最新になる
 - **端末。** `tty`は、ハッシュの16進8桁で、端末を見分けるだけで、ほかのことは分からない。`MTQG_TTY`があればそれから作る
   （どんな文字列でもよい：2つのセッションを分けたければ違う値を、同じにしたければ同じ値を渡す）。なければ、LinuxとmacOSでは、
   標準入力・標準出力・標準エラー出力のうち端末につながっているものから作る。Windowsと、どれも端末でないとき（パイプで
@@ -402,8 +402,8 @@ Undone: qa add "初版では非対応。需要が出たら再検討" (301850c5a3
 
 ```
 $ mtqg undo
-Cannot undo: todo 6cad4a268d has 2 other events, and undoing its creation would leave them without a record
-To hide it instead: mtqg delete 6cad4a268d
+Cannot undo: todo c4a225e916 has 2 other events, and undoing its creation would leave them without a record
+To hide it instead: mtqg delete c4a225e916
 ```
 
 - 対象の行がなければ、`Nothing to undo: ...`。終了コードは1
@@ -568,7 +568,7 @@ $ mtqg log --limit 6
 11:06  todo      1e27a1c08a  エラー位置を行と列で表示する                          claude-code
 11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？                claude-code
 10:52  todo      6513270e26  文字列リテラル中の // を無視する                      yamada
-6 of 20 records (--limit 0 for all)
+6 of 22 records (--limit 0 for all)
 
 $ mtqg log --kind qa
 11:05       question  2217beaddb  エラー位置は行と列の両方を出しますか？              claude-code
@@ -580,11 +580,12 @@ $ mtqg log --kind qa
 6 records
 
 $ mtqg log --kind bug
+10:46       reply  9a8b7c6d5e  (to 1012f037b6) 空のファイルでも落ちる           claude-code
 10:45       reply  3d8e4a0b12  (to 7f3a2b1c09) macOSでも再現した                claude-code
 10:41       bug    7f3a2b1c09  空の入力でパーサーが落ちる                       yamada
 2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) タブを1桁として数えるよう直した  claude-code
 2026-09-19  bug    b2c3d4e5f6  タブ文字でリンターが落ちる                       yamada       done
-4 records
+5 records
 ```
 
 - 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、
@@ -601,9 +602,13 @@ $ mtqg log --kind bug
 
 ```
 $ mtqg search コメント
-11:32  todo      2e44158bae  コメント処理のテストケースを追加      claude-code
-10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし   claude-code
-4 records contain "コメント"
+11:32  todo      2e44158bae  コメント処理のテストケースを追加                  claude-code
+10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし               claude-code
+10:00  glossary  0cb1e29c65  ブロックコメント: 複数行にわたって書けるコメント  claude-code
+09:50  todo      6b0d549b6f  行コメント // の読み飛ばし                        yamada       done
+09:30  glossary  f29d0da995  ブロックコメント: /* と */ で囲むコメント         yamada
+09:10  question  1012f037b6  ブロックコメントの入れ子に対応する？              claude-code
+6 records contain "コメント"
 ```
 
 - `mtqg search <語>`は、本文に`<語>`を含む記録を出す：見える記録すべての本文（種類を問わない）と、glossaryの項目ではその
@@ -632,7 +637,7 @@ Duplicate glossary definitions (1)
     0cb1e29c65  claude-code  複数行にわたって書けるコメント
 
 Answers and replies with no parent (1)
-  3d8e4a0b12  reply  claude-code  macOSでも再現した
+  9a8b7c6d5e  reply  claude-code  空のファイルでも落ちる
     re 1012f037b6: a question, not a bug
 ```
 
@@ -687,11 +692,11 @@ This is the process record of this project. Read the following before you start 
 - 11:06  claude-code  todo      1e27a1c08a  エラー位置を行と列で表示する
 - 11:05  claude-code  question  2217beaddb  エラー位置は行と列の両方を出しますか？
 - 10:52  yamada       todo      6513270e26  文字列リテラル中の // を無視する
+- 10:46  claude-code  reply     9a8b7c6d5e  空のファイルでも落ちる (to 1012f037b6)
 - 10:45  claude-code  reply     3d8e4a0b12  macOSでも再現した (to 7f3a2b1c09)
 - 10:41  yamada       bug       7f3a2b1c09  空の入力でパーサーが落ちる
 - 10:32  yamada       memo      81e74ef5e8  エラーメッセージは英語で統一する方針
-- 10:18  claude-code  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし
-- (10 more; see mtqg log)
+- (12 more; see mtqg log)
 
 ## Glossary (4)
 - 5b7e2c9a41 トークン: 字句解析で切り出す最小単位
@@ -721,8 +726,7 @@ This is the process record of this project. Read the following before you start 
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- (4 older; see mtqg todo list)
-- 2e44158bae コメント処理のテストケースを追加 (claude-code, 11:32)
+- (5 older; see mtqg todo list)
 
 ## Open questions (2)
 - 1012f037b6 ブロックコメントの入れ子に対応する？ (awaiting confirmation, claude-code, 09:10)
@@ -734,7 +738,7 @@ This is the process record of this project. Read the following before you start 
 - (latest replies left out; see mtqg show <id>)
 
 ## Recent records (newest first)
-- (20 more; see mtqg log)
+- (22 more; see mtqg log)
 
 ## Glossary (4)
 - トークン
@@ -762,11 +766,11 @@ Read full entries with mtqg show <id>.
 `.mtqg/`は要らない：どこでも動く（引数がないか`-`なら標準入力）。
 
 ```
-$ git show 3f9a1c0 | mtqg format
-2026-09-21 10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし   claude-code
-2026-09-21 10:32  memo      81e74ef5e8  エラーメッセージは英語で統一する方針   yamada
+$ git show HEAD | mtqg format
+2026-09-21 10:18  todo      6cad4a268d  ブロックコメント /* */ の読み飛ばし     claude-code
+2026-09-21 10:32  memo      81e74ef5e8  エラーメッセージは英語で統一する方針    yamada
 2026-09-21 11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code
-2026-09-21 11:32  todo      2e44158bae  コメント処理のテストケースを追加      claude-code
+2026-09-21 11:06  todo      1e27a1c08a  エラー位置を行と列で表示する            claude-code
 ```
 
 - 列は、ローカルの日付と時刻、その行がしたこと、ID、本文、記録者。記録を作る行なら、したことは種類：`memo`、`todo`、
@@ -774,7 +778,8 @@ $ git show 3f9a1c0 | mtqg format
   始まる）。それ以外の行は、`done`か`reopen`（状態の変更）、`edit`、`delete`。`edit`は新しい本文を出す。状態の変更と
   `delete`は、その記録を作った行が同じ入力にあれば、その記録の本文を出し、なければ何も出さない
 - 行は時刻順（`ts`、次に`id`。同じ記録では作成が変更より先）で、入力での順番によらない
-- 先頭の`+`・`-`（unified diff）は、読む前に取り除く
+- 先頭の`+`・`-`（unified diff）は、読む前に取り除く。diffが変更なしとして出す行（先頭が空白）は、その変更の一部ではないので
+  表には出さない：同じ入力にある、同じ記録の状態変更や`delete`に、本文を貸すだけ
 - JSONのイベントでない行は黙って飛ばす。`git show`や`git diff`の出力を丸ごと渡せる。警告は出さない
 - どこから来た行でもよい：`git diff`、`git diff main...feature`、`cat .mtqg/journal.jsonl`、`grep ... .mtqg/journal.jsonl`、引数で渡したファイル（`.mtqg/archive/`のファイルを含む）
 - `+`・`-`の印は表示しない。ただし消えた行（`-`）には常に印を付ける。`--mark`で全行の印を出す。印は、ほかの列の前の、独立した列で、

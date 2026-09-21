@@ -147,6 +147,12 @@ func TestJSONEveryCommandPrintsOneObject(t *testing.T) {
 		{[]string{"qa", "add", idQ2[:10], "an answer"}, "qa add"},
 		{[]string{"bug", "add", "a bug"}, "bug add"},
 		{[]string{"glossary", "add", "word", "a definition"}, "glossary add"},
+		{[]string{"edit", idC[:10], "a new text"}, "edit"},
+		{[]string{"search", "block"}, "search"},
+		{[]string{"review"}, "review"},
+		{[]string{"format"}, "format"},
+		{[]string{"delete", idM[:10]}, "delete"},
+		{[]string{"undo"}, "undo"}, // removes the line of the glossary entry that was added above
 	} {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
 			args := append([]string{"--json"}, tt.args...)
@@ -176,6 +182,8 @@ func TestJSONIsTheSameWhateverHowItIsShown(t *testing.T) {
 		{"todo", "list", "--all"},
 		{"glossary", "list"},
 		{"status"},
+		{"search", "block"},
+		{"review"},
 	} {
 		plain := append([]string{"--json"}, args...)
 		_, want, _ := h.run(plain...)

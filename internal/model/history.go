@@ -39,3 +39,6 @@ func (s *State) History(rec *Record) []Entry {
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].At.Before(entries[j].At) })
 	return entries
 }
+
+// EventTime is the time of an event, or the zero time if its ts cannot be read.
+func EventTime(ev journal.Event) time.Time { return parseTime(ev.TS) }

@@ -277,7 +277,7 @@ func TestExitCodesAndStreams(t *testing.T) {
 		{"an unknown option", []string{"t", "add", "-x"}, 2, "Unknown option -x"},
 		{"no command", nil, 2, "No command given"},
 		{"an ID that matches nothing", []string{"t", "done", "ffff"}, 1, `No record matches "ffff"`},
-		{"a command that is not built yet", []string{"undo"}, 1, "not available yet"},
+		{"a command that is not built yet", []string{"archive", "2021..2023"}, 1, "not available yet"},
 		{"an ID that is too short", []string{"t", "done", "ffa"}, 1, "too short"},
 		{"an option that takes no value", []string{"log", "--limit"}, 2, "needs a value"},
 	}
@@ -739,5 +739,41 @@ func TestUndoKeepsTheLinesOfOtherTerminalsAndAuthors(t *testing.T) {
 	res = r.run(agent, "", "undo")
 	if res.code != 0 || strings.Contains(readFile(t, journalPath), "written by the agent") || !strings.Contains(readFile(t, journalPath), "written at b") {
 		t.Errorf("undo by the agent: %+v", res)
+	}
+}
+
+// format reads the output of the real git, headers and all, and needs no .mtqg/.
+func TestFormatReadsGitShowAndDiff(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "init")
+
+	todo := strings.TrimSpace(r.mtqg("t", "add", "Skip block comments"))
+	r.mtqg("m", "add", "Policy: use English for all error messages")
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "record")
+	r.mtqg("t", "done", todo)
+
+	shown := r.git("show", "HEAD")
+	res := r.run(nil, shown, "format")
+	if res.code != 0 || res.stderr != "" || strings.Count(res.stdout, "\n") != 2 ||
+		!strings.Contains(res.stdout, "todo  "+todo) || !strings.Contains(res.stdout, "Policy: use English for all error messages") {
+		t.Errorf("git show | format: %+v", res)
+	}
+
+	// What is not committed yet: a change of state, which the diff shows next to the
+	// creation of its todo as context, so its text is known.
+	diffed := r.git("diff", "-U9", "HEAD")
+	res = r.run(nil, diffed, "format")
+	if res.code != 0 || res.stderr != "" || !strings.Contains(res.stdout, "done  "+todo+"  Skip block comments") {
+		t.Errorf("git diff | format: %+v", res)
+	}
+
+	// From outside any repository, with a file.
+	elsewhere := t.TempDir()
+	res = r.runIn(elsewhere, nil, "", "format", filepath.Join(r.dir, ".mtqg", "journal.jsonl"))
+	if res.code != 0 || strings.Count(res.stdout, "\n") != 3 {
+		t.Errorf("format of a file from elsewhere: %+v", res)
 	}
 }

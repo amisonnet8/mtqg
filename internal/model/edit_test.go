@@ -83,3 +83,67 @@ func inView(s *State, id string) bool {
 	r := s.Record(id)
 	return r != nil && s.visible(r)
 }
+
+func TestSearch(t *testing.T) {
+	entryWord := entry(idWord, "Delimited", "A comment enclosed in /* and */", 3, human)
+	events := []journal.Event{
+		create(idTodoA, journal.TypeTodo, "Skip block comments", 0),
+		create(idMemo, journal.TypeMemo, "Use English for errors\nand a second LINE about Comments", 1),
+		create(idQ, journal.TypeQA, "Nested BLOCK comments?", 2),
+		entryWord,
+		answer(idAns, idQ, "Not in the first version", 4, human),
+		create(idQ2, journal.TypeQA, "A question that is deleted: block", 5),
+		del(idQ2, 6),
+	}
+	state := Build(events)
+
+	tests := []struct {
+		name  string
+		query string
+		want  []string
+	}{
+		{"case is ignored, in both directions", "block", []string{idTodoA, idQ}},
+		{"upper case in the query", "BLOCK", []string{idTodoA, idQ}},
+		{"a match in a later line of the text", "second line", []string{idMemo}},
+		{"the word of a glossary entry, in any case", "DELIMITED", []string{idWord}},
+		{"the text of a glossary entry", "enclosed", []string{idWord}},
+		{"an answer", "first version", []string{idAns}},
+		{"a deleted record is not found", "deleted", nil},
+		{"nothing matches", "zebra", nil},
+		{"no patterns", "b.ock", nil},
+		{"no word boundaries", "ock com", []string{idTodoA, idQ}},
+		{"a phrase with punctuation", "/* and */", []string{idWord}},
+	}
+	for _, tt := range tests {
+		sameIDs(t, tt.name, state.Search(tt.query), tt.want...)
+	}
+}
+
+func TestEventOrder(t *testing.T) {
+	// Out of order on purpose, as a merge leaves them: a change before its create in
+	// the file, the same second for two IDs, a delete and an edit of the same second.
+	events := []journal.Event{
+		status(idTodoA, "open", "done", 5, human), // 0
+		create(idTodoA, journal.TypeTodo, "a", 1), // 1
+		del(idMemo, 3), // 2
+		{ID: idMemo, Op: journal.OpEdit, Text: "e", TS: at(3), Author: human}, // 3
+		create(idMemo, journal.TypeMemo, "m", 3),                              // 4
+		create(idQ, journal.TypeQA, "q", 3),                                   // 5
+	}
+	got := EventOrder(events)
+	// 1 (minute 1); then minute 3 by ID: idMemo (1012...) before idQ (95e7...), each
+	// as create, edit, delete; then minute 5.
+	want := []int{1, 4, 3, 2, 5, 0}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+	// The input is not changed.
+	if events[0].Op != journal.OpStatus || events[1].Op != journal.OpCreate {
+		t.Errorf("EventOrder changed its argument")
+	}
+}

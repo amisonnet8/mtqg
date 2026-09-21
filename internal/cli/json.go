@@ -126,6 +126,26 @@ type jsonChangeResult struct {
 	Changed bool       `json:"changed"`
 }
 
+type jsonSearch struct {
+	Command string       `json:"command"`
+	Query   string       `json:"query"`
+	Records []jsonRecord `json:"records"`
+	Count   int          `json:"count"`
+}
+
+// jsonFormatEvent is an event found in a text, with the mark that it had there (a +
+// or - of a diff), if it had one.
+type jsonFormatEvent struct {
+	Mark string `json:"mark,omitempty"`
+	journal.Event
+}
+
+type jsonFormat struct {
+	Command string            `json:"command"`
+	Events  []jsonFormatEvent `json:"events"`
+	Count   int               `json:"count"`
+}
+
 type jsonDelete struct {
 	Command       string       `json:"command"`
 	Record        jsonRecord   `json:"record"`

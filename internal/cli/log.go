@@ -55,6 +55,15 @@ func runLog(c *ctx) int {
 	if c.inv.json {
 		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total})
 	}
+	c.printRecordLines(records)
+	c.println(msgLogFooter(len(records), total))
+	return exitOK
+}
+
+// printRecordLines prints records of every kind one to a line: the time, the kind,
+// the ID, the text, the author, and `done` for a finished one. log and search show
+// their records the same way.
+func (c *ctx) printRecordLines(records []*model.Record) {
 	now := c.env.Now()
 	rows := make([]tableRow, len(records))
 	for i, r := range records {
@@ -76,8 +85,6 @@ func runLog(c *ctx) int {
 		}
 	}
 	c.printLines(formatTable(rows, 3, 2, c.listWidth(), c.st))
-	c.println(msgLogFooter(len(records), total))
-	return exitOK
 }
 
 // logText is the text of a record for the line of log: an answer or a reply says

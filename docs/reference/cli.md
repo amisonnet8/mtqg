@@ -925,8 +925,8 @@ Read full entries with mtqg show <id>.
 ## format
 
 Picks event lines out of any text and prints them as one table in time order,
-with local times. It reads a file, or standard input, and does not need `.mtqg/`:
-it can run anywhere.
+with local times. It reads a file, or standard input (no argument, or `-`), and
+does not need `.mtqg/`: it can run anywhere.
 
 ```
 $ git show 3f9a1c0 | mtqg format

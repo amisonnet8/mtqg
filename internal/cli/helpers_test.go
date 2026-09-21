@@ -94,6 +94,9 @@ func (h *harness) runIn(dir string, args ...string) (code int, stdout, stderr st
 	if env.RunEditor == nil {
 		env.RunEditor = func([]string) error { return io.EOF }
 	}
+	if env.ReadFile == nil {
+		env.ReadFile = os.ReadFile
+	}
 	code = Run(env, args)
 	return code, out.String(), errOut.String()
 }

@@ -369,6 +369,20 @@ func UncommittedRecords(events []journal.Event) int {
 
 // sortEvents returns the events in the order they are applied in.
 func sortEvents(events []journal.Event) []journal.Event {
+	order := EventOrder(events)
+	out := make([]journal.Event, len(order))
+	for i, at := range order {
+		out[i] = events[at]
+	}
+	return out
+}
+
+// EventOrder returns the indexes of events in the order they are applied in and
+// shown in: by time, by ID for the same time, a create before the changes of a
+// record and a delete after them, and for the rest in the order they were given.
+// Anything that shows events from any source in time order (format) uses this, so
+// that there is one order.
+func EventOrder(events []journal.Event) []int {
 	type keyed struct {
 		ev    journal.Event
 		at    time.Time
@@ -394,11 +408,11 @@ func sortEvents(events []journal.Event) []journal.Event {
 		}
 		return a.index < b.index
 	})
-	out := make([]journal.Event, len(items))
+	order := make([]int, len(items))
 	for i, item := range items {
-		out[i] = item.ev
+		order[i] = item.index
 	}
-	return out
+	return order
 }
 
 // opRank puts a create before the changes of the same record and a delete after

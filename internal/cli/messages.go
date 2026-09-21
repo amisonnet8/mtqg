@@ -385,6 +385,27 @@ func msgBadKind(value string) string {
 	return fmt.Sprintf("Option --kind needs one of %s (or its letter), not %q.", strings.Join(names, ", "), value)
 }
 
+// search
+
+// msgSearchFooter counts what a search found and says what it was for.
+func msgSearchFooter(n int, query string) string {
+	q := fmt.Sprintf("%q", query)
+	switch n {
+	case 0:
+		return "No records contain " + q
+	case 1:
+		return "1 record contains " + q
+	default:
+		return fmt.Sprintf("%d records contain %s", n, q)
+	}
+}
+
+// format
+
+func msgCannotReadFile(name string, err error) string {
+	return fmt.Sprintf("Cannot read %s: %v", name, err)
+}
+
 // show
 
 const msgShowEvents = "Events"

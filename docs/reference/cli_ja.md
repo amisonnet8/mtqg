@@ -759,7 +759,7 @@ Read full entries with mtqg show <id>.
 ## format
 
 任意のテキストからイベント行を拾い、時刻順の1つの表にして、ローカル時間で表示する。ファイルか標準入力を読み、
-`.mtqg/`は要らない：どこでも動く。
+`.mtqg/`は要らない：どこでも動く（引数がないか`-`なら標準入力）。
 
 ```
 $ git show 3f9a1c0 | mtqg format

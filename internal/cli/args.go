@@ -55,6 +55,7 @@ type command struct {
 	summary string
 	args    argMode
 	all     bool // accepts --all
+	mark    bool // accepts --mark
 
 	// values are the options that take a value, as --limit 5 or --limit=5.
 	values []string
@@ -130,10 +131,10 @@ func init() {
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line you wrote from this terminal", args: argsNone, run: runUndo},
 		{name: "log", usage: "mtqg log [--limit N] [--kind K]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind"}, run: runLog},
 		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, run: runShow},
-		{name: "search", usage: "mtqg search <text>", summary: "Search the text of the records", args: argsText},
+		{name: "search", usage: "mtqg search <text>", summary: "Find the records whose text contains a text", args: argsText, minWords: 1, run: runSearch},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes and duplicate definitions", args: argsNone},
 		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsNone, values: []string{"--max-tokens"}, run: runContext},
-		{name: "format", usage: "mtqg format [file]", summary: "Show the event lines found in any text", args: argsAny},
+		{name: "format", usage: "mtqg format [--mark] [file]", summary: "Show the event lines found in any text", args: argsAny, mark: true, run: runFormat},
 		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move finished items of a date range out of view", args: argsAny},
 	}
 }
@@ -167,6 +168,7 @@ type invocation struct {
 	fullID  bool
 	noColor bool
 	json    bool
+	mark    bool
 	help    bool
 
 	// values holds the options that take a value, by their names (--limit).
@@ -184,7 +186,7 @@ func (e *usageError) Error() string { return e.msg }
 // parseArgs reads a command line: options, then the command (a kind and a verb,
 // or a command word), then its arguments.
 //
-// Options are -C <path>, --all, --full-id, --no-color, --json and -h or --help. Before
+// Options are -C <path>, --all, --mark, --full-id, --no-color, --json and -h or --help. Before
 // the command they may stand anywhere. After it, a command that takes a text
 // (memo add, todo add) reads options only up to the first word of the text: from
 // there on every word is text, even one that starts with -. "--" ends the
@@ -235,6 +237,8 @@ func parseArgs(args []string) (*invocation, error) {
 			inv.noColor = true
 		case arg == "--json":
 			inv.json = true
+		case arg == "--mark":
+			inv.mark = true
 		case arg == "-h" || arg == "--help":
 			inv.help = true
 		default:
@@ -311,6 +315,9 @@ func parseArgs(args []string) (*invocation, error) {
 
 	if inv.all && !inv.cmd.all && !inv.help {
 		return nil, &usageError{msgUnknownOption("--all", inv.cmd.usage)}
+	}
+	if inv.mark && !inv.cmd.mark && !inv.help {
+		return nil, &usageError{msgUnknownOption("--mark", inv.cmd.usage)}
 	}
 	if !inv.help {
 		if err := checkArity(inv.cmd, inv.words); err != nil {

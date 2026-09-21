@@ -171,3 +171,25 @@ func TestShow(t *testing.T) {
 		wantExit(t, code, 2, out, errOut)
 	})
 }
+
+func TestShowAnAnswerThatBelongsToNothing(t *testing.T) {
+	const idGone = "deadbeefdeadbeefdeadbeefdeadbeef"
+	h := initialized(t)
+	h.setJournal(
+		record(idA, "todo", "a todo", "yamada", "2026-09-17T09:00:00Z"),
+		answerLine(idA1, idGone, "an answer to a question that is not in the journal", nameC, "ai", "2026-09-17T09:10:00Z"),
+		answerLine(idA2, idA, "an answer to a todo", nameC, "ai", "2026-09-17T09:20:00Z"),
+		replyLine(idRep1, idA1, "a reply to an answer", nameC, "ai", "2026-09-17T09:30:00Z"),
+	)
+	for _, tt := range []struct{ id, want string }{
+		{idA1, "\nto question " + idGone[:10] + "  (no such record)\n"},
+		{idA2, "\nto " + idA[:10] + "  (a todo, not a question)\n"},
+		{idRep1, "\nto " + idA1[:10] + "  (an answer, not a bug)\n"},
+	} {
+		code, out, errOut := h.run("show", tt.id[:6])
+		wantExit(t, code, 0, out, errOut)
+		if !strings.Contains(out, tt.want) {
+			t.Errorf("show %s:\n%s\nwant a line %q", tt.id[:6], out, tt.want)
+		}
+	}
+}

@@ -777,3 +777,45 @@ func TestFormatReadsGitShowAndDiff(t *testing.T) {
 		t.Errorf("format of a file from elsewhere: %+v", res)
 	}
 }
+
+// Two branches close the same todo without knowing of each other. After the union
+// merge both changes are in the journal, and review, status and context all say so.
+func TestTwoBranchesCloseTheSameTodoAndReviewShowsIt(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+	todo := strings.TrimSpace(r.mtqg("t", "add", "Skip block comments"))
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "todo")
+
+	agent := []string{"MTQG_AUTHOR_KIND=ai", "MTQG_AUTHOR_NAME=claude-code"}
+	r.git("checkout", "-q", "-b", "feature")
+	if res := r.run(agent, "", "t", "done", todo); res.code != 0 {
+		t.Fatalf("%+v", res)
+	}
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "feature closes it")
+
+	r.git("checkout", "-q", "main")
+	r.mtqg("t", "done", todo)
+	r.git("add", ".mtqg")
+	r.git("commit", "-q", "-m", "main closes it")
+
+	r.git("merge", "-q", "--no-edit", "feature")
+
+	if out := r.mtqg("status"); !strings.Contains(out, "Conflicts           1  (concurrent status changes; see mtqg review)\n") {
+		t.Errorf("status =\n%s", out)
+	}
+	review := r.mtqg("review")
+	if !strings.HasPrefix(review, "Concurrent status changes (1)\n  todo "+todo+" \"Skip block comments\"\n") ||
+		strings.Count(review, "open -> done") != 2 || !strings.Contains(review, "claude-code") || !strings.Contains(review, "yamada") {
+		t.Errorf("review =\n%s", review)
+	}
+	if out := r.mtqg("context"); !strings.Contains(out, "- todo "+todo+" \"Skip block comments\" has concurrent status changes (see mtqg review)\n") {
+		t.Errorf("context =\n%s", out)
+	}
+
+	// The todo is done, whichever change is looked at: both say done.
+	if out := r.mtqg("t", "list", "--all"); !strings.Contains(out, "done") || !strings.HasSuffix(out, "0 open, 1 done\n") {
+		t.Errorf("t list --all =\n%s", out)
+	}
+}

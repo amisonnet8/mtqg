@@ -126,6 +126,34 @@ type jsonChangeResult struct {
 	Changed bool       `json:"changed"`
 }
 
+// jsonReview holds what needs a person's eye. Each list is there, and empty, when
+// there is nothing.
+type jsonReview struct {
+	Command                 string               `json:"command"`
+	ConcurrentStatusChanges []jsonStatusConflict `json:"concurrent_status_changes"`
+	DuplicateWords          []jsonDuplicateWord  `json:"duplicate_words"`
+	UnattachedReplies       []jsonUnattached     `json:"unattached_replies"`
+}
+
+// jsonStatusConflict is a record and all of its status changes, oldest first, as
+// lines of the journal.
+type jsonStatusConflict struct {
+	Record  jsonRecord      `json:"record"`
+	Changes []journal.Event `json:"changes"`
+}
+
+type jsonDuplicateWord struct {
+	Word    string       `json:"word"`
+	Records []jsonRecord `json:"records"`
+}
+
+// jsonUnattached is an answer or a reply, and the record its re names (left out if
+// the journal has no such record).
+type jsonUnattached struct {
+	Record   jsonRecord  `json:"record"`
+	ReRecord *jsonRecord `json:"re_record,omitempty"`
+}
+
 type jsonSearch struct {
 	Command string       `json:"command"`
 	Query   string       `json:"query"`
@@ -204,6 +232,7 @@ type jsonStatus struct {
 	BugsAwaitingConfirmation      int    `json:"bugs_awaiting_confirmation"`
 	GlossaryEntries               int    `json:"glossary_entries"`
 	DuplicateWords                int    `json:"duplicate_words"`
+	ConcurrentStatusChanges       int    `json:"concurrent_status_changes"`
 	UncommittedRecords            *int   `json:"uncommitted_records"`
 }
 
@@ -262,6 +291,8 @@ type jsonContext struct {
 type jsonAttention struct {
 	Kind  string `json:"kind"`
 	Word  string `json:"word,omitempty"`
+	ID    string `json:"id,omitempty"`
+	Text  string `json:"text,omitempty"`
 	Count int    `json:"count,omitzero"`
 }
 

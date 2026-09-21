@@ -330,6 +330,9 @@ type Summary struct {
 	// two. DuplicateWords counts the words that have more than one.
 	GlossaryEntries int
 	DuplicateWords  int
+
+	// ConcurrentStatusChanges counts the records that have them (ConcurrentStatusChanges).
+	ConcurrentStatusChanges int
 }
 
 // Summary counts the records that are in view.
@@ -338,6 +341,8 @@ func (s *State) Summary() Summary {
 		OpenTodos:       len(s.Todos(false)),
 		GlossaryEntries: len(s.Glossary()),
 		DuplicateWords:  len(s.DuplicateWords()),
+
+		ConcurrentStatusChanges: len(s.ConcurrentStatusChanges()),
 	}
 	sum.OpenQuestions, sum.QuestionsAwaitingConfirmation = s.openParents(journal.TypeQA)
 	sum.OpenBugs, sum.BugsAwaitingConfirmation = s.openParents(journal.TypeBug)

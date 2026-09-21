@@ -53,12 +53,17 @@ func (c *ctx) printRecord(state *model.State, rec *model.Record) {
 	c.println(msgShowBy(who(rec.Author), formatFull(rec.Created, loc)))
 	if rec.IsReply() {
 		// What it is for is named only if the record it points at is its parent: a
-		// re that names a record of another type is not a reply to it.
-		parent := ""
-		if state.HasParent(rec) {
-			parent = oneLine(state.Record(rec.Re).Text)
+		// re that names a record of another type is not a reply to it, and one that
+		// names nothing has no parent to name. Either way, the line says so.
+		target := state.Record(rec.Re)
+		switch {
+		case state.HasParent(rec):
+			c.println(msgShowToParent(model.ParentKind(rec.Type), id(rec.Re), oneLine(target.Text)))
+		case target == nil:
+			c.println(msgShowToMissing(model.ParentKind(rec.Type), id(rec.Re)))
+		default:
+			c.println(msgShowToOther(id(rec.Re), article(target.Kind()), article(model.ParentKind(rec.Type))))
 		}
-		c.println(msgShowToParent(model.ParentKind(rec.Type), id(rec.Re), parent))
 	}
 	c.println()
 

@@ -402,11 +402,12 @@ func TestShowABug(t *testing.T) {
 		}
 	})
 
-	t.Run("a reply that points at a record of another type does not quote it", func(t *testing.T) {
+	t.Run("a reply that points at a record of another type says what that is, and does not quote it", func(t *testing.T) {
 		h := initialized(t)
 		fixture(h)
 		_, out, _ := h.run("show", idRep3[:6])
-		if !strings.Contains(out, "\nto bug 1012f037b6\n") || strings.Contains(out, "Should nested") {
+		// Not "to bug 1012f037b6": the record is a question, and this is no reply to it.
+		if !strings.Contains(out, "\nto 1012f037b6  (a question, not a bug)\n") || strings.Contains(out, "to bug") || strings.Contains(out, "Should nested") {
 			t.Errorf("stdout:\n%s", out)
 		}
 		// And the question it points at does not count it as an answer.

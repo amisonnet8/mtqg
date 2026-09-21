@@ -151,7 +151,7 @@ func (v contextView) lines(d *model.ContextData) []string {
 		out = append(out, lines...)
 	}
 
-	if len(d.DuplicateWords) > 0 || d.Uncommitted > 0 {
+	if len(d.DuplicateWords) > 0 || len(d.Conflicts) > 0 || d.Uncommitted > 0 {
 		lines := []string{msgContextAttention}
 		for i, word := range d.DuplicateWords {
 			if i == maxContextWords {
@@ -159,6 +159,13 @@ func (v contextView) lines(d *model.ContextData) []string {
 				break
 			}
 			lines = append(lines, msgContextConflictingWord(oneLine(word)))
+		}
+		for i, r := range d.Conflicts {
+			if i == maxContextWords {
+				lines = append(lines, msgContextMoreConcurrent(len(d.Conflicts)-maxContextWords))
+				break
+			}
+			lines = append(lines, msgContextConcurrent(r.Kind(), v.id(r.ID), contextText(r.Text)))
 		}
 		if d.Uncommitted > 0 {
 			lines = append(lines, msgContextUncommitted(d.Uncommitted))
@@ -276,6 +283,9 @@ func (v contextView) json(command string, d *model.ContextData, truncated bool, 
 	}
 	for _, word := range d.DuplicateWords {
 		out.Attention = append(out.Attention, jsonAttention{Kind: "duplicate_word", Word: word})
+	}
+	for _, r := range d.Conflicts {
+		out.Attention = append(out.Attention, jsonAttention{Kind: "concurrent_status_change", ID: r.ID, Text: r.Text})
 	}
 	if d.Uncommitted > 0 {
 		out.Attention = append(out.Attention, jsonAttention{Kind: "uncommitted", Count: d.Uncommitted})

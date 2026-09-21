@@ -288,6 +288,11 @@ func msgMoreWarnings(n int) string {
 
 const statusLabelWidth = 20
 
+// msgConflictsValue is the count of records that have concurrent status changes.
+func msgConflictsValue(n int) string {
+	return fmt.Sprintf("%d  (concurrent status changes; see mtqg review)", n)
+}
+
 func msgStatusLine(label string, value string) string {
 	return padRight(label, statusLabelWidth) + value
 }
@@ -385,6 +390,32 @@ func msgBadKind(value string) string {
 	return fmt.Sprintf("Option --kind needs one of %s (or its letter), not %q.", strings.Join(names, ", "), value)
 }
 
+// review
+
+func msgReviewNothing() string { return "Nothing to review" }
+
+func msgReviewConcurrent(n int) string {
+	return fmt.Sprintf("Concurrent status changes (%d)", n)
+}
+
+func msgReviewDuplicates(n int) string {
+	return fmt.Sprintf("Duplicate glossary definitions (%d)", n)
+}
+
+func msgReviewUnattached(n int) string {
+	return fmt.Sprintf("Answers and replies with no parent (%d)", n)
+}
+
+// msgReviewRecord names a record that has concurrent status changes: what it is, its
+// ID and its text.
+func msgReviewRecord(kind, id, text string) string {
+	return fmt.Sprintf("  %s %s %q", kind, id, text)
+}
+
+// msgReviewRe says what the re of an answer or a reply names, which is not a
+// question or a bug of its own kind.
+func msgReviewRe(id, what string) string { return fmt.Sprintf("    re %s: %s", id, what) }
+
 // search
 
 // msgSearchFooter counts what a search found and says what it was for.
@@ -421,13 +452,27 @@ func msgShowReplyCount(typ string, n int) string {
 
 func msgShowBy(author, when string) string { return fmt.Sprintf("by %s, %s", author, when) }
 
-// msgShowToParent names the question or bug that an answer or a reply is for. text
-// is what it says, and empty when the record is not in the journal.
+// msgShowToParent names the question or bug that an answer or a reply is for, and
+// what it says.
 func msgShowToParent(kind, id, text string) string {
 	if text == "" {
 		return "to " + kind + " " + id
 	}
 	return "to " + kind + " " + id + "  " + text
+}
+
+// msgShowToMissing is for an answer or a reply whose re names nothing in the
+// journal: the question or bug it was for is not there (it may be in an archive).
+func msgShowToMissing(kind, id string) string {
+	return "to " + kind + " " + id + "  (no such record)"
+}
+
+// msgShowToOther is for a record whose re names a record that cannot be replied to
+// as it is: another kind, or an answer. It is not a reply to it, so no parent is
+// named. what and want are what the record is and what it would have to be, each
+// with its article (a question, a bug).
+func msgShowToOther(id, what, want string) string {
+	return "to " + id + "  (" + what + ", not " + want + ")"
 }
 
 func msgShowWord(word string) string { return "Word: " + word }
@@ -475,6 +520,15 @@ func msgContextHeading(name string, total int) string { return fmt.Sprintf("## %
 
 func msgContextConflictingWord(word string) string {
 	return fmt.Sprintf("- Glossary term %q has conflicting definitions (see mtqg glossary list)", word)
+}
+
+// msgContextConcurrent names a record that has concurrent status changes.
+func msgContextConcurrent(kind, id, text string) string {
+	return fmt.Sprintf("- %s %s %q has concurrent status changes (see mtqg review)", kind, id, text)
+}
+
+func msgContextMoreConcurrent(n int) string {
+	return fmt.Sprintf("- (%d more records have concurrent status changes; see mtqg review)", n)
 }
 
 func msgContextMoreWords(n int) string {

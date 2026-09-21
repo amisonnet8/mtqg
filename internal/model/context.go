@@ -39,6 +39,9 @@ type GlossaryItem struct {
 type ContextData struct {
 	// DuplicateWords are the words that have more than one definition.
 	DuplicateWords []string
+	// Conflicts are the records that have concurrent status changes (review).
+	// Attention names them all, so they are never left out, like the words.
+	Conflicts []*Record
 	// Uncommitted is how many records are not committed: 0 when none, or when
 	// that is not known.
 	Uncommitted int
@@ -68,6 +71,9 @@ func (s *State) Context(uncommitted int) *ContextData {
 	d := &ContextData{Uncommitted: uncommitted}
 	for _, group := range s.DuplicateWords() {
 		d.DuplicateWords = append(d.DuplicateWords, group[0].Word)
+	}
+	for _, c := range s.ConcurrentStatusChanges() {
+		d.Conflicts = append(d.Conflicts, c.Record)
 	}
 
 	d.Todos = s.Todos(false)

@@ -63,7 +63,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4（CLI順2）：手元では完了（2026-09-21）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
+**段階1 Step 4（CLI順2）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
 
 **できたもの：** モデル層に、質問と回答（`Questions`・`Answers`・`HasQuestion`）、`Glossary`、`DuplicateWords`、`All`、`History`、`QuestionCreate`・`AnswerCreate`・`GlossaryCreate`、`Summary`の拡張、IDの最短4桁（`MinIDDigits`・`IsIDLike`・`TooShortError`）。質問を消すと回答も隠れる判定（`visible`）。CLIの層に、`q add`（質問と回答）・`q list`・`q done`／`reopen`、`g add`・`g list`、`show`、`log`（`--limit`・`--kind`）、`status`の`Open questions`・`Glossary`の行。一覧の整形は表の関数1つ（`formatTable`）にまとめ、todo・質問・用語・`log`が使う。コマンドごとの「値を取るオプション」と「必須の語数」を文法の表に持たせた。
 
@@ -73,7 +73,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **Step 4に含めなかったもの：** `--json`（Step 5）、`status`の`Conflicts`の行と`review`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、`tty`（Step 6）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`に揃える。
 
-**CIで確かめること：** Windows・macOSでの、新しいコマンドの出力（特にe2eの`TestQuestionsAnswersAndTheGlossary`が使う`└`の文字と、日本語の桁揃え）。Windowsの色と端末の幅は、CIに端末が無いので確かめられない（Step 3から変わらない）。
+**CIで確かめられたこと：** Windows・macOSでの新しいコマンドの出力（e2eの`TestQuestionsAnswersAndTheGlossary`の`└`の文字、日本語の桁揃えを含む）。**CIで確かめられないこと：** Windowsの色と端末の幅（CIに端末が無い。Step 3から変わらない）。
 
 **（前の状態）段階1 Step 3（CLI順1）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。** Windowsで見つかった`Init`の後片付けの不具合（開いたままの`os.Root`が`RemoveAll`を妨げる）は、閉じてから消すよう直した（`testing.md`）。これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）を始められる。
 

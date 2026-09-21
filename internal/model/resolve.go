@@ -93,12 +93,6 @@ func ParentCreate(typ, text string) (journal.Event, error) {
 	return journal.Event{Op: journal.OpCreate, Type: typ, Status: journal.StatusOpen, Text: text}, nil
 }
 
-// QuestionCreate returns the event that creates a question.
-func QuestionCreate(text string) (journal.Event, error) { return ParentCreate(journal.TypeQA, text) }
-
-// BugCreate returns the event that creates a bug.
-func BugCreate(text string) (journal.Event, error) { return ParentCreate(journal.TypeBug, text) }
-
 // ReplyCreate returns the event that creates an answer to a question, or a reply
 // to a bug. It has the type of its parent, and holds the full ID of the parent
 // (re), whatever length of it was typed. Only a question or a bug can be replied

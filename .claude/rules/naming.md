@@ -13,7 +13,7 @@
 
 | 日本語（設計文書・対話） | 英語（コード・出力・reference） | 補足 |
 |---|---|---|
-| 記録 | record | memo・todo・qa・glossaryの1件 |
+| 記録 | record | memo・todo・qa・bug・glossaryの1件 |
 | 種類 | kind | memo / todo / qa / bug / glossary。JSONのフィールド名は`type` |
 | イベント | event | `journal.jsonl`の1行 |
 | ジャーナル | journal | `journal.jsonl` |

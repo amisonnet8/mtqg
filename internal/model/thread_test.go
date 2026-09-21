@@ -244,7 +244,7 @@ func TestSummary(t *testing.T) {
 }
 
 func TestQuestionAnswerAndGlossaryEvents(t *testing.T) {
-	q, err := QuestionCreate("Nested block comments?")
+	q, err := ParentCreate(journal.TypeQA, "Nested block comments?")
 	if err != nil || q.Op != journal.OpCreate || q.Type != journal.TypeQA || q.Status != journal.StatusOpen || q.Re != "" || q.ID != "" {
 		t.Errorf("question = %+v, %v", q, err)
 	}
@@ -276,8 +276,8 @@ func TestQuestionAnswerAndGlossaryEvents(t *testing.T) {
 	}
 
 	for _, text := range []string{"", "  ", "\n"} {
-		if _, err := QuestionCreate(text); !errors.Is(err, ErrEmptyText) {
-			t.Errorf("QuestionCreate(%q): err = %v", text, err)
+		if _, err := ParentCreate(journal.TypeQA, text); !errors.Is(err, ErrEmptyText) {
+			t.Errorf("ParentCreate(qa, %q): err = %v", text, err)
 		}
 		if _, err := ReplyCreate(state.Record(idQ), text); !errors.Is(err, ErrEmptyText) {
 			t.Errorf("ReplyCreate(%q): err = %v", text, err)
@@ -577,7 +577,7 @@ func TestSummaryCountsBugsApartFromQuestions(t *testing.T) {
 }
 
 func TestBugAndReplyEvents(t *testing.T) {
-	b, err := BugCreate("Parser crashes on empty input")
+	b, err := ParentCreate(journal.TypeBug, "Parser crashes on empty input")
 	if err != nil || b.Op != journal.OpCreate || b.Type != journal.TypeBug || b.Status != journal.StatusOpen || b.Re != "" || b.ID != "" {
 		t.Errorf("bug = %+v, %v", b, err)
 	}
@@ -606,8 +606,8 @@ func TestBugAndReplyEvents(t *testing.T) {
 	}
 
 	for _, text := range []string{"", "  ", "\n"} {
-		if _, err := BugCreate(text); !errors.Is(err, ErrEmptyText) {
-			t.Errorf("BugCreate(%q): err = %v", text, err)
+		if _, err := ParentCreate(journal.TypeBug, text); !errors.Is(err, ErrEmptyText) {
+			t.Errorf("ParentCreate(bug, %q): err = %v", text, err)
 		}
 		if _, err := ReplyCreate(state.Record(idBug), text); !errors.Is(err, ErrEmptyText) {
 			t.Errorf("ReplyCreate(%q): err = %v", text, err)

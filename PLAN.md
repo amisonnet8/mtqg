@@ -53,7 +53,7 @@ mtqgの実装計画・進捗管理ドキュメント。実装が進むにつれ�
 5. **Step 5: CLI順3** — `context`、全コマンドの`--json`。AIに渡せる
 6. **Step 6: CLI順4** — `edit`、`delete`、`undo`、`search`、`review`、`format`
 7. **Step 7: CLI順5** — `archive`（`-n`を含む）
-8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい
+8. **Step 8: e2e・docsの例の確認** — 複数クローン・ブランチをまたぐ検証（`.claude/rules/testing.md`「mtqg固有の検証項目」）、`docs/reference/`の例の実測確認の仕組み。Step 3以降、できるところから並行して足してよい。**例の取得は、Step 3・4・4.5で同じ手作業（日時とIDを固定した記録を作る→本物のバイナリで動かす→文書の該当ブロックを差し替える）を3回繰り返した**（作業用のスクリプトはセッションの一時領域で、リポジトリには無い）。ここで、フィクスチャをGoのテストの側に置き、文書の例と突き合わせる仕組みにする（`testing.md`「e2eとdocsの例の確認」）
 9. **Step 9: シェル補完**
 
 Step 3が動いた時点でサンプルPJ（段階2）を始められる。
@@ -64,7 +64,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、手元の検証まで。CIは未確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
+**段階1 Step 4.5（5つ目の種類`bug`）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** ユーザーの決定で`bug`を足した（サブコマンド`bug`、1文字`b`。qaと同じ形で、`type`に`bug`を足すだけ。返信の`re`はbugだけを指す）。`bug add`（不具合と返信）・`list`・`done`・`reopen`、`show`・`log --kind bug`・`status`の`Open bugs`の行。5種類（memo・todo・qa・bug・glossary）が揃った。
 
 **決めたこと（この会話で確認済み。理由は`docs/design/history.md`）：** 返信の呼び名は`reply`（`show`・`log`の種類の列は memo / todo / question / answer / bug / reply / glossary）。Step 4.5として独立させ、CIを通してからStep 5に入る。仕様書でのbugは「不具合そのもの」（不具合の報告と、そのやり取り。`done`は、直った／もう追わない）。**名前は`mtqg`のまま**（設計§3の「要判断」を「改名しない」と決定）。課題管理への線引きは設計§2.7に足した：bugはqaと同じ形（親＋返信、open/doneだけ）に留め、重要度・担当者・再現手順・影響バージョンの欄は持たない。
 
@@ -72,7 +72,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **手元で確かめたこと：** `make check`・`make test`（e2e）・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`とテストのコンパイルが通る（**実行はCI**）。モデル層の4つの変異（返信が親の`type`を見ない、`parentOf`が`type`を見ない、bugを消しても返信が残る、返信が常に`qa`で書かれる）とCLIの3つの変異（bugの一覧が質問を出す、案内が常に`qa`、打ち間違えたIDが新しいbugになる）を、テストが検出した。`cli.md`・`cli_ja.md`の新しい例（`status`・`bug list`・`show`・`log --kind bug`）と、文章中のエラー文言は、**日時とIDを固定した記録を本物のバイナリで動かした実際の出力**（英語版は中身も英語、日本語版は日本語）。
 
-**Step 4.5に含めなかったもの：** `--json`と`context`のbugの区画（Step 5。`cli.md`の`context`の下書きには`## Open bugs`を足してある）、`review`と`status`の`Conflicts`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`・`bug`・`reply`に揃える。**人間がすること：** GitHubのDescriptionを`(q)a & bugs`の版に変える（`PLAN.md`「READMEとGitHubの看板」）。
+**Step 4.5に含めなかったもの：** `--json`と`context`のbugの区画（Step 5。`cli.md`の`context`の下書きには`## Open bugs`を足してある）、`review`と`status`の`Conflicts`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`・`bug`・`reply`に揃える。
 
 **（前の状態）段階1 Step 4（CLI順2）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。次はStep 5（`context`と全コマンドの`--json`）。** 4種類（memo・todo・qa・glossary）が揃い、書いた記録を`show`・`log`で読み返せる。
 
@@ -84,7 +84,9 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **Step 4に含めなかったもの：** `--json`（Step 5）、`status`の`Conflicts`の行と`review`（Step 6）、`edit`・`delete`・`undo`・`search`・`format`（Step 6）、`archive`（Step 7）、`tty`（Step 6）。`format`の例の種類の列が`qa`のままなので、Step 6で`question`・`answer`に揃える。
 
-**CIで確かめられたこと：** Windows・macOSでの新しいコマンドの出力（e2eの`TestQuestionsAnswersAndTheGlossary`の`└`の文字、日本語の桁揃えを含む）。**CIで確かめられないこと：** Windowsの色と端末の幅（CIに端末が無い。Step 3から変わらない）。
+**CIで確かめられたこと（Step 4.5）：** bugの追加を含め、3OSでgreen（人間が確認）。
+
+**CIで確かめられたこと（Step 4）：** Windows・macOSでの新しいコマンドの出力（e2eの`TestQuestionsAnswersAndTheGlossary`の`└`の文字、日本語の桁揃えを含む）。**CIで確かめられないこと：** Windowsの色と端末の幅（CIに端末が無い。Step 3から変わらない）。
 
 **（前の状態）段階1 Step 3（CLI順1）：完了（2026-09-21、CIの3OSがgreen。人間が確認）。** Windowsで見つかった`Init`の後片付けの不具合（開いたままの`os.Root`が`RemoveAll`を妨げる）は、閉じてから消すよう直した（`testing.md`）。これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）を始められる。
 
@@ -169,6 +171,8 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 - 変更前の状態（`from`）による並行した状態変更の判定方式の妥当性（設計§7.6）
 - 並行した回答を`review`で検出するか
 - memoやtodoにも親（`re`）を持たせたくなるか
+- **bugの使い分けと線引き：** bugとqa・todoで書き分けに迷うか。bugに重要度・再現手順などの欄が欲しくなるか（設計§2.7の線引き「bugはqaと同じ形に留める」が保てるか）
+- **種類をまたぐ`re`の行の読み方**（他のツールが書いた行、または手で編集した行。mtqg自身は作れず、`b add <質問id>`はエラーで何も書かない）：今は、返信でも返信先のある記録でもない「返信先のない返信」として読み、エラーにしない。**その結果、`bug list`・`qa list`・親の`show`に出ず、見えるのは`log`とIDを指した`show`だけ**。`show`は、`re`が質問を指していても`to bug <id>`と書く（実際の種類と食い違う）。選択肢は、A：今のまま`show`の文言だけ直す、B：型を見ずに`re`の先へぶら下げる、C：Aに加えて`review`（Step 6）に「親がない・別の種類を指している返信」を載せる（勧めはC）。Step 6の`review`を作るときに決める
 - AIの記録者名の粒度（モデル名まで残すか）（設計§5.2）
 - 成果物の位置（`at`）の形式（設計§5.5）
 - `log`の既定の件数と並び順、`search`に必要な絞り込み（種類、記録者、期間）
@@ -256,7 +260,7 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 > mtqg - (m)emo, (t)odo, (q)a & bugs, (g)lossary: a project journal in your git repo, for humans and AI agents.
 
-`bug`を足した（2026-09-21）ので、`(q)a`のあとに`& bugs`を添えた。名前は変えない（設計§3）。GitHubの設定（Description）は人間が変える。
+`bug`を足した（2026-09-21）ので、`(q)a`のあとに`& bugs`を添えた。名前は変えない（設計§3）。**実際のDescriptionは、当面`work in progress`とだけ書いてある**（人間の判断、2026-09-21）。気にしなくてよい。看板のREADMEを作るときに、この仮決めと一緒に見直す。
 
 未完成の間は、末尾に`(work in progress)`を足す。READMEを開かない人にも伝わるようにするため。
 

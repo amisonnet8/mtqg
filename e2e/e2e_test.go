@@ -373,7 +373,7 @@ func readFile(t *testing.T, path string) string {
 
 var fullIDPattern = regexp.MustCompile(`^[0-9a-f]{32}\n$`)
 
-// The four kinds, end to end: a question is answered and closed, terms are
+// Questions and answers and the glossary, end to end: a question is answered and closed, terms are
 // defined (one of them twice), and show, log and status read them back. The
 // answer holds the full ID of its question in the journal, however short the
 // ID that was typed.

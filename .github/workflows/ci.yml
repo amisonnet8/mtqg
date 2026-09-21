@@ -37,6 +37,11 @@ jobs:
       - name: make check
         shell: bash
         run: make check
+      # The end-to-end tests run the real binary against real git repositories, on
+      # every operating system: the terminal, the editor and the paths differ.
+      - name: make test
+        shell: bash
+        run: make test
 
   # -race needs a C compiler, which windows-latest does not have.
   race:

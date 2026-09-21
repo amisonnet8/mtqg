@@ -63,7 +63,23 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 ## 現在地
 
-**段階1 Step 3（CLI順1）：着手（2026-09-21）。** 計画は承認済み。**依存の基準を決めた：Goの標準ライブラリと`golang.org/x/`だけ**（`CLAUDE.md`。例外は理由を説明して確認を取り、ここに記録する）。決めたこと：引数の解釈は標準ライブラリ（cobraは使わない）、文字幅は`golang.org/x/text/width`（East Asian Widthのプロパティ）＋標準の`unicode`（表示幅の関数は自前の約20行）、端末は`golang.org/x/term`、AIの記録者は環境変数`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`、e2eは本物のバイナリを`exec`するGoのテスト（ビルドタグ`e2e`。`testscript`は基準に合わない）。進め方は9つの区切り（0：依存の基準、1：仕様、2：`go get`、3：ジャーナル層、4：モデル層、5：CLIの土台、6：コマンド、7：e2eとCI、8：確認）。
+**段階1 Step 3（CLI順1）：手元では完了（2026-09-21）。GitHub ActionsでのWindows・macOSの確認待ち。次はStep 4（qa・glossary・`show`・`log`）。** これで、**Google Keepの代わりに自分で使い始められる**（`init`・`m add`・`m list`・`t add`・`t list`・`t done`・`t reopen`・`status`・`version`・`help`）。サンプルPJ（段階2）は、CIが通ったら始められる。
+
+**できたもの：** ジャーナル層に`Init`と`git.go`（`user.name`、コミット済みの`journal.jsonl`）、モデル層（`Build`・`Resolve`・`ResolveKind`・`MemoCreate`・`TodoCreate`・`SetStatus`。qa・glossaryも表せる形）、CLIの層（`internal/cli/`。文法を表でデータとして持つ。`messages.go`に英語の文言をすべて置く）、`e2e/`（本物のバイナリと本物のgit。`merge=union`で2つのブランチの記録が両方残ることも確認）、`make test`、CIの`check`ジョブに`make test`。
+
+**手元で確かめたこと：** `make check`（`vet`は`-tags e2e`も）・`make test`・`make race`・`make trivy`・`make shellcheck`が通る。macOS・Windows向けに`go vet`とテストのコンパイルが通る（`ansi_windows.go`を含む。**実行はCIで**）。`cli.md`・`cli_ja.md`の出力例（`init`・`todo list`・`done`／`reopen`・曖昧なID）は、**実際に動かした結果**（サンプルの日付・IDで固定した記録を、本物のバイナリで動かした）。
+
+**実装しながら決めたこと・見つかったこと：**
+- **不具合を1つ直した（`Build`）：** 時刻が記録の`create`より前の変更を、「作成のない記録への変更」として捨てていた。時計の進んだマシンが作ったtodoを、時計が正しいマシンが完了にすると、その完了が消える。作成を先に適用し、時刻が前の変更も、その後で順に適用するようにした（`schema.md`・`schema_ja.md`に1文、`history.md`に理由）。出力例を実際に動かして取ろうとして見つかった
+- **Goのソースに見えない文字が入っていた：** `\uXXXX`のエスケープが、書き込みの途中で実際の文字に展開されていた（`render.go`の双方向制御文字、Step 2の`event_test.go`のU+2028）。gosecのG116が検出。数値・`\x`のバイト列に直し、`source_test.go`が全`.go`を検査する（`testing.md`）
+- オプションの解釈は、`flag.FlagSet`ではなく**自前の小さな解釈**（約60行、標準ライブラリだけ）。`--`とインターリーブ（`t done <id> --full-id`）を、仕様どおりに扱うため
+- **`//nolint:gosec`を1か所だけ、確認を取って足した**（`$EDITOR`の起動。G204）。除外の設定（`.golangci.yaml`の`exclusions`）は足していない。`.golangci.yaml`には`run.build-tags: e2e`を足した（e2eもlintの対象）
+- `mtqg version`の表示は、`go build`が疑似バージョン（`v0.0.0-<時刻>-<ハッシュ>+dirty`）を作ることを確かめてから決めた（`-ldflags`の値 → ビルドのモジュールのバージョン → `dev`）
+- `init`が作る`.mtqg/`は`0750`、中のファイルは`os.Root.Create`（`0666`からumaskを引いたもの。普通のファイル）
+
+**まだ確かめられていないこと（CIで初めて分かる）：** Windowsでの色（`SetConsoleMode`）と端末の幅（`x/term`）は、CIでは端末が無いので**確かめられない**（手元にWindowsも無い）。`$EDITOR`の起動と引用符（`"C:\Program Files\..."`）はe2eが確かめる。macOSの`/var`→`/private/var`、`-C`とパスの表示。
+
+**Step 3に含めなかったもの：** `--json`（Step 5）、qa・glossary（Step 4）、`status`のqa・glossary・Conflictsの行（Step 4・6）、端末識別子`tty`と`undo`（Step 6。今は`tty`を書かない）、シェル補完（Step 9）。**AIの記録者は環境変数で名乗る**（`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`）。指示ファイルに書く運用は、Step 5・段階4で整える。それまで、環境変数の無いAIの記録は人間の名前になる。
 
 **依存の例外の記録：** なし。
 

@@ -15,6 +15,7 @@ fmt:
 
 vet:
 	go vet ./...
+	go vet -tags e2e ./e2e/...
 
 # Also reports files that the formatters would change.
 lint:
@@ -25,9 +26,10 @@ unit:
 
 check: vet lint unit
 
-# End-to-end tests. There are none yet (PLAN.md, Step 8).
+# End-to-end tests: the real mtqg binary against real git repositories (e2e/,
+# built with the tag e2e, so make check does not run them).
 test:
-	@echo "make test: no end-to-end tests yet (PLAN.md, Step 8)" >&2
+	go test -tags e2e -count=1 ./e2e/...
 
 # -race needs cgo, which the container turns off (.claude/rules/testing.md).
 race:

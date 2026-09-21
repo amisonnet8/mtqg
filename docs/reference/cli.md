@@ -157,6 +157,8 @@ $ mtqg t add Skip block comments
 ```
 $ mtqg t done 6cad4a268d
 Done: 6cad4a268d  Skip block comments /* */
+$ mtqg t done 6cad4a268d
+Already done: 6cad4a268d  Skip block comments /* */
 $ mtqg t reopen 6cad4a268d
 Reopened: 6cad4a268d  Skip block comments /* */
 ```
@@ -167,8 +169,9 @@ Reopened: 6cad4a268d  Skip block comments /* */
   (`Already done: ...`, `Already open: ...`). The exit code is 0: repeating a
   change is not an error.
 - Only todos and questions have a state. For the ID of any other record, mtqg
-  stops and says what it is. If another command is the right one, it names it
-  (`6cad4a268d is a question; use `mtqg qa done``).
+  stops and says what it is. If another command is the right one, it names it:
+  `81e74ef5e8 is a memo, not a todo`, and
+  `2217beaddb is a question, not a todo; use `mtqg qa done 2217beaddb``.
 
 ## Questions and answers
 
@@ -205,8 +208,8 @@ A question is in one of four states:
 ```
 $ mtqg t done 70430f77ff
 Ambiguous ID "70430f77ff" matches 2 records:
+  70430f77ff91c2e04a8b33f1d7e6a025  memo  Parser now skips // at line end  yamada       2026-03-02
   70430f77ff4b475185d5cae12dff1a17  todo  Skip block comments /* */        claude-code  10:18
-  70430f77ff91c2e04a8b33f1d7e6a025  memo  Parser now skips // at line end  yamada       2027-03-02
 ```
 
 - If no record matches, mtqg stops: `No record matches "6cad4"`. A deleted
@@ -271,11 +274,16 @@ Uncommitted records 3
 
 ```
 $ mtqg todo list
-6cad4a268d  Skip block comments /* */                 claude-code  10:18
-6513270e26  Ignore // inside string literals          yamada       10:52
-1e27a1c08a  Show error positions as line and column   claude-code  11:06
-...
-5 open (show done: --all)
+6cad4a268d  Skip block comments /* */                claude-code  10:18
+6513270e26  Ignore // inside string literals         yamada       10:52
+1e27a1c08a  Show error positions as line and column  claude-code  11:06
+3 open (show done: --all)
+
+$ mtqg todo list --all
+6cad4a268d  Skip block comments /* */                claude-code  10:18  done
+6513270e26  Ignore // inside string literals         yamada       10:52
+1e27a1c08a  Show error positions as line and column  claude-code  11:06
+2 open, 1 done
 
 $ mtqg qa list
 2217beaddb  Should error positions show both line and column?   claude-code  11:05  unanswered

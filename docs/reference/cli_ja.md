@@ -138,16 +138,19 @@ $ mtqg t add ブロックコメントの読み飛ばし
 
 ```
 $ mtqg t done 6cad4a268d
-Done: 6cad4a268d  ブロックコメントの読み飛ばし
+Done: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
+$ mtqg t done 6cad4a268d
+Already done: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
 $ mtqg t reopen 6cad4a268d
-Reopened: 6cad4a268d  ブロックコメントの読み飛ばし
+Reopened: 6cad4a268d  ブロックコメント /* */ の読み飛ばし
 ```
 
 - 1行を出す：何をしたか、ID、本文の1行目。打ったIDが意図した記録だったと確かめられる
 - すでにその状態のtodoには何も書かず、その旨を出す（`Already done: ...`、`Already open: ...`）。
   終了コードは0：同じ変更の繰り返しはエラーではない
 - 状態を持つのはtodoと質問だけ。それ以外の記録のIDには、止まって、それが何かを伝える。
-  正しいコマンドが別にあるときは、それを示す（`6cad4a268d is a question; use `mtqg qa done``）
+  正しいコマンドが別にあるときは、それを示す：
+  `81e74ef5e8 is a memo, not a todo`、`2217beaddb is a question, not a todo; use `mtqg qa done 2217beaddb``
 
 ## 質問と回答
 
@@ -179,8 +182,8 @@ Reopened: 6cad4a268d  ブロックコメントの読み飛ばし
 ```
 $ mtqg t done 70430f77ff
 Ambiguous ID "70430f77ff" matches 2 records:
-  70430f77ff4b475185d5cae12dff1a17  todo  ブロックコメントの読み飛ばし      claude-code  10:18
-  70430f77ff91c2e04a8b33f1d7e6a025  memo  行末の // も読み飛ばすようにした  yamada       2027-03-02
+  70430f77ff91c2e04a8b33f1d7e6a025  memo  行末の // も読み飛ばすようにした     yamada       2026-03-02
+  70430f77ff4b475185d5cae12dff1a17  todo  ブロックコメント /* */ の読み飛ばし  claude-code  10:18
 ```
 
 - 当てはまる記録がなければ止まる：`No record matches "6cad4"`。削除した記録は当てはまらない。
@@ -237,11 +240,16 @@ Uncommitted records 3
 
 ```
 $ mtqg todo list
-6cad4a268d  ブロックコメント /* */ の読み飛ばし     claude-code  10:18
-6513270e26  文字列リテラル中の // を無視する        yamada       10:52
-1e27a1c08a  エラー位置を行と列で表示する            claude-code  11:06
-...
-5 open (show done: --all)
+6cad4a268d  ブロックコメント /* */ の読み飛ばし  claude-code  10:18
+6513270e26  文字列リテラル中の // を無視する     yamada       10:52
+1e27a1c08a  エラー位置を行と列で表示する         claude-code  11:06
+3 open (show done: --all)
+
+$ mtqg todo list --all
+6cad4a268d  ブロックコメント /* */ の読み飛ばし  claude-code  10:18  done
+6513270e26  文字列リテラル中の // を無視する     yamada       10:52
+1e27a1c08a  エラー位置を行と列で表示する         claude-code  11:06
+2 open, 1 done
 
 $ mtqg qa list
 2217beaddb  エラー位置は行と列の両方を出しますか？   claude-code  11:05  unanswered

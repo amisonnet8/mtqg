@@ -2,6 +2,11 @@
 # Check this file with: golangci-lint config verify
 version: "2"
 
+run:
+  # The end-to-end tests are built with this tag (make test); lint them too.
+  build-tags:
+    - e2e
+
 linters:
   # errcheck, govet, ineffassign, staticcheck, unused
   default: standard

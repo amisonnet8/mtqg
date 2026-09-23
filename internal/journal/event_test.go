@@ -57,6 +57,14 @@ func TestEncodeLineGolden(t *testing.T) {
 			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}` + "\n",
 		},
 		{
+			name: "basis comes after status and is omitted when 0",
+			ev: Event{
+				ID: idA, Op: OpStatus, From: "open", Status: "done", Basis: 3,
+				V: 0, TS: "2026-09-17T01:30:00Z", Author: Author{Kind: AuthorAI, Name: "claude-code"},
+			},
+			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","basis":3,"v":0,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}` + "\n",
+		},
+		{
 			name: "delete has no body",
 			ev:   Event{ID: idA, Op: OpDelete, V: 0, TS: "2026-09-17T02:00:00Z", Author: yamada},
 			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"delete","v":0,"ts":"2026-09-17T02:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
@@ -134,7 +142,7 @@ func TestEncodeLineRefusesInvalidUTF8(t *testing.T) {
 func TestParseEvent(t *testing.T) {
 	t.Run("a line written by encodeLine reads back", func(t *testing.T) {
 		want := Event{
-			ID: idA, Op: OpCreate, Type: "memo", Text: "a<b>&c\xe2\x80\xa8 日本語\n2行目",
+			ID: idA, Op: OpCreate, Type: "memo", Text: "a<b>&c\xe2\x80\xa8 日本語\n2行目", Basis: 3,
 			At: &At{Path: "a.go", Line: 3, Head: "abc"},
 			V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada, TTY: "3e9a0b12",
 		}

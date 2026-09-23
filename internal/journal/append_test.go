@@ -107,6 +107,7 @@ func TestAppendValidation(t *testing.T) {
 		{"edit with re", Event{ID: idA, Op: OpEdit, Re: idB, Text: "x"}},
 		{"unknown status", Event{ID: idA, Op: OpStatus, Status: "closed"}},
 		{"unknown from", Event{ID: idA, Op: OpStatus, From: "closed", Status: StatusDone}},
+		{"negative basis", Event{ID: idA, Op: OpEdit, Text: "x", Basis: -1}},
 		{"text that is not UTF-8", Event{Op: OpCreate, Type: TypeMemo, Text: "caf\xe9"}},
 	}
 	for _, tt := range tests {

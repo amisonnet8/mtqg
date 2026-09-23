@@ -792,14 +792,19 @@ Answers and replies with no parent (1)
     re 1012f037b6: a question, not a bug
 ```
 
-- **Concurrent status changes.** The status changes of one record are taken in the
-  order of the format (`ts`, then `id`) and followed from the state the record was
-  created in. A change whose `from` is not the state the record is in at that
-  point was written by someone who had not seen the change before it (two branches
-  that each closed the same todo, merged later). The record is listed with **all**
-  of its status changes, oldest first, each with its time, author and change. A
-  change with no `from` is not judged. The same line repeated is one event and is
-  not a conflict. The state the lists show is the one the last change leaves.
+- **Concurrent status changes.** Two independent signals catch a record whose
+  changes were made without knowing of each other, either one enough to list it.
+  ① A `status` event whose `from` is not the state the record is in at that
+  point in the format's order (`ts`, then `id`), followed from the state the
+  record was created in (two branches that each closed the same todo, merged
+  later). ② A `status` event or an `edit` whose `basis` does not match how many
+  events (including the `create`) the record actually had at that point: this
+  also catches a status change and an edit made at once, since it does not
+  matter which field either one touched. The record is listed with **all** of
+  its status changes and edits, oldest first, each with its time, author and
+  change (an edit shows as `edited`). An event with no `from` and no `basis` is
+  not judged. The same line repeated is one event and is not a conflict. The
+  state the lists show is the one the last change leaves.
 - **Duplicate glossary definitions.** Each word that is defined more than once
   (character for character), with all of its entries in the order they were written.
 - **Answers and replies with no parent.** An answer or a reply is bound to its

@@ -63,8 +63,9 @@
 ## 書き出し規則
 
 - Goの構造体にフィールドを決まった順で並べ、`encoding/json/v2`のエンコーダで書く。**独自の整形処理を書かない**。`journal.jsonl`の行としてのJSONを扱うのは`internal/journal/event.go`だけ（CLIの`--json`は別の約束で、`internal/cli/json.go`が扱う。cli-output.md）
-- キーの順：`id, op, type, re, from, status, word, text, at, v, ts, author, tty`（`author`の中は`kind, name`）
+- キーの順：`id, op, type, re, from, status, basis, word, text, at, v, ts, author, tty`（`author`の中は`kind, name`）
 - 値がないフィールドは`null`を書かず**省く**
+- **数値のフィールドを省きたいときは`omitempty`でなく`omitzero`を使う。** `encoding/json/v2`の`omitempty`は「JSON側で空（null・空文字列・空オブジェクト・空配列）になるか」で決まり、数値の`0`はどれにも当たらないので**省かれない**（`basis`フィールドの実装で、値を渡していない行にも`"basis":0`が書かれてしまい、ゴールデンテストで気づいた）。`omitzero`は「Go側のゼロ値か」で決まるので、`int`の`0`も省ける
 - 日本語などをエスケープしない。`<`・`>`・`&`も、U+2028・U+2029もエスケープしない。**`encoding/json/v2`を使う理由：** v1は、`SetEscapeHTML(false)`にしてもU+2028・U+2029を常にエスケープし（規則に反し、他のツールが規則どおりに書いた同じイベントと行が食い違う）、不正なUTF-8を黙って`U+FFFD`に置き換える（データの破壊）。v2は既定で必要最小限のエスケープだけで、不正なUTF-8はエラーにする。既定に頼らず、`jsontext.EscapeForHTML(false)`・`EscapeForJS(false)`を明示する
 - **不正なUTF-8の本文は書かずにエラーにする。** 黙って置き換えない
 - **すべての行をLFで終える**（ファイル末尾も改行）。unionマージとアーカイブの戻し（`cat >>`）がこれに依存する

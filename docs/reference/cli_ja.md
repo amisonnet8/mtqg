@@ -440,7 +440,7 @@ Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
-Conflicts           1  (concurrent status changes; see mtqg review)
+Conflicts           1  (concurrent changes; see mtqg review)
 
 Uncommitted records 3
 ```
@@ -657,7 +657,7 @@ $ mtqg search コメント
 <!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg review
-Concurrent status changes (1)
+Concurrent changes (1)
   todo 6b0d549b6f "行コメント // の読み飛ばし"
     2026-09-21 10:15  claude-code  open -> done
     2026-09-21 14:30  yamada       open -> done
@@ -700,7 +700,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -757,7 +757,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)

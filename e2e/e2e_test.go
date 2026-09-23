@@ -804,15 +804,15 @@ func TestTwoBranchesCloseTheSameTodoAndReviewShowsIt(t *testing.T) {
 
 	r.git("merge", "-q", "--no-edit", "feature")
 
-	if out := r.mtqg("status"); !strings.Contains(out, "Conflicts           1  (concurrent status changes; see mtqg review)\n") {
+	if out := r.mtqg("status"); !strings.Contains(out, "Conflicts           1  (concurrent changes; see mtqg review)\n") {
 		t.Errorf("status =\n%s", out)
 	}
 	review := r.mtqg("review")
-	if !strings.HasPrefix(review, "Concurrent status changes (1)\n  todo "+todo+" \"Skip block comments\"\n") ||
+	if !strings.HasPrefix(review, "Concurrent changes (1)\n  todo "+todo+" \"Skip block comments\"\n") ||
 		strings.Count(review, "open -> done") != 2 || !strings.Contains(review, "claude-code") || !strings.Contains(review, "yamada") {
 		t.Errorf("review =\n%s", review)
 	}
-	if out := r.mtqg("context"); !strings.Contains(out, "- todo "+todo+" \"Skip block comments\" has concurrent status changes (see mtqg review)\n") {
+	if out := r.mtqg("context"); !strings.Contains(out, "- todo "+todo+" \"Skip block comments\" has concurrent changes (see mtqg review)\n") {
 		t.Errorf("context =\n%s", out)
 	}
 

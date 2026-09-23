@@ -77,11 +77,25 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 
 **決定：`Makefile`をやめ、mtqg自身の開発の近道を`qsokufile`（`qsoku`使用）に置き換えた。** 経緯：段階2のサンプルPJ「qsoku」がv0.1.1としてリリースされ（`github.com/amisonnet8/qsoku`）、qsoku自身の開発セッションに「make→qsokuの置き換えを試すならどのPJがよいか」を尋ねたところ、「qsoku自身のCIをqsokuに任せるのは、qsokuの不具合が自分自身のCIを誤って壊す循環リスクがあるため避け、開発が進んでいる別PJで試すのがよい」との回答を得た（qsoku側の判断はqsokuリポジトリのコミット`7c900db`に記録されている）。mtqgはこの「開発が進んでいる別PJ」に当たるため、Make→qsoku移行の実地検証をここで行った。詳細な経緯・技術確認・置き換えた対象の一覧は`docs/design/history.md`（2026-09-23の最後のエントリ）。
 
-作業はブランチ`qsoku-build`で行い、問題があればすぐ戻せるようにした（人間の指示）。11個の`qsokufile`のエントリ（`build`・`fmt`・`vet`・`lint`・`unit`・`check`・`test`・`docs-examples`・`race`・`trivy`・`shellcheck`）はすべて手元で実行して確認済み。**CIでの確認（Windowsで`qsoku`が呼ぶ`sh`が正しく見つかるか含む）はまだ**（人間がpushして確認）。
+作業はブランチ`qsoku-build`で行い、問題があればすぐ戻せるようにした（人間の指示）。11個の`qsokufile`のエントリ（`build`・`fmt`・`vet`・`lint`・`unit`・`check`・`test`・`docs-examples`・`race`・`trivy`・`shellcheck`）はすべて手元で実行して確認済み。**CIも3OS全ジョブgreen（Windowsで`qsoku`が呼ぶ`sh`が見つかることを含む。PR #1、2026-09-23、人間が確認）。mainへマージ済み。**
+
+## 段階3：CLIで直すもの（着手・完了。2026-09-23）
+
+qsokuからの報告（`docs/design/08-development.md`「12.3.1」）の3件すべてに着手し、完了した。作業はブランチ`stage3-cli-fixes`。
+
+1. **`mtqg <kind> --help`が種類別のヘルプを出さない。** `parseArgs`の分岐順を直し、`invocation.kindHelp`を足した。種類だけ決まって動詞が無いときの`-h`／`--help`は、その種類の動詞一覧（`commandsOf`）を出す。`docs/reference/cli.md`・`cli_ja.md`に`-h`／`--help`の3段階（全体／種類／コマンド）を先に書いてから実装した。
+2. **`log`／`search`で回答・返信が暗くならない。** `model.State`に`Parent`（既存の非公開`parentOf`の公開ラッパー）を足し、`printRecordLines`が答え・返信のときは親の状態を見て暗くするようにした（`qa list`／`bug list`と同じ判断）。表示上の装飾なので仕様書の更新は不要と判断した。
+3. **`review`・`status`が、同じ記録への並行した変更（ステータス変更＋edit）を検知しない。** 調査の結果、**今のイベント形式では原理的に判定できない**と判明（editイベントに「何を基に編集したか」の情報が一切ない）。人間に確認し、**データ形式に`basis`フィールドを足す方針**で進めた（2026-09-23、人間の判断）。`basis`（整数、`status`・`edit`のイベントに付く。省略可）は、書く人がそのイベントを書く直前に見ていた、その記録のイベント数（`create`を含む）。既存の`from`不一致検知（statusどうしの食い違い）はそのまま残し、`basis`不一致検知（種類をまたぐ食い違いも拾う）を追加した。Go関数名・`Summary`のフィールド名・`--json`の`concurrent_status_changes`キーは変えていない（cli-output.mdの「変えるのはフィールドを足すことだけ」を守るため）。仕様（`schema.md`・`schema_ja.md`・`cli.md`・`cli_ja.md`）を先に更新してから実装した。
+
+**手元で確かめたこと：** `qsoku check`・`qsoku test`（e2e）・`qsoku race`が通る。`qsoku docs-examples`は冪等（見出しの文言変更のみ反映、他は差分なし）。**壊して確かめた**（mutation-checkスキル、9個の変異、すべて検出）：editのbasis不一致を見ない、statusのbasis不一致を見ない、fromの既存判定を壊す、`HasState()`でない記録を素通りする、`seen`を数え違える、`SetStatus`・`EditText`が`basis`を書かない、`append.go`が負の`basis`を受け付ける、`review`の表示がeditをstatusとして誤表示する。**1つ生き残ってからテストを足して直した**：statusイベント自身のbasis判定だけを外す変異が最初は生き残った（既存のテストはどれも「statusどうしの食い違い」か「editのbasis不一致」のどちらかで、statusの`from`は一致するのに`basis`だけが食い違う場面（editが先に起きたことを知らずに書かれたstatus変更）を確かめるテストが無かったため）。詳細は`.claude/rules/testing.md`「mtqg固有の検証項目」。
+
+**実装しながら見つけて記録したこと：** `encoding/json/v2`の`omitempty`は数値の`0`を省かない（JSON側の「空」の定義のため）。`omitzero`を使う必要がある（`.claude/rules/journal-format.md`に追記）。
+
+**未確認：** CIでの3OS確認（人間がpushして確認）。
 
 ## 現在地
 
-**段階2（サンプルPJ＝qsoku）：最後まで作り切られ、報告を受け取った（2026-09-23。詳細は「段階2：サンプルPJ」の節と`docs/design/08-development.md`「12.3.1」）。段階1のステップはすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。並行して、開発ツールをMakeからqsokuへ置き換えた（上の節。ブランチ`qsoku-build`、CI確認待ち）。次は、報告に挙がった「CLIで直すもの」3件（`t --help`が種類別ヘルプを出さない、`log`で回答側が暗くならない、並行した状態変更をtodo/qa/bugで検知できない）をどう扱うか、段階3に着手するかを人間が判断するのを待つ。**
+**段階2（サンプルPJ＝qsoku）：最後まで作り切られ、報告を受け取り（2026-09-23）、報告の3件（「CLIで直すもの」）すべてに対応した（上の「段階3：CLIで直すもの」の節）。開発ツールもMakeからqsokuへ置き換え済み（上の節、mainへマージ済み）。段階1のステップはすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。次は、ブランチ`stage3-cli-fixes`をpushしてCIを確認し、マージするかどうかを人間が判断するのを待つ。マージ後、v0.2の区切り条件（設計§12.4「サンプルPJをやり切り、CLIで直すものが片付いた」）が満たされることになる。**
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

@@ -96,22 +96,26 @@ func (c *ctx) printIndented(n int, lines []string) {
 	}
 }
 
-// printConcurrent names each record and lists all of its status changes, oldest
-// first, with the time, the author and the change.
+// printConcurrent names each record and lists all of its status changes and
+// edits, oldest first, with the time, the author and the change.
 func (c *ctx) printConcurrent(conflicts []model.StatusConflict) {
 	for _, k := range conflicts {
 		r := k.Record
 		c.println(msgReviewRecord(r.Kind(), shortID(r.ID, c.inv.fullID), oneLine(r.Text)))
 		rows := make([]tableRow, len(k.Changes))
 		for i, e := range k.Changes {
-			from := oneLine(e.Event.From)
-			if from == "" {
-				from = "?"
+			change := "edited"
+			if e.Event.Op == journal.OpStatus {
+				from := oneLine(e.Event.From)
+				if from == "" {
+					from = "?"
+				}
+				change = from + " -> " + oneLine(e.Event.Status)
 			}
 			rows[i] = tableRow{cells: []string{
 				formatFull(e.At, c.env.Location),
 				oneLine(e.Event.Author.Name),
-				from + " -> " + oneLine(e.Event.Status),
+				change,
 			}}
 		}
 		c.printIndented(4, formatTable(rows, 2, -1, 0, c.st))

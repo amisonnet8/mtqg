@@ -288,9 +288,9 @@ func msgMoreWarnings(n int) string {
 
 const statusLabelWidth = 20
 
-// msgConflictsValue is the count of records that have concurrent status changes.
+// msgConflictsValue is the count of records that have concurrent changes.
 func msgConflictsValue(n int) string {
-	return fmt.Sprintf("%d  (concurrent status changes; see mtqg review)", n)
+	return fmt.Sprintf("%d  (concurrent changes; see mtqg review)", n)
 }
 
 func msgStatusLine(label string, value string) string {
@@ -405,7 +405,7 @@ func msgBadKind(value string) string {
 func msgReviewNothing() string { return "Nothing to review" }
 
 func msgReviewConcurrent(n int) string {
-	return fmt.Sprintf("Concurrent status changes (%d)", n)
+	return fmt.Sprintf("Concurrent changes (%d)", n)
 }
 
 func msgReviewDuplicates(n int) string {
@@ -416,7 +416,7 @@ func msgReviewUnattached(n int) string {
 	return fmt.Sprintf("Answers and replies with no parent (%d)", n)
 }
 
-// msgReviewRecord names a record that has concurrent status changes: what it is, its
+// msgReviewRecord names a record that has concurrent changes: what it is, its
 // ID and its text.
 func msgReviewRecord(kind, id, text string) string {
 	return fmt.Sprintf("  %s %s %q", kind, id, text)
@@ -532,13 +532,13 @@ func msgContextConflictingWord(word string) string {
 	return fmt.Sprintf("- Glossary term %q has conflicting definitions (see mtqg glossary list)", word)
 }
 
-// msgContextConcurrent names a record that has concurrent status changes.
+// msgContextConcurrent names a record that has concurrent changes.
 func msgContextConcurrent(kind, id, text string) string {
-	return fmt.Sprintf("- %s %s %q has concurrent status changes (see mtqg review)", kind, id, text)
+	return fmt.Sprintf("- %s %s %q has concurrent changes (see mtqg review)", kind, id, text)
 }
 
 func msgContextMoreConcurrent(n int) string {
-	return fmt.Sprintf("- (%d more records have concurrent status changes; see mtqg review)", n)
+	return fmt.Sprintf("- (%d more records have concurrent changes; see mtqg review)", n)
 }
 
 func msgContextMoreWords(n int) string {

@@ -148,6 +148,14 @@ func change(id, from, to, author, ts string) string {
 	})
 }
 
+// editLine makes the line of an edit with a basis, for setJournal.
+func editLine(id, text string, basis int, author, ts string) string {
+	return marshal(map[string]any{
+		"id": id, "op": "edit", "basis": basis, "text": text,
+		"v": 0, "ts": ts, "author": map[string]string{"kind": "human", "name": author},
+	})
+}
+
 func marshal(v any) string {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)

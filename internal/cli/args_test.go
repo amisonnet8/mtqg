@@ -147,6 +147,31 @@ func TestParseArgs(t *testing.T) {
 	}
 }
 
+// Help on a kind with no verb yet is its own case: cmd is nil (there is no one
+// command to name), so it does not fit the table above, which reads cmd.full().
+func TestParseArgsHelpOnAKind(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		kind string
+	}{
+		{"the kind spelled out, -h", []string{"todo", "-h"}, "todo"},
+		{"the kind's letter, --help", []string{"t", "--help"}, "todo"},
+		{"qa", []string{"qa", "-h"}, "qa"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv, err := parseArgs(tt.args)
+			if err != nil {
+				t.Fatalf("parseArgs(%q): %v", tt.args, err)
+			}
+			if !inv.help || inv.kindHelp != tt.kind || inv.cmd != nil {
+				t.Errorf("help=%v kindHelp=%q cmd=%v, want help=true kindHelp=%q cmd=nil", inv.help, inv.kindHelp, inv.cmd, tt.kind)
+			}
+		})
+	}
+}
+
 func TestParseArgsMistakes(t *testing.T) {
 	tests := []struct {
 		name string

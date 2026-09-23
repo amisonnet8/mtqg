@@ -48,6 +48,11 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
 | `mtqg help` | List the commands (`-h` and `--help` do the same) |
 
+`-h` and `--help` show less the more of the command line is already known:
+`mtqg -h` (or `mtqg help`) lists every command, `mtqg <kind> -h` (a kind with
+no verb yet, for example `mtqg todo -h`) lists that kind's verbs, and
+`mtqg <kind> <verb> -h` shows just that command's usage and summary.
+
 ## Global options
 
 | Option | Description |
@@ -161,7 +166,7 @@ What each command prints, after `command`:
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
 | `completion` | `shell`: the shell that was asked for; `script`: the script |
 | `candidates` | `candidates`: `{"value", "description"}` for each, in the order of the text form (`description` is left out if there is none), `count` |
-| `help`, or `-h` on a command | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}`. `available` is `false` for a command that is known and not yet built |
+| `help`, or `-h` on a command or a kind | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}` (only that kind's, for `-h` on a kind). `available` is `false` for a command that is known and not yet built |
 | `context` | See [context](#context) |
 
 **Errors** are one line of JSON on **standard error**, and standard output stays

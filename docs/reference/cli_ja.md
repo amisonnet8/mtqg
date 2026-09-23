@@ -46,6 +46,8 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
 | `mtqg help` | コマンドの一覧を表示する（`-h`、`--help`も同じ） |
 
+`-h`・`--help`は、コマンドラインがどこまで決まっているかで出すものが変わる。`mtqg -h`（または`mtqg help`）は全コマンドの一覧、`mtqg <種類> -h`（種類だけ決まり動詞がまだのとき。例：`mtqg todo -h`）はその種類の動詞の一覧、`mtqg <種類> <動詞> -h`はそのコマンドのusageとsummaryだけを出す。
+
 ## 共通のオプション
 
 | オプション | 内容 |
@@ -142,7 +144,7 @@ $ mtqg memo list --json
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
 | `completion` | `shell`：頼まれたシェル、`script`：スクリプト |
 | `candidates` | `candidates`：それぞれ`{"value", "description"}`（テキストの形と同じ順。`description`は、なければ省く）、`count` |
-| `help`、またはコマンドへの`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
+| `help`、またはコマンド・種類への`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`（種類への`-h`はその種類のものだけ）。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
 | `context` | [context](#context)を参照 |
 
 **エラー**は、**標準エラー出力**に1行のJSONで出し、標準出力は空のまま。終了コードは`--json`なしと同じ。

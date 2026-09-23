@@ -26,22 +26,22 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # windows-latest has no GNU Make.
-      - name: Install make
-        if: runner.os == 'Windows'
-        run: choco install make -y
+      # Pinned so a qsoku regression cannot break this CI unnoticed
+      # (docs/design/history.md, 2026-09-23).
+      - name: Install qsoku
+        run: go install github.com/amisonnet8/qsoku/cmd/qsoku@v0.1.1
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.2
           install-only: true
-      - name: make check
+      - name: qsoku check
         shell: bash
-        run: make check
+        run: qsoku check
       # The end-to-end tests run the real binary against real git repositories, on
       # every operating system: the terminal, the editor and the paths differ.
-      - name: make test
+      - name: qsoku test
         shell: bash
-        run: make test
+        run: qsoku test
 
   # -race needs a C compiler, which windows-latest does not have.
   race:
@@ -56,23 +56,35 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: make race
+      - name: Install qsoku
+        run: go install github.com/amisonnet8/qsoku/cmd/qsoku@v0.1.1
+      - name: qsoku race
         shell: bash
-        run: make race
+        run: qsoku race
 
   shellcheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: make shellcheck
-        run: make shellcheck
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install qsoku
+        run: go install github.com/amisonnet8/qsoku/cmd/qsoku@v0.1.1
+      - name: qsoku shellcheck
+        run: qsoku shellcheck
 
   trivy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install qsoku
+        run: go install github.com/amisonnet8/qsoku/cmd/qsoku@v0.1.1
       - uses: aquasecurity/setup-trivy@v0.3.1
         with:
           version: v0.71.2
-      - name: make trivy
-        run: make trivy
+      - name: qsoku trivy
+        run: qsoku trivy

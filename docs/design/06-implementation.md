@@ -258,6 +258,8 @@ go.sum
 - devcontainer：`golangci-lint`、`trivy`、`shellcheck`を最初から入れておく。実装の途中でツールのインストールが要らないようにする
 - CI：手元と同じ入口を回す
 
+**追記（2026-09-23）**：`Makefile`は`qsokufile`（`qsoku`使用）に置き換えた。段階2のサンプルPJであるqsokuがv0.1.1としてリリースされたのを機に、qsoku自身の開発セッションに相談したところ、「qsoku自身のCIをqsokuに任せるのは循環リスクがあるので避け、開発が進んでいる別PJで試すのがよい」との判断を得た（`github.com/amisonnet8/qsoku`コミット`7c900db`）。mtqgがその「別PJ」に当たる。入口の役割（テスト・lint・Trivy・ShellCheckをまとめて回す）は変わらず、`qsoku check`のように名前を打つだけで動く点も同じ。経緯は`docs/design/history.md`。
+
 ### 10.11 配布方法（決定）
 
 **v0.xの間は`go install`だけ**

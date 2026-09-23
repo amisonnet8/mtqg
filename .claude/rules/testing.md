@@ -18,8 +18,8 @@
 
 実装したら、ビルド確認に加えて実際の動作確認を行うこと。ロジック上正しそうに見えても、動かして初めて見つかる不具合はある。
 
-- `make check`（fmt・vet・lint・単体テスト）は作業の区切りで必ず通す
-- e2e（`make test`）を走らせる粒度は作業規模で判断する
+- `qsoku check`（fmt・vet・lint・単体テスト）は作業の区切りで必ず通す
+- e2e（`qsoku test`）を走らせる粒度は作業規模で判断する
   - 小規模な修正（数行、1関数内）は、一連の作業の最後に1回でよい
   - 複数ファイルにまたがる変更、ジャーナル層・ロック・マージに関わる変更は、各ステップの区切りごとに実行する
   - 迷ったら実行する側に倒す
@@ -40,7 +40,7 @@
 - **並行テストには「証明にならない」ガードを入れる。** 書き直しが3回未満なら失敗にする、など。ロックは公平ではない（`lock`のコメント）ので、休みなしで追記し続けると書き直しが締め出され、テストが何も確かめないまま通る（実際に`-race`で1回だけ失敗した）。追記の合間に短い休みを入れて、実際の使い方（短いコマンドの間に休みがある）に近づける
   - **ガードを入れるだけでは、実行時間を縮めたときに間欠的に落ちる**（Step 7で、`archive`のテストの追記の回数を減らしたら、10回に2回、アーカイブが1回しか重ならず落ちた）。**追記の側を「決めた回数」でなく「書き直す側が必要な回数を終えるまで続ける」形にする**と、ロックの分け方に関わらず、必ず重なる。書けた行数を数えておき、あとで期待値にする
 - 別のプロセスから書くテストは、テストバイナリ自身を`os.Args[0]`で再実行するヘルパー（`TestHelperProcess`、環境変数で動作を切り替える）で書く。シェルスクリプトは使わない
-- 並行テストは、`-count=10`や`make race`の繰り返しで、たまにしか落ちないことを確かめてから区切りにする
+- 並行テストは、`-count=10`や`qsoku race`の繰り返しで、たまにしか落ちないことを確かめてから区切りにする
 - **Goのソースに、見えない文字（ゼロ幅、U+2028・U+2029、文字の向きを変える制御文字、制御文字）を、そのまま書かない。** エスケープ（`\xe2\x80\xa8`のバイト列、または数値）で書く。`\uXXXX`と書いたつもりが、書き込みの途中で実際の文字に展開されていたことがあり（`internal/journal/event_test.go`にU+2028が入り、JSONのエスケープを読むテストの入力が普通の文字に変わっていた）、gosecのG116が検出した。ルートの`source_test.go`が、すべての`.go`を検査する（最初の草稿の、自分自身のコメントも検出した）。文字の範囲を書くときも、数値で書く
 
 ## mtqg固有の検証項目
@@ -81,9 +81,9 @@
 
 - **例を取るフィクスチャの日付が「今日」のとき、その日の未来の時刻の行が、実際に書く行より「最新」になる。** Step 6で、`q add`のあとの`undo`の例が、フィクスチャにある今日の14:30の行を消した（`undo`は`ts`が最後の行を選ぶ）。書き込んで結果を見せる例（`undo`など）は、フィクスチャではなく、`init`しただけの小さなリポジトリで取る
 
-- e2eは**シェルではなくGoで書く**。`e2e/`に、ビルドタグ`e2e`を付けたGoのテストとして置き、**ビルドした本物の`mtqg`と本物の`git`を`exec`で動かす**（`make test`は`go test -tags e2e`。`make check`には含めない）。`testscript`（`github.com/rogpeppe/go-internal`）は`golang.org/x/`ではないので使わない（依存の基準・`CLAUDE.md`）。**Step 8で「どうしても必要か」を再評価し、要らないと結論した**（docsの例の確認は、下の「文書の例の確認」の印と`-update`で足りる）。`$EDITOR`のように別のプロセスが要るものは、テストバイナリ自身を再実行するヘルパーで書く
+- e2eは**シェルではなくGoで書く**。`e2e/`に、ビルドタグ`e2e`を付けたGoのテストとして置き、**ビルドした本物の`mtqg`と本物の`git`を`exec`で動かす**（`qsoku test`は`go test -tags e2e`。`qsoku check`には含めない）。`testscript`（`github.com/rogpeppe/go-internal`）は`golang.org/x/`ではないので使わない（依存の基準・`CLAUDE.md`）。**Step 8で「どうしても必要か」を再評価し、要らないと結論した**（docsの例の確認は、下の「文書の例の確認」の印と`-update`で足りる）。`$EDITOR`のように別のプロセスが要るものは、テストバイナリ自身を再実行するヘルパーで書く
 - CLIは`Run(env, args)`を直接呼ぶテスト（`internal/cli/`）で細部を、e2eで「本物のバイナリと本物のgitでつながること」を確かめる
-- `docs/reference/`などに載せるコマンドの実行例と出力例は、**実際に動かして確かめたもの**にする。**手で書かず、`make docs-examples`（`-update`）が文書に書き戻す**（Step 3〜7で、同じ手作業を6回繰り返し、節ごとに別のフィクスチャを使ったので、文書の中で件数が食い違っていた）
+- `docs/reference/`などに載せるコマンドの実行例と出力例は、**実際に動かして確かめたもの**にする。**手で書かず、`qsoku docs-examples`（`-update`）が文書に書き戻す**（Step 3〜7で、同じ手作業を6回繰り返し、節ごとに別のフィクスチャを使ったので、文書の中で件数が食い違っていた）
 
 ### 文書の例の確認（Step 8。`e2e/examples_test.go`）
 
@@ -98,7 +98,7 @@
 
 ## Trivy：既知の脆弱性とライセンス
 
-- `trivy fs`で、依存モジュールの**既知の脆弱性（CVE）**と**ライセンス**を検査する（`make trivy`）
+- `trivy fs`で、依存モジュールの**既知の脆弱性（CVE）**と**ライセンス**を検査する（`qsoku trivy`）
 - mtqgはMITで配布する。**MIT・BSD・Apache-2.0等は許可、GPL・AGPL等の互換性のないライセンスは失敗**にする
 - 何を失敗とみなすか（深刻度、禁止するライセンスの種類）は`trivy.yaml`で固定する。HIGH・CRITICALで失敗し、ライセンスはTrivyの既定の分類に従う（forbidden＝CRITICAL、restricted＝HIGHなのでGPL系は失敗、reciprocal＝MEDIUMのMPLや、notice＝LOWのMIT・BSD・Apacheは通る）。分類を上書きするときは理由を`PLAN.md`に記録する
 - `go get`で依存を足したら、必ずTrivyを通す。**依存は、Goの標準ライブラリと`golang.org/x/`だけ**（`CLAUDE.md`）。それ以外は「どうしても必要な場合」の例外で、足す前に理由を説明して確認を取り、`PLAN.md`に記録する（`go get`は確認が出る設定になっている）。`x/`に限るので、ライセンスは実質BSD-3-Clauseだけになる
@@ -108,7 +108,7 @@
 ## ShellCheck：シェルスクリプト
 
 - シェルスクリプトは最小限にする。込み入った処理はGoで書く
-- `make shellcheck`は`git ls-files '*.sh' '*.bash'`で追跡中のものを列挙して`shellcheck`にかける（新しいスクリプトを足してもMakefileの変更が要らない）。**追跡中のものだけ**なので、`git add`してから走らせる
+- `qsoku shellcheck`は`git ls-files '*.sh' '*.bash'`で追跡中のものを列挙して`shellcheck`にかける（新しいスクリプトを足しても`qsokufile`の変更が要らない）。**追跡中のものだけ**なので、`git add`してから走らせる
 - 対象：`.devcontainer/postCreate.sh`、`.claude/hooks/`のスクリプト、補完のbashスクリプト（`internal/cli/completions/mtqg.bash`）など。zsh・fish・PowerShellのスクリプトはShellCheckの対象外（e2eで本物のシェルが確かめる）
 - **`postCreate.sh`の中で`. /etc/os-release`をsourceしない**（ShellCheckのSC1091が、追える形で指定されていないファイルとして、情報の水準で報告し、終了コードが非0になる）。ディストリビューションの版は`lsb_release -rs`で取る
 - CIでは`ubuntu-latest`だけの専用ジョブにする（スクリプトの中身はOSで変わらず、Windowsランナーに`shellcheck`がある保証もない）
@@ -118,8 +118,8 @@
 
 ## `-race`の運用
 
-- devcontainerは`CGO_ENABLED=0`（mtqgは純粋なGo・distribution.md）。`-race`はcgoを要するため、`make race`（`CGO_ENABLED=1 go test -race -count=1 ./...`）として`make check`とは別にする
-- ロックまわりは並行性のバグが出やすいので、ジャーナル層を触ったら`make race`も通す
+- devcontainerは`CGO_ENABLED=0`（mtqgは純粋なGo・distribution.md）。`-race`はcgoを要するため、`qsoku race`（`CGO_ENABLED=1 go test -race -count=1 ./...`）として`qsoku check`とは別にする
+- ロックまわりは並行性のバグが出やすいので、ジャーナル層を触ったら`qsoku race`も通す
 - CIでは`race`を別ジョブにし、`ubuntu-latest`・`macos-latest`に限る（`windows-latest`には標準でCコンパイラがない）
 > **出所:** 別プロジェクト SanDBox の運用を引き継いだもの。
 
@@ -127,7 +127,7 @@
 
 > **出所:** 別プロジェクト（ExecDB・SanDBox）で、初回push後にCI上でのみ顕在化した事象。mtqgも同じ構成（3OSのホステッドランナー）を採るため、あらかじめ対処しておく。
 
-- **`windows-latest`にはGNU Makeがない。** 3OSで`make check`を回すなら、Windowsのジョブにだけ`choco install make -y`を足す（`runner.os == 'Windows'`でガード）。`make`の実行は`shell: bash`を明示する（既定のPowerShellではレシピの構文が合わない）
+- **`windows-latest`で`qsoku`を`go install`しても、内部で呼ぶ`sh`がそのままPATHに乗るとは限らない。** `qsokufile`のコマンドは常に`sh`（Git Bash付属）で実行される（qsoku自身の仕様）。CIの`run:`ステップは`shell: bash`を明示し、Git Bashが通ったPATHでqsokuを実行する（`.github/workflows/ci.yml`。Makefile時代の`choco install make -y`は不要になった。qsoku自身のバージョンはCI・devcontainerとも`go install .../qsoku@v0.1.1`で固定する。理由・経緯は`docs/design/history.md`2026-09-23）
 - **`/dev/stderr`等のUnix固有のパスはWindows（Git Bash）で壊れる。** `tee /dev/stderr`などを使わず、標準のリダイレクトだけで書く
 - **Windowsのcheckoutで改行がCRLFになると、`gofmt -l`が全ファイルを未整形と誤検知する。** ルートの`.gitattributes`（`* text=auto eol=lf`）で防ぐ。最初のpush前に置く（配置済み）
 - **`uses: owner/repo@TAG`はタグ名と厳密に一致しないと失敗する。** `v`の有無を見落としやすい。書く前に実際のタグ名を確かめる

@@ -6,7 +6,7 @@ mtqgは「**コア（ジャーナル層・モデル層）が核、CLIはコア�
 mtqg/
 ├── CLAUDE.md               ← プロジェクトルール（参照先の案内）
 ├── PLAN.md                 ← 実装計画・進捗管理（段階、現在地、保留事項）
-├── Makefile
+├── qsokufile               ← ビルド・テストの近道（qsoku使用。旧Makefile。docs/design/history.md 2026-09-23）
 ├── LICENSE                 （MIT）
 ├── go.mod / go.sum
 ├── .gitignore
@@ -44,7 +44,7 @@ mtqg/
 - **利用者とのやり取り** → `internal/cli/`
   - 種類・動詞・オプションの**表をデータとして持つ**（`args.go`。`help`と`candidates`（シェル補完の候補。`candidates.go`）が同じ表を読む）、英語の文言は`messages.go`に1か所、表示（`render.go`）、本文の入力（引数・標準入力・`$EDITOR`）、環境変数（記録者）
   - 標準入出力・環境変数・現在時刻・端末・ファイルの読み込み（`format`の引数）を`Env`で注入し、`Run(env, args)`をテストから直接呼べるようにする
-  - **シェル補完**：`candidates.go`が候補を計算する（文法を持たず、`args.go`の表と、記録を読むモデル層を使う）。`completion.go`が`completions/`の4つのスクリプト（bash・zsh・fish・PowerShell）を埋め込んで出す。スクリプトは**固定のテキスト**で、コマンドの一覧を持たない（毎回`mtqg candidates`に聞く）。`.bash`はShellCheckにかかる（`make shellcheck`）
+  - **シェル補完**：`candidates.go`が候補を計算する（文法を持たず、`args.go`の表と、記録を読むモデル層を使う）。`completion.go`が`completions/`の4つのスクリプト（bash・zsh・fish・PowerShell）を埋め込んで出す。スクリプトは**固定のテキスト**で、コマンドの一覧を持たない（毎回`mtqg candidates`に聞く）。`.bash`はShellCheckにかかる（`qsoku shellcheck`）
   - OSで分かれる小さな部分（色の有効化`ansi_*.go`、端末の識別`tty_*.go`）は、ファイルを`_windows.go`と`!windows`で分ける
   - 引数の解釈（`archive`の期間の解釈を含む。`archive.go`）、英語の文言、表の整形、`--json`の出力（形は`json.go`に1か所）、`context`を文章にすること（`context.go`）
   - コアは**構造化された結果とエラーの種類**を返す。文言にするのはここだけ（cli-output.md）

@@ -3,7 +3,7 @@
 version: "2"
 
 run:
-  # The end-to-end tests are built with this tag (make test); lint them too.
+  # The end-to-end tests are built with this tag (qsoku test); lint them too.
   build-tags:
     - e2e
 

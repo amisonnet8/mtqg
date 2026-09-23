@@ -155,6 +155,20 @@ func TestBasis(t *testing.T) {
 			want: true, changes: 2,
 		},
 		{
+			// An edit is applied first (basis correctly says 1, no conflict from it),
+			// then a status change whose basis (1) does not match how many events the
+			// record actually had by then (2): it did not know of the edit, even though
+			// its from ("open") still matches (the edit did not touch status, so from
+			// alone would miss this).
+			name: "the status change is the one that raced, and its from still agrees",
+			events: []journal.Event{
+				create(idTodoA, journal.TypeTodo, "a todo", 0),
+				withBasis(edit(idTodoA, "edited text", 5, human), 1),
+				withBasis(status(idTodoA, "open", "done", 6, agent), 1),
+			},
+			want: true, changes: 2,
+		},
+		{
 			name: "two edits racing from the same base",
 			events: []journal.Event{
 				create(idTodoA, journal.TypeTodo, "a todo", 0),

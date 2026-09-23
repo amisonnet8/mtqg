@@ -15,6 +15,15 @@ func conflictIDs(s *State) []string {
 	return out
 }
 
+func edit(id, text string, minute int, author journal.Author) journal.Event {
+	return journal.Event{ID: id, Op: journal.OpEdit, Text: text, TS: at(minute), Author: author}
+}
+
+func withBasis(ev journal.Event, n int) journal.Event {
+	ev.Basis = n
+	return ev
+}
+
 func TestConcurrentStatusChanges(t *testing.T) {
 	other := journal.Author{Kind: journal.AuthorHuman, Name: "sato"}
 	todo := func(id string) journal.Event { return create(id, journal.TypeTodo, "a todo", 0) }
@@ -117,6 +126,74 @@ func TestConcurrentStatusChanges(t *testing.T) {
 		got := state.ConcurrentStatusChanges()
 		if (len(got) == 1) != tt.want || len(got) > 1 {
 			t.Errorf("%s: %d records in conflict (%v), want conflict: %v", tt.name, len(got), conflictIDs(state), tt.want)
+			continue
+		}
+		if tt.want && len(got[0].Changes) != tt.changes {
+			t.Errorf("%s: %d changes listed, want %d", tt.name, len(got[0].Changes), tt.changes)
+		}
+	}
+}
+
+// TestBasis covers what from cannot: basis judges a status change or an edit by
+// how many events the record actually had, so a change that raced with a change
+// to a different field is caught too, and old data written before basis existed
+// is not judged by it.
+func TestBasis(t *testing.T) {
+	tests := []struct {
+		name    string
+		events  []journal.Event
+		want    bool
+		changes int
+	}{
+		{
+			name: "a status change and an edit made at once, from the same base",
+			events: []journal.Event{
+				create(idTodoA, journal.TypeTodo, "a todo", 0), // 1 event so far: the create
+				withBasis(status(idTodoA, "open", "done", 5, agent), 1),
+				withBasis(edit(idTodoA, "edited text", 6, human), 1),
+			},
+			want: true, changes: 2,
+		},
+		{
+			name: "two edits racing from the same base",
+			events: []journal.Event{
+				create(idTodoA, journal.TypeTodo, "a todo", 0),
+				withBasis(edit(idTodoA, "a", 5, agent), 1),
+				withBasis(edit(idTodoA, "b", 6, human), 1),
+			},
+			want: true, changes: 2,
+		},
+		{
+			name: "a sequential edit, each seeing the one before, is not a conflict",
+			events: []journal.Event{
+				create(idTodoA, journal.TypeTodo, "a todo", 0),
+				withBasis(edit(idTodoA, "a", 5, agent), 1),
+				withBasis(edit(idTodoA, "b", 6, human), 2),
+			},
+		},
+		{
+			name: "an edit with no basis is not judged (data written before the field existed)",
+			events: []journal.Event{
+				create(idTodoA, journal.TypeTodo, "a todo", 0),
+				edit(idTodoA, "a", 5, agent),
+				edit(idTodoA, "b", 6, human),
+			},
+		},
+		{
+			name: "a memo's edits can conflict too: basis does not require HasState",
+			events: []journal.Event{
+				create(idMemo, journal.TypeMemo, "a memo", 0),
+				withBasis(edit(idMemo, "a", 5, agent), 1),
+				withBasis(edit(idMemo, "b", 6, human), 1),
+			},
+			want: true, changes: 2,
+		},
+	}
+	for _, tt := range tests {
+		state := Build(tt.events)
+		got := state.ConcurrentStatusChanges()
+		if (len(got) == 1) != tt.want || len(got) > 1 {
+			t.Errorf("%s: %d records in conflict, want conflict: %v", tt.name, len(got), tt.want)
 			continue
 		}
 		if tt.want && len(got[0].Changes) != tt.changes {

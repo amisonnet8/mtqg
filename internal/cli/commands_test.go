@@ -465,7 +465,8 @@ func TestDoneAndReopen(t *testing.T) {
 		}
 		lines := strings.Split(strings.TrimSuffix(h.readJournal(), "\n"), "\n")
 		last := lines[len(lines)-1]
-		if !strings.Contains(last, `"op":"status","from":"open","status":"done"`) || !strings.Contains(last, `"id":"`+idA+`"`) {
+		// basis is 1: the todo's create is the only event so far.
+		if !strings.Contains(last, `"op":"status","from":"open","status":"done","basis":1`) || !strings.Contains(last, `"id":"`+idA+`"`) {
 			t.Errorf("last line: %s", last)
 		}
 		_, list, _ := h.run("t", "list")

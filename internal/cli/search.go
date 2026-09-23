@@ -27,7 +27,7 @@ func runSearch(c *ctx) int {
 	if c.inv.json {
 		return c.emit(jsonSearch{Command: c.inv.cmd.label(), Query: query, Records: recordsJSON(found), Count: len(found)})
 	}
-	c.printRecordLines(found)
+	c.printRecordLines(state, found)
 	c.println(msgSearchFooter(len(found), oneLine(query)))
 	return exitOK
 }

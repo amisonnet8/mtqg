@@ -1,13 +1,14 @@
 {
   "permissions": {
-    "deny": ["Bash(git push*)"],
+    "deny": ["Bash(git push*)", "Bash(gh pr merge*)", "Bash(gh release create*)"],
     "ask": [
       "Bash(git reset --hard*)",
       "Bash(git clean*)",
       "Bash(curl*)",
       "Bash(wget*)",
       "Bash(go get*)",
-      "Bash(*sudo*)"
+      "Bash(*sudo*)",
+      "Bash(gh pr create*)"
     ]
   },
   "hooks": {

@@ -9,7 +9,7 @@ case "$file" in
 esac
 
 cd "$CLAUDE_PROJECT_DIR"
-if ! output=$(make build 2>&1); then
+if ! output=$(qsoku build 2>&1); then
   echo "$output" >&2
   exit 2
 fi

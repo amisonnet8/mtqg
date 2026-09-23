@@ -1,0 +1,34 @@
+# Entry points for building and checking mtqg (.claude/rules/testing.md).
+# Replaces the Makefile (docs/design/history.md, 2026-09-23): qsoku always
+# runs with sh, so every entry works the same no matter which shell called it.
+
+# Compile every package first: a package that cmd/mtqg does not import yet
+# would otherwise be skipped, and so would its build errors.
+build: (cd //; go build ./... && go build ./cmd/mtqg)
+
+# Rewrite files with the formatters enabled in .golangci.yaml.
+fmt: (cd //; golangci-lint fmt)
+
+vet: (cd //; go vet ./... && go vet -tags e2e ./e2e/...)
+
+# Also reports files that the formatters would change.
+lint: (cd //; golangci-lint run)
+
+unit: (cd //; go test ./...)
+
+check: qsoku vet && qsoku lint && qsoku unit
+
+# End-to-end tests: the real mtqg binary against real git repositories (e2e/,
+# built with the tag e2e, so check does not run them).
+test: (cd //; go test -tags e2e -count=1 ./e2e/...)
+
+# Write what mtqg prints into the examples of docs/reference/ (e2e/examples_test.go).
+# Read the diff: an example that changed is a document that went stale, or a bug.
+docs-examples: (cd //; go test -tags e2e -count=1 -run '^TestDocExamples$' ./e2e/... -update)
+
+# -race needs cgo, which the container turns off (.claude/rules/distribution.md).
+race: (cd //; CGO_ENABLED=1 go test -race -count=1 ./...)
+
+trivy: (cd //; trivy fs --config trivy.yaml .)
+
+shellcheck: (cd //; git ls-files '*.sh' '*.bash' | xargs -r shellcheck)

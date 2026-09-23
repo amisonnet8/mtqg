@@ -5,15 +5,13 @@
     "vscode": {
       "extensions": [
         "golang.Go",
-        "ms-vscode.makefile-tools",
         "github.vscode-github-actions",
         "timonwong.shellcheck"
       ],
       "settings": {
         "go.useLanguageServer": true,
         "editor.formatOnSave": true,
-        "go.formatTool": "goimports",
-        "makefile.configureOnOpen": false
+        "go.formatTool": "goimports"
       }
     }
   },

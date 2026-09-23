@@ -1,4 +1,4 @@
-# Trivy configuration (make trivy, .claude/rules/testing.md).
+# Trivy configuration (qsoku trivy, .claude/rules/testing.md).
 # Usage: trivy fs --config trivy.yaml .
 #
 # Scans the Go module dependencies for known vulnerabilities (CVE) and for

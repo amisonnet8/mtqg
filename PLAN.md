@@ -73,9 +73,15 @@ Step 3が動いた時点でサンプルPJ（段階2）を始められる。
 1. **qsokuのリポジトリの初期構成を作った（2026-09-23）。** モジュールパスは`github.com/amisonnet8/qsoku`。公開範囲はmtqg本体と同じ「公開の2段階」方針（最初からpublic、タグは打たない。未完成の間は注意書きだけのREADME・README_ja）。mtqgの入れ方は**人間が用意する**（devcontainerビルド後にこのリポジトリをclone。初期構成では入れていない）。報告の形式は設計§12.3の「CLIで直すもの」「11章で解くもの」の2分類。**人間が指定したツリー（`*`の付いた項目）に沿って、`CLAUDE.md`、`docs/design/`（設計メモを`note.md`として原文のまま移し、`README.md`・`history.md`を添えた）、`docs/reference/README.md`（仕様は未着手、置き場所の決まりだけ）、ルートの設定ファイル一式（`LICENSE`・`.gitattributes`・`.golangci.yaml`・`trivy.yaml`・`.gitignore`・注意書きREADME）、`.devcontainer/`（mtqgと同じ形、PowerShellの節は除く）、`.claude/`（`settings.json`と4つのrules）を作成。**`Makefile`・`go.mod`・`cmd/`・`internal/`・`e2e/`・CI・`.claude/hooks/`は意図的に作っていない**（qsokuのセッションで作る）。`git init`し、コミットのメールアドレスはこのリポジトリと同じnoreplyアドレスに設定、1コミットで作成（`6716c3a`。pushは人間）。**決定（この作業で確認済み）：qsoku側にPLAN.md相当の進捗管理の文書は置かない。現在地・次にやること・保留事項はqsoku自身のmtqgのtodo・memoに入れる**（設計§12.3の「AIエージェントにもCLIで記録させる」を、進捗管理そのものにも適用する形。理由と詳細はqsoku側の`docs/design/history.md`）。
 2. **開発後の報告を受け取った（2026-09-23）。** qsokuは1日・9ステップで最後まで作り切られた（仕様執筆→qsokufileの解析→`//`置き換え→実行→管理用コマンド→シェル連携・補完→e2e→docsの実測→仕上げ）。出た問題は`docs/design/08-development.md`「12.3.1 qsokuからの報告」に、設計§12.3の2分類（CLIで直すもの3件／11章で解くもの3件）と「うまく機能したこと」でそのまま記録した（記録の内訳、記録ID、詳細はそちら）。**段階3（問題を吸収する）に着手するかどうかは人間の判断待ち。** v0.2の区切り条件（設計§12.4「サンプルPJを1つ最後までやり切り、その間に出た『CLIで直すもの』が片付いた」）に照らすと、「やり切る」は満たしたが「CLIで直すものが片付いた」はまだ
 
+## 開発ツール：MakeからQsokuへ（2026-09-23）
+
+**決定：`Makefile`をやめ、mtqg自身の開発の近道を`qsokufile`（`qsoku`使用）に置き換えた。** 経緯：段階2のサンプルPJ「qsoku」がv0.1.1としてリリースされ（`github.com/amisonnet8/qsoku`）、qsoku自身の開発セッションに「make→qsokuの置き換えを試すならどのPJがよいか」を尋ねたところ、「qsoku自身のCIをqsokuに任せるのは、qsokuの不具合が自分自身のCIを誤って壊す循環リスクがあるため避け、開発が進んでいる別PJで試すのがよい」との回答を得た（qsoku側の判断はqsokuリポジトリのコミット`7c900db`に記録されている）。mtqgはこの「開発が進んでいる別PJ」に当たるため、Make→qsoku移行の実地検証をここで行った。詳細な経緯・技術確認・置き換えた対象の一覧は`docs/design/history.md`（2026-09-23の最後のエントリ）。
+
+作業はブランチ`qsoku-build`で行い、問題があればすぐ戻せるようにした（人間の指示）。11個の`qsokufile`のエントリ（`build`・`fmt`・`vet`・`lint`・`unit`・`check`・`test`・`docs-examples`・`race`・`trivy`・`shellcheck`）はすべて手元で実行して確認済み。**CIでの確認（Windowsで`qsoku`が呼ぶ`sh`が正しく見つかるか含む）はまだ**（人間がpushして確認）。
+
 ## 現在地
 
-**段階2（サンプルPJ＝qsoku）：最後まで作り切られ、報告を受け取った（2026-09-23。詳細は「段階2：サンプルPJ」の節と`docs/design/08-development.md`「12.3.1」）。段階1のステップはすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。次は、報告に挙がった「CLIで直すもの」3件（`t --help`が種類別ヘルプを出さない、`log`で回答側が暗くならない、並行した状態変更をtodo/qa/bugで検知できない）をどう扱うか、段階3に着手するかを人間が判断するのを待つ。**
+**段階2（サンプルPJ＝qsoku）：最後まで作り切られ、報告を受け取った（2026-09-23。詳細は「段階2：サンプルPJ」の節と`docs/design/08-development.md`「12.3.1」）。段階1のステップはすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。並行して、開発ツールをMakeからqsokuへ置き換えた（上の節。ブランチ`qsoku-build`、CI確認待ち）。次は、報告に挙がった「CLIで直すもの」3件（`t --help`が種類別ヘルプを出さない、`log`で回答側が暗くならない、並行した状態変更をtodo/qa/bugで検知できない）をどう扱うか、段階3に着手するかを人間が判断するのを待つ。**
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

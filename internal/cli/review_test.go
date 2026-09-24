@@ -32,7 +32,7 @@ func TestReview(t *testing.T) {
 		h := reviewFixture(t)
 		code, out, errOut := h.run("review")
 		wantExit(t, code, 0, out, errOut)
-		want := "Concurrent status changes (1)\n" +
+		want := "Concurrent changes (1)\n" +
 			"  todo " + idA[:10] + " \"Skip block comments\"\n" +
 			"    2026-09-17 09:30  claude-code  open -> done\n" +
 			"    2026-09-17 09:45  yamada       open -> done\n" +
@@ -122,6 +122,32 @@ func TestReview(t *testing.T) {
 	})
 }
 
+// A status change and an edit that raced (the stage-2 report's original
+// scenario): basis catches it even though from and status never disagree
+// (whoever wrote the status change had seen only the create, not the edit
+// that -- once merged -- sorts before it; its basis says so even though its
+// from does not).
+func TestReviewCatchesAStatusChangeAndAnEditThatRaced(t *testing.T) {
+	h := initialized(t)
+	h.setJournal(
+		record(idA, "todo", "Skip block comments", "yamada", "2026-09-17T09:00:00Z"),
+		editLine(idA, "Skip block comments (updated)", 1, nameC, "2026-09-17T09:10:00Z"),
+		marshal(map[string]any{
+			"id": idA, "op": "status", "from": "open", "status": "done", "basis": 1,
+			"v": 0, "ts": "2026-09-17T09:20:00Z", "author": map[string]string{"kind": "human", "name": "yamada"},
+		}),
+	)
+	code, out, errOut := h.run("review")
+	wantExit(t, code, 0, out, errOut)
+	want := "Concurrent changes (1)\n" +
+		"  todo " + idA[:10] + " \"Skip block comments (updated)\"\n" +
+		"    2026-09-17 09:10  claude-code  edited\n" +
+		"    2026-09-17 09:20  yamada       open -> done\n"
+	if out != want || errOut != "" {
+		t.Errorf("stdout:\n%s\nwant:\n%s\nstderr %q", out, want, errOut)
+	}
+}
+
 func TestReviewJSON(t *testing.T) {
 	h := reviewFixture(t)
 	code, out, errOut := h.run("--json", "review")
@@ -162,7 +188,7 @@ func TestReviewJSON(t *testing.T) {
 func TestStatusShowsConflictsOnlyWhenThereAreSome(t *testing.T) {
 	h := reviewFixture(t)
 	_, out, _ := h.run("status")
-	if !strings.Contains(out, "\nConflicts           1  (concurrent status changes; see mtqg review)\n\n") {
+	if !strings.Contains(out, "\nConflicts           1  (concurrent changes; see mtqg review)\n\n") {
 		t.Errorf("stdout:\n%s", out)
 	}
 	_, out, _ = h.run("--json", "status")
@@ -188,7 +214,7 @@ func TestContextNamesTheConflicts(t *testing.T) {
 	_, out, _ := h.run("context")
 	want := "## Attention\n" +
 		"- Glossary term \"token\" has conflicting definitions (see mtqg glossary list)\n" +
-		"- todo " + idA[:10] + " \"Skip block comments\" has concurrent status changes (see mtqg review)\n"
+		"- todo " + idA[:10] + " \"Skip block comments\" has concurrent changes (see mtqg review)\n"
 	if !strings.Contains(out, want) {
 		t.Errorf("stdout:\n%s\nwant it to contain:\n%s", out, want)
 	}
@@ -206,7 +232,7 @@ func TestContextNamesTheConflicts(t *testing.T) {
 
 	// Attention is never left out, whatever the budget.
 	_, out, _ = h.run("context", "--max-tokens", "1")
-	if !strings.Contains(out, "has concurrent status changes (see mtqg review)") {
+	if !strings.Contains(out, "has concurrent changes (see mtqg review)") {
 		t.Errorf("with a budget of 1:\n%s", out)
 	}
 }
@@ -224,7 +250,7 @@ func TestContextSaysHowManyMoreRecordsHaveConflicts(t *testing.T) {
 	}
 	h.setJournal(lines...)
 	_, out, _ := h.run("context")
-	if strings.Count(out, "has concurrent status changes") != 5 || !strings.Contains(out, "- (3 more records have concurrent status changes; see mtqg review)\n") {
+	if strings.Count(out, "has concurrent changes") != 5 || !strings.Contains(out, "- (3 more records have concurrent changes; see mtqg review)\n") {
 		t.Errorf("stdout:\n%s", out)
 	}
 	_, out, _ = h.run("--json", "context")

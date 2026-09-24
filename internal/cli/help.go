@@ -56,6 +56,26 @@ func (c *ctx) printCommandHelp() int {
 	return exitOK
 }
 
+// printKindHelp shows the verbs of one kind, for "mtqg <kind> -h" (a kind with
+// no verb yet).
+func (c *ctx) printKindHelp() int {
+	cmds := commandsOf(c.inv.kindHelp)
+	if c.inv.json {
+		return c.emitHelp(cmds)
+	}
+	c.println("usage: mtqg " + c.inv.kindHelp + " <verb> [<args>]")
+	c.println()
+	c.println("Verbs:")
+	var usageW int
+	for _, cmd := range cmds {
+		usageW = max(usageW, len(cmd.usage))
+	}
+	for _, cmd := range cmds {
+		c.println("  " + padRight(cmd.usage, usageW) + "  " + cmd.summary)
+	}
+	return exitOK
+}
+
 // emitHelp gives the kinds and the given commands for --json, the ones that are
 // not built yet included, marked as not available.
 func (c *ctx) emitHelp(cmds []*command) int {

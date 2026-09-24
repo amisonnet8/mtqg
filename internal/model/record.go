@@ -276,6 +276,10 @@ func (s *State) Replies(parentID string) []*Record {
 // lists of questions and bugs.
 func (s *State) HasParent(reply *Record) bool { return s.parentOf(reply) != nil }
 
+// Parent returns the question or bug that an answer or a reply belongs to, the
+// same as HasParent decides it (nil for anything else, or if there is none).
+func (s *State) Parent(reply *Record) *Record { return s.parentOf(reply) }
+
 // Glossary returns the glossary entries that are in view, oldest first.
 func (s *State) Glossary() []*Record {
 	return s.pick(func(r *Record) bool { return r.Kind() == KindGlossary })

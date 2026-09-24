@@ -465,7 +465,8 @@ func TestDoneAndReopen(t *testing.T) {
 		}
 		lines := strings.Split(strings.TrimSuffix(h.readJournal(), "\n"), "\n")
 		last := lines[len(lines)-1]
-		if !strings.Contains(last, `"op":"status","from":"open","status":"done"`) || !strings.Contains(last, `"id":"`+idA+`"`) {
+		// basis is 1: the todo's create is the only event so far.
+		if !strings.Contains(last, `"op":"status","from":"open","status":"done","basis":1`) || !strings.Contains(last, `"id":"`+idA+`"`) {
 			t.Errorf("last line: %s", last)
 		}
 		_, list, _ := h.run("t", "list")
@@ -689,6 +690,27 @@ func TestHelpAndMistakes(t *testing.T) {
 	code, out, errOut = h.run("t", "done", "--help")
 	wantExit(t, code, 0, out, errOut)
 	if !strings.HasPrefix(out, "usage: mtqg todo done <id>\n") {
+		t.Errorf("stdout %q", out)
+	}
+
+	// Help on a kind with no verb yet lists that kind's verbs, not the full list.
+	code, out, errOut = h.run("t", "--help")
+	wantExit(t, code, 0, out, errOut)
+	if !strings.HasPrefix(out, "usage: mtqg todo <verb> [<args>]\n") {
+		t.Errorf("stdout %q", out)
+	}
+	for _, want := range []string{"mtqg todo add <text>", "mtqg todo done <id>", "mtqg todo reopen <id>"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("kind help does not mention %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "mtqg qa") || strings.Contains(out, "mtqg init") {
+		t.Errorf("kind help lists commands of another kind or without one:\n%s", out)
+	}
+
+	code, out, errOut = h.run("todo", "--help", "--json")
+	wantExit(t, code, 0, out, errOut)
+	if !strings.Contains(out, `"command": "todo done"`) || strings.Contains(out, `"command": "qa done"`) {
 		t.Errorf("stdout %q", out)
 	}
 

@@ -36,10 +36,11 @@ func TestEdit(t *testing.T) {
 		}
 		lines := strings.Split(strings.TrimSuffix(h.readJournal(), "\n"), "\n")
 		last := lines[len(lines)-1]
-		// The event holds the full ID and the text, and no word, no state, no from.
-		// (The time is the clock of the journal layer, not the one that the display
-		// uses, so it is matched, not compared.)
-		want := regexp.MustCompile(`^\{"id":"` + idA + `","op":"edit","text":"Skip block and line comments","v":0,"ts":"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ","author":\{"kind":"human","name":"tester"\}\}$`)
+		// The event holds the full ID, the text and the basis (2: the todo's create
+		// and its status change, both before this edit), and no word, no state, no
+		// from. (The time is the clock of the journal layer, not the one that the
+		// display uses, so it is matched, not compared.)
+		want := regexp.MustCompile(`^\{"id":"` + idA + `","op":"edit","basis":2,"text":"Skip block and line comments","v":0,"ts":"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ","author":\{"kind":"human","name":"tester"\}\}$`)
 		if !want.MatchString(last) {
 			t.Errorf("last line\n got %s", last)
 		}
@@ -91,7 +92,7 @@ func TestEdit(t *testing.T) {
 		h.stdin = "First line\nsecond line\n"
 		code, out, errOut := h.run("edit", idM[:6], "-")
 		wantExit(t, code, 0, out, errOut)
-		if !strings.Contains(h.readJournal(), `"op":"edit","text":"First line\nsecond line"`) || out != "Edited: "+idM[:10]+"  First line\n" {
+		if !strings.Contains(h.readJournal(), `"op":"edit","basis":1,"text":"First line\nsecond line"`) || out != "Edited: "+idM[:10]+"  First line\n" {
 			t.Errorf("stdout %q, journal %s", out, h.readJournal())
 		}
 	})
@@ -114,7 +115,7 @@ func TestEdit(t *testing.T) {
 		if seen != "Line one\nLine two\n" {
 			t.Errorf("the editor was given %q", seen)
 		}
-		if !strings.Contains(h.readJournal(), `"op":"edit","text":"Line one\nLine two\nLine three"`) {
+		if !strings.Contains(h.readJournal(), `"op":"edit","basis":1,"text":"Line one\nLine two\nLine three"`) {
 			t.Errorf("journal = %s", h.readJournal())
 		}
 	})

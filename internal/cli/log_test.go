@@ -154,6 +154,26 @@ func TestLog(t *testing.T) {
 		}
 	})
 
+	t.Run("a closed question dims its answer too", func(t *testing.T) {
+		h := initialized(t)
+		h.setJournal(
+			question(idQ3, "Nested block comments?", nameC, "2026-09-17T09:00:00Z"),
+			answerLine(idA3, idQ3, "Not yet", "yamada", "human", "2026-09-17T09:05:00Z"),
+			change(idQ3, "open", "done", "yamada", "2026-09-17T09:10:00Z"),
+		)
+		h.env.StdoutIsTerminal, h.env.ANSI = true, true
+		_, out, _ := h.run("log")
+		lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+		if len(lines) != 3 { // the answer, the question, the footer
+			t.Fatalf("stdout %q", out)
+		}
+		for _, l := range lines[:2] {
+			if !strings.Contains(l, "\x1b[2m") {
+				t.Errorf("not dimmed: %q", l)
+			}
+		}
+	})
+
 	t.Run("on a terminal the text is cut and the other columns are kept; a pipe is not cut", func(t *testing.T) {
 		h := initialized(t)
 		h.setJournal(record(idM, "memo", strings.Repeat("あ", 60), "yamada", "2026-09-17T09:00:00Z"))

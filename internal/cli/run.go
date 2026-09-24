@@ -57,6 +57,8 @@ func Run(env Env, args []string) int {
 
 	c := &ctx{env: env, inv: inv, st: style{on: colorOn(env, inv)}}
 	switch {
+	case inv.help && inv.kindHelp != "":
+		return c.printKindHelp()
 	case inv.help && inv.cmd.name != "help":
 		return c.printCommandHelp()
 	case inv.cmd.run == nil:

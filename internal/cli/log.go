@@ -55,7 +55,7 @@ func runLog(c *ctx) int {
 	if c.inv.json {
 		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total})
 	}
-	c.printRecordLines(records)
+	c.printRecordLines(state, records)
 	c.println(msgLogFooter(len(records), total))
 	return exitOK
 }
@@ -63,7 +63,7 @@ func runLog(c *ctx) int {
 // printRecordLines prints records of every kind one to a line: the time, the kind,
 // the ID, the text, the author, and `done` for a finished one. log and search show
 // their records the same way.
-func (c *ctx) printRecordLines(records []*model.Record) {
+func (c *ctx) printRecordLines(state *model.State, records []*model.Record) {
 	now := c.env.Now()
 	rows := make([]tableRow, len(records))
 	for i, r := range records {
@@ -81,10 +81,25 @@ func (c *ctx) printRecordLines(records []*model.Record) {
 				oneLine(r.Author.Name),
 				tail,
 			},
-			dim: done,
+			dim: recordDim(state, r),
 		}
 	}
 	c.printLines(formatTable(rows, 3, 2, c.listWidth(), c.st))
+}
+
+// recordDim reports whether a record's line should be dimmed: a todo, a
+// question or a bug by its own status, an answer or a reply by the status of
+// the question or bug it belongs to (qa list and bug list dim the two
+// together the same way; log and search read every kind on one line, so they
+// need to look the status up instead of already having it at hand).
+func recordDim(state *model.State, r *model.Record) bool {
+	if r.HasState() {
+		return r.Status == journal.StatusDone
+	}
+	if p := state.Parent(r); p != nil {
+		return p.Status == journal.StatusDone
+	}
+	return false
 }
 
 // logText is the text of a record for the line of log: an answer or a reply says

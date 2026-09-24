@@ -84,6 +84,7 @@ Example:
 | `re` | string | `create` of an answer or a reply | ID of the record this one replies to. It has the same `type` as this one |
 | `from` | string | `status` | state before the change, as the writer saw it |
 | `status` | string | `create` of todo / question / bug, `status` | state after the event (`open` or `done`) |
+| `basis` | integer | `status`, `edit` (optional) | how many events the record had (including its `create`), as the writer saw it before writing this one. Used to tell a change made without knowing of another change to the same record (see below) |
 | `word` | string | `create` of glossary | the term |
 | `text` | string | `create`, `edit` | body text. For glossary, the definition |
 | `at` | object | optional | where in the project the record was written about (see below) |
@@ -109,8 +110,8 @@ AI wrote it on their behalf).
 | `op` | Meaning | Fields |
 |---|---|---|
 | `create` | a new record | `type`, `text`; `word` for glossary; `status:"open"` for todo, questions and bugs; `re` for answers and replies |
-| `status` | state change of a todo, a question or a bug | `from`, `status` |
-| `edit` | replace the body text | `text` |
+| `status` | state change of a todo, a question or a bug | `from`, `status`, `basis` |
+| `edit` | replace the body text | `text`, `basis` |
 | `delete` | hide the record | none |
 
 - A `qa` record with `re` is an **answer**; without `re` it is a **question**.
@@ -158,7 +159,8 @@ once, the result is the same.
 record have the same `from` but were written independently (for example in two
 branches), both are kept and shown as they are; mtqg does not decide which is
 right. Likewise, two glossary records with the same `word` are both kept and
-shown side by side.
+shown side by side. `basis` (below) catches this the same way for a `status`
+event or an `edit`, whether or not the two events changed the same field.
 
 ## Merging
 
@@ -247,7 +249,7 @@ diffs stay readable and identical events stay identical:
 
 - Compact JSON, no spaces between tokens.
 - Keys in this order, omitting absent ones:
-  `id, op, type, re, from, status, word, text, at, v, ts, author, tty`.
+  `id, op, type, re, from, status, basis, word, text, at, v, ts, author, tty`.
   Inside `author`: `kind, name`.
 - Do not escape non-ASCII characters, and do not escape `<`, `>`, `&`.
 - End every line with LF.

@@ -42,9 +42,9 @@ const (
 // event means; it only reads and writes the format.
 //
 // The fields are declared in the key order of the format, which is the order
-// they are written in: id, op, type, re, from, status, word, text, at, v, ts,
-// author, tty. Fields without a value are left out, except v, which is written
-// even when it is 0.
+// they are written in: id, op, type, re, from, status, basis, word, text, at,
+// v, ts, author, tty. Fields without a value are left out, except v, which is
+// written even when it is 0.
 type Event struct {
 	ID     string `json:"id"`
 	Op     string `json:"op"`
@@ -52,6 +52,7 @@ type Event struct {
 	Re     string `json:"re,omitempty"`
 	From   string `json:"from,omitempty"`
 	Status string `json:"status,omitempty"`
+	Basis  int    `json:"basis,omitzero"`
 	Word   string `json:"word,omitempty"`
 	Text   string `json:"text,omitempty"`
 	At     *At    `json:"at,omitempty"`

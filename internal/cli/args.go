@@ -185,9 +185,25 @@ func verbsOf(kind string) []string {
 	return verbs
 }
 
+// commandsOf returns the commands of a kind, in the order help shows them, for
+// "mtqg <kind> -h".
+func commandsOf(kind string) []*command {
+	var cmds []*command
+	for _, cmd := range commands {
+		if cmd.kind == kind {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return cmds
+}
+
 // invocation is a command line, read.
 type invocation struct {
 	cmd *command
+
+	// kindHelp is the name of a kind, when help was asked for with a kind but no
+	// verb yet ("mtqg todo -h"): cmd is nil, and printKindHelp is what runs.
+	kindHelp string
 
 	dir     string // -C
 	all     bool
@@ -283,6 +299,9 @@ func parseArgs(args []string) (*invocation, error) {
 	for inv.cmd == nil {
 		if i >= len(args) {
 			switch {
+			case inv.help && haveKind:
+				inv.kindHelp = kind.name
+				return inv, nil
 			case inv.help:
 				inv.cmd = helpCommand()
 				return inv, nil

@@ -46,6 +46,8 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
 | `mtqg help` | コマンドの一覧を表示する（`-h`、`--help`も同じ） |
 
+`-h`・`--help`は、コマンドラインがどこまで決まっているかで出すものが変わる。`mtqg -h`（または`mtqg help`）は全コマンドの一覧、`mtqg <種類> -h`（種類だけ決まり動詞がまだのとき。例：`mtqg todo -h`）はその種類の動詞の一覧、`mtqg <種類> <動詞> -h`はそのコマンドのusageとsummaryだけを出す。
+
 ## 共通のオプション
 
 | オプション | 内容 |
@@ -142,7 +144,7 @@ $ mtqg memo list --json
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
 | `completion` | `shell`：頼まれたシェル、`script`：スクリプト |
 | `candidates` | `candidates`：それぞれ`{"value", "description"}`（テキストの形と同じ順。`description`は、なければ省く）、`count` |
-| `help`、またはコマンドへの`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
+| `help`、またはコマンド・種類への`-h` | `kinds`：`{"name", "short"}`、`commands`：`{"command", "usage", "summary", "available"}`（種類への`-h`はその種類のものだけ）。`available`は、名前は知っているがまだ作っていないコマンドでは`false` |
 | `context` | [context](#context)を参照 |
 
 **エラー**は、**標準エラー出力**に1行のJSONで出し、標準出力は空のまま。終了コードは`--json`なしと同じ。
@@ -438,7 +440,7 @@ Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
-Conflicts           1  (concurrent status changes; see mtqg review)
+Conflicts           1  (concurrent changes; see mtqg review)
 
 Uncommitted records 3
 ```
@@ -655,7 +657,7 @@ $ mtqg search コメント
 <!-- mtqg:example repo=parser_ja -->
 ```
 $ mtqg review
-Concurrent status changes (1)
+Concurrent changes (1)
   todo 6b0d549b6f "行コメント // の読み飛ばし"
     2026-09-21 10:15  claude-code  open -> done
     2026-09-21 14:30  yamada       open -> done
@@ -670,10 +672,12 @@ Answers and replies with no parent (1)
     re 1012f037b6: a question, not a bug
 ```
 
-- **並行した状態変更。** 1つの記録の状態変更を、形式の順（`ts`、次に`id`）に取り、記録が作られたときの状態から追う。`from`が、その時点の
-  記録の状態と違う変更は、その前の変更を見ていない人が書いたもの（同じtodoをそれぞれ閉じた2つのブランチを、あとでマージした、など）。
-  その記録は、状態変更を**すべて**、古いものから、時刻・記録者・変更とともに並べる。`from`のない変更は判定しない。同じ行の繰り返しは
-  1つのイベントで、食い違いではない。一覧が出す状態は、最後の変更が残した状態
+- **並行した変更。** 知らないうちに変更されていた記録を、独立した2つの手がかりで見つける。どちらか一方でも一覧に載る。①`status`イベントの
+  `from`が、形式の順（`ts`、次に`id`）で記録が作られたときの状態から追った、その時点の記録の状態と違う（同じtodoをそれぞれ閉じた2つの
+  ブランチを、あとでマージした、など）。②`status`イベントか`edit`の`basis`が、その時点で記録が実際に持っていたイベント数（`create`を
+  含む）と違う——**どちらのフィールドを変えたかを問わない**ので、ステータス変更とeditが同時に起きた場合も拾える。その記録は、状態変更と
+  editを**すべて**、古いものから、時刻・記録者・変更とともに並べる（editは`edited`と出る）。`from`も`basis`もない変更は判定しない。
+  同じ行の繰り返しは1つのイベントで、食い違いではない。一覧が出す状態は、最後の変更が残した状態
 - **用語の重複定義。** 2回以上定義された用語（文字まで同じもの）ごとに、その項目すべてを、書かれた順に
 - **親のない回答・返信。** 回答・返信が質問・バグに結び付くのは、`re`が、同じ`type`の、返信を付けられる記録を指すときだけ。
   ジャーナルにない記録や、別の種類の記録を指す`re`は、どの質問・バグの下にも出ず、ここで見つかる（`log`と、IDを渡した`show`にも出る）。
@@ -696,7 +700,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -753,7 +757,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "ブロックコメント" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "行コメント // の読み飛ばし" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)

@@ -122,6 +122,9 @@ func (j *Journal) validate(ev Event) error {
 	if ev.From != "" && !oneOf(ev.From, StatusOpen, StatusDone) {
 		return bad("from", "must be open or done")
 	}
+	if ev.Basis < 0 {
+		return bad("basis", "must not be negative")
+	}
 	if !oneOf(j.opts.Author.Kind, AuthorHuman, AuthorAI) {
 		return bad("author.kind", "must be human or ai")
 	}

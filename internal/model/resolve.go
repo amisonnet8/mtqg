@@ -121,8 +121,9 @@ func GlossaryCreate(word, text string) (journal.Event, error) {
 }
 
 // SetStatus returns the event that puts a todo, a question or a bug into a state. It
-// records the state the record was in, as the writer saw it: that is what shows
-// two changes that were made without knowing of each other.
+// records the state the record was in, as the writer saw it (from), and how many
+// events the record had (basis): together, that is what shows a change that was
+// made without knowing of another one to the same record (review).
 //
 // A record that has no state is a *NoStateError. A record that is in the state
 // already is ErrNoChange, and nothing should be written for it.
@@ -136,13 +137,17 @@ func SetStatus(rec *Record, status string) (journal.Event, error) {
 	if rec.Status == status {
 		return journal.Event{}, ErrNoChange
 	}
-	return journal.Event{ID: rec.ID, Op: journal.OpStatus, From: rec.Status, Status: status}, nil
+	return journal.Event{ID: rec.ID, Op: journal.OpStatus, From: rec.Status, Status: status, Basis: len(rec.Events)}, nil
 }
 
 // EditText returns the event that replaces the text of a record. Only the text:
 // the word of a glossary entry and the state of a todo, a question or a bug are
 // not touched. A text that is empty is ErrEmptyText. A text that is the same as the
 // record has now is ErrNoChange, and nothing should be written for it.
+//
+// It records how many events the record had (basis), the same way SetStatus
+// records from: what shows an edit that was made without knowing of another
+// change to the same record, whichever field that other change touched (review).
 func EditText(rec *Record, text string) (journal.Event, error) {
 	if strings.TrimSpace(text) == "" {
 		return journal.Event{}, ErrEmptyText
@@ -150,7 +155,7 @@ func EditText(rec *Record, text string) (journal.Event, error) {
 	if rec.Text == text {
 		return journal.Event{}, ErrNoChange
 	}
-	return journal.Event{ID: rec.ID, Op: journal.OpEdit, Text: text}, nil
+	return journal.Event{ID: rec.ID, Op: journal.OpEdit, Text: text, Basis: len(rec.Events)}, nil
 }
 
 // Delete returns the event that hides a record. Its answers or replies are hidden

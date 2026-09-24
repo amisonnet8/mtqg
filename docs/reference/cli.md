@@ -48,6 +48,11 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
 | `mtqg help` | List the commands (`-h` and `--help` do the same) |
 
+`-h` and `--help` show less the more of the command line is already known:
+`mtqg -h` (or `mtqg help`) lists every command, `mtqg <kind> -h` (a kind with
+no verb yet, for example `mtqg todo -h`) lists that kind's verbs, and
+`mtqg <kind> <verb> -h` shows just that command's usage and summary.
+
 ## Global options
 
 | Option | Description |
@@ -161,7 +166,7 @@ What each command prints, after `command`:
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
 | `completion` | `shell`: the shell that was asked for; `script`: the script |
 | `candidates` | `candidates`: `{"value", "description"}` for each, in the order of the text form (`description` is left out if there is none), `count` |
-| `help`, or `-h` on a command | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}`. `available` is `false` for a command that is known and not yet built |
+| `help`, or `-h` on a command or a kind | `kinds`: `{"name", "short"}`; `commands`: `{"command", "usage", "summary", "available"}` (only that kind's, for `-h` on a kind). `available` is `false` for a command that is known and not yet built |
 | `context` | See [context](#context) |
 
 **Errors** are one line of JSON on **standard error**, and standard output stays
@@ -523,7 +528,7 @@ Open todos          5
 Open questions      2  (1 awaiting confirmation)
 Open bugs           1  (1 awaiting confirmation)
 Glossary            4  (1 with duplicate definitions)
-Conflicts           1  (concurrent status changes; see mtqg review)
+Conflicts           1  (concurrent changes; see mtqg review)
 
 Uncommitted records 3
 ```
@@ -772,7 +777,7 @@ is 0 either way.
 <!-- mtqg:example repo=parser -->
 ```
 $ mtqg review
-Concurrent status changes (1)
+Concurrent changes (1)
   todo 6b0d549b6f "Skip line comments //"
     2026-09-21 10:15  claude-code  open -> done
     2026-09-21 14:30  yamada       open -> done
@@ -787,14 +792,19 @@ Answers and replies with no parent (1)
     re 1012f037b6: a question, not a bug
 ```
 
-- **Concurrent status changes.** The status changes of one record are taken in the
-  order of the format (`ts`, then `id`) and followed from the state the record was
-  created in. A change whose `from` is not the state the record is in at that
-  point was written by someone who had not seen the change before it (two branches
-  that each closed the same todo, merged later). The record is listed with **all**
-  of its status changes, oldest first, each with its time, author and change. A
-  change with no `from` is not judged. The same line repeated is one event and is
-  not a conflict. The state the lists show is the one the last change leaves.
+- **Concurrent status changes.** Two independent signals catch a record whose
+  changes were made without knowing of each other, either one enough to list it.
+  ① A `status` event whose `from` is not the state the record is in at that
+  point in the format's order (`ts`, then `id`), followed from the state the
+  record was created in (two branches that each closed the same todo, merged
+  later). ② A `status` event or an `edit` whose `basis` does not match how many
+  events (including the `create`) the record actually had at that point: this
+  also catches a status change and an edit made at once, since it does not
+  matter which field either one touched. The record is listed with **all** of
+  its status changes and edits, oldest first, each with its time, author and
+  change (an edit shows as `edited`). An event with no `from` and no `basis` is
+  not judged. The same line repeated is one event and is not a conflict. The
+  state the lists show is the one the last change leaves.
 - **Duplicate glossary definitions.** Each word that is defined more than once
   (character for character), with all of its entries in the order they were written.
 - **Answers and replies with no parent.** An answer or a reply is bound to its
@@ -825,7 +835,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "Skip line comments //" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "Skip line comments //" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)
@@ -882,7 +892,7 @@ This is the process record of this project. Read the following before you start 
 
 ## Attention
 - Glossary term "block comment" has conflicting definitions (see mtqg glossary list)
-- todo 6b0d549b6f "Skip line comments //" has concurrent status changes (see mtqg review)
+- todo 6b0d549b6f "Skip line comments //" has concurrent changes (see mtqg review)
 - 3 mtqg records are not committed
 
 ## Open todos (5)

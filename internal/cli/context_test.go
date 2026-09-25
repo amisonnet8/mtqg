@@ -285,16 +285,22 @@ func bigContextHarness(t *testing.T) *harness {
 
 func TestContextRules(t *testing.T) {
 	h := initialized(t)
+	// The first line of the second rule is over the 100-character cut that other
+	// sections apply, so its full length in the output proves a rule is not cut.
+	longFirstLine := "Long line one that is the first line of a rule and it keeps going for a while, well past a hundred characters"
+	if len(longFirstLine) <= contextTextLimit {
+		t.Fatalf("fixture text is only %d characters, want more than %d", len(longFirstLine), contextTextLimit)
+	}
 	h.setJournal(
 		record(idR1, "rule", "Write mtqg records in English", "yamada", "2026-09-17T09:00:00Z"),
-		record(idR2, "rule", "Long line one that is the first line of a rule\nAnd a second line of the same rule", "yamada", "2026-09-17T09:01:00Z"),
+		record(idR2, "rule", longFirstLine+"\nAnd a second line of the same rule", "yamada", "2026-09-17T09:01:00Z"),
 		record(idM, "memo", "a memo", "yamada", "2026-09-17T09:02:00Z"),
 	)
 
 	out := mustRun(h, "context")
 	want := "\n## Rules (2)\n" +
 		"- " + idR1[:10] + " Write mtqg records in English (yamada, 09:00)\n" +
-		"- " + idR2[:10] + " Long line one that is the first line of a rule (yamada, 09:01)\n" +
+		"- " + idR2[:10] + " " + longFirstLine + " (yamada, 09:01)\n" +
 		"    And a second line of the same rule\n"
 	if !strings.Contains(out, want) {
 		t.Errorf("stdout:\n%s\nwant Rules section:\n%s", out, want)
@@ -320,7 +326,7 @@ func TestContextRules(t *testing.T) {
 	if got := field(t, obj, "rules", "total"); got != float64(2) {
 		t.Errorf("rules total = %v, want 2", got)
 	}
-	if len(rules) != 2 || rules[0]["id"] != idR1 || rules[1]["id"] != idR2 || rules[1]["text"] != "Long line one that is the first line of a rule\nAnd a second line of the same rule" {
+	if len(rules) != 2 || rules[0]["id"] != idR1 || rules[1]["id"] != idR2 || rules[1]["text"] != longFirstLine+"\nAnd a second line of the same rule" {
 		t.Errorf("rules %v", rules)
 	}
 }

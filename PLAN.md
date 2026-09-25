@@ -127,7 +127,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **段階4a（`mtqg hook claude-code`・`mtqg init --agent claude-code`）を実装した（2026-09-25。上の「段階4a」の節）。** 手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`、mutation-check）に加え、CIも3OS全ジョブgreen（PR #4、mainへマージ済み）。
 
-次：**まだ実地では配線していない。** mtqg自身の`.claude/settings.json`に`mtqg init --agent claude-code`を実行して、このリポジトリで実際にフックを配線する（`.claude/settings.json`は人間の管理下のため、`-n`で内容を確認してから人間が実行する）。配線後の次のセッションで、SessionStartで`context`が入ること・Stopの催促が実際に出ることを確かめる。そのあと、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
+**このリポジトリ自身への実地配線も完了した（2026-09-25）。** 安定版バイナリで`mtqg init --agent claude-code -n`→差分を確認（`.claude/settings.json`の`env`とSessionStart／Stopフックの追加、`CLAUDE.md`末尾の1行）→人間の承認を得て本実行・コミット（`c31da37`。pushは人間）。既存の`permissions`・`PostToolUse`フックの中身は壊れておらず、キー順だけアルファベット順に変わった（設計文書に書いた想定どおり）。
+
+次：**次のセッションで、SessionStartで`context`が入ること・Stopの催促が実際に出ることを確かめる**（ここでStopの出力の形の最終確認も兼ねる）。確認できたら、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

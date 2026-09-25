@@ -4,11 +4,7 @@
 
 ## 記録者
 
-このリポジトリで`.claude/settings.json`が`env`に`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`を設定するまでは、コマンドの前に明示して呼ぶ。
-
-```
-MTQG_AUTHOR_KIND=ai MTQG_AUTHOR_NAME=claude-code mtqg m add "..."
-```
+`.claude/settings.json`の`env`に`MTQG_AUTHOR_KIND=ai`・`MTQG_AUTHOR_NAME=claude-code`を設定済み（段階4a、`mtqg init --agent claude-code`で配線・2026-09-25）。コマンドの前に明示しなくても、このリポジトリでのmtqgコマンドは記録者`ai`/`claude-code`になる。人間が記録するときだけ、`.claude/settings.json`の値を上書きするよう明示して呼ぶ（例：`MTQG_AUTHOR_KIND=human MTQG_AUTHOR_NAME=amisonnet8 mtqg r add "..."`）。
 
 ## 何をどの種類で記録するか
 

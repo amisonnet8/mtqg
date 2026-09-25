@@ -135,7 +135,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **実装した（2026-09-25）。** 文書を先に更新→依存の追加（Trivy確認済み）→CLIの層の下ごしらえ（`cleanText`の切り出し、`ctx.authorAs`、`reportOf`のエラーJSON共通化、`jsonSearchSummary`）→`internal/cli/mcp.go`・`mcp_tools.go`（18ツール）→`init --agent`の`.mcp.json`拡張→単体テスト（`mcp_test.go`）→e2e（`e2e/mcp_test.go`）→mutation-check、の順で進めた。手元の検証：`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`・`qsoku trivy`すべて通った。**壊して確かめた**（mutation-checkスキル、9個の変異、8個killed、1個は本当に同じ意味として残した。詳細は`.claude/rules/testing.md`「mtqg固有の検証項目」）。実装しながら見つけたテスト自体の不具合2件（ツール結果の`IsError`を確認せずデコードしていた箇所、`ts`が同じ秒になりうる`search`の順序テストのflakiness）も同ファイルに記録した。
 
-次：CIの3OS確認待ち（PR作成後、人間がpush・CI確認）。マージ後、mtqg自身への実地配線（`mtqg init --agent claude-code -n`→確認→本実行）と、Claude Code実機での動作確認。
+**CIも3OS全ジョブgreen（PR #5、2026-09-25、人間が確認。mainへマージ済み、`4df2674`）。** 途中、`race (macos-latest)`が`TestRewriteWhileGoroutinesAppend`（既知の間欠的フレーク、`testing.md`「証明にならないガード」参照）で1度落ちたが、このPRが`internal/journal/`を一切変更していないことを確認のうえ再実行して通った。
+
+次：mtqg自身への実地配線（`mtqg init --agent claude-code -n`→確認→本実行）と、Claude Code実機での動作確認（`mtqg`のMCPツールが実際に認識・呼び出せること）。
 
 ## 現在地
 
@@ -151,7 +153,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **Stopの実地確認は、ロジックの確認まではできたが、目視確認は手段が無く打ち切った（2026-09-25）。** 記録せずに応答を終える実験を複数回試み、その過程で判定の性質が2つ実地で分かった：①セッション開始より前からあった未コミットの変更は「セッション中の作業」としてカウントされない（`start`と`now`のGitStatusDigestが同じまま）。②既に変更済みのファイルへさらに追記しても`git status --porcelain`の行自体は変わらないため、StatusDigestも変わらない（ファイル単位の変更検出で、diffの中身までは見ない。いずれも設計どおりの挙動）。この2つを踏まえて条件を揃えたが、それでも会話上に促しは現れなかった。`.mtqg/.local/sessions/`のファイルから使われていそうなセッションIDを推測し、`mtqg hook claude-code stop`を手動でその入力で呼んだところ、`{"decision":"block","reason":...}`が正しく返り、**判定ロジック自体は動くことを確認できた**。ただし、**Claude Codeが実際にフックへ渡す`session_id`はエージェント側からは見えない**ため、その推測が実際のセッションのものだったかは確認できず（このシミュレーション自体が対象セッションの`prompted`をtrueにする副作用も持つ）、これ以上の目視確認の手段が無いと判断した。
 
-**段階4b（`mtqg mcp`）を実装した（2026-09-25。上の「段階4b」の節）。** 人間の指示とプランモードでの合意を経て、公式SDKを依存ポリシーの例外として採用し、18ツールを`internal/cli/mcp.go`・`mcp_tools.go`に実装した。手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`・`qsoku trivy`、mutation-check）はすべて済んだ。**CIはまだ確認していない（この区切りではまだpush・PRを行っていない）。**
+**段階4b（`mtqg mcp`）を実装した（2026-09-25。上の「段階4b」の節）。** 人間の指示とプランモードでの合意を経て、公式SDKを依存ポリシーの例外として採用し、18ツールを`internal/cli/mcp.go`・`mcp_tools.go`に実装した。手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`・`qsoku trivy`、mutation-check）はすべて済んだ。**CIも3OS全ジョブgreen（PR #5、mainへマージ済み、`4df2674`）。**
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

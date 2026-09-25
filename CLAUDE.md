@@ -105,3 +105,5 @@
 - **Skill化した方が効率的そうな作業**: 「同じ手順を3回目繰り返している」など、パターン化できそうな一連の作業に気づいた場合。まだ実装が薄い段階では無理に提案する必要はない。パターンが実際に繰り返されてから提案すること
 
 提案は気づいたタイミングで随時行ってよく、まとめて報告するために貯めておく必要はない。
+
+This repository records its development with mtqg: run `mtqg context` at the start of a session, and see `.mtqg/SCHEMA.md` for the data format.

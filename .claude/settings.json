@@ -1,6 +1,42 @@
 {
+  "env": {
+    "MTQG_AUTHOR_KIND": "ai",
+    "MTQG_AUTHOR_NAME": "claude-code"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/build.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "mtqg hook claude-code session-start",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "mtqg hook claude-code stop",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
-    "deny": ["Bash(git push*)", "Bash(gh pr merge*)", "Bash(gh release create*)"],
     "ask": [
       "Bash(git reset --hard*)",
       "Bash(git clean*)",
@@ -9,19 +45,11 @@
       "Bash(go get*)",
       "Bash(*sudo*)",
       "Bash(gh pr create*)"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/build.sh"
-          }
-        ]
-      }
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh release create*)"
     ]
   }
 }

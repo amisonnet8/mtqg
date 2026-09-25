@@ -214,6 +214,7 @@ type jsonArchiveCounts struct {
 	Bugs            int `json:"bugs"`
 	Replies         int `json:"replies"`
 	GlossaryEntries int `json:"glossary_entries"`
+	Rules           int `json:"rules"`
 	Records         int `json:"records"`
 }
 
@@ -223,6 +224,7 @@ type jsonArchiveSkipped struct {
 	OpenQuestions   int `json:"open_questions"`
 	OpenBugs        int `json:"open_bugs"`
 	GlossaryEntries int `json:"glossary_entries"`
+	Rules           int `json:"rules"`
 	Records         int `json:"records"`
 }
 
@@ -333,6 +335,7 @@ type jsonContext struct {
 	Repository      string              `json:"repository"`
 	Branch          string              `json:"branch,omitempty"`
 	Attention       []jsonAttention     `json:"attention"`
+	Rules           jsonSection         `json:"rules"`
 	OpenTodos       jsonSection         `json:"open_todos"`
 	OpenQuestions   jsonThreadSection   `json:"open_questions"`
 	OpenBugs        jsonThreadSection   `json:"open_bugs"`

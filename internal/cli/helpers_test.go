@@ -168,11 +168,13 @@ func marshal(v any) string {
 
 // The IDs of the fixtures. The first eight digits of the first two are the same.
 const (
-	idA = "6cad4a268d0f4e2f8c1b7a3d5e9f0a11"
-	idB = "6cad4a26ffff4e2f8c1b7a3d5e9f0a22"
-	idC = "1e27a1c08a3b4c5d8e9f0a1b2c3d4e33"
-	idM = "81e74ef5e8e24d949ed904759531985d"
-	idQ = "2217beaddb1f4b6e9c0d1e2f3a4b5c66"
+	idA  = "6cad4a268d0f4e2f8c1b7a3d5e9f0a11"
+	idB  = "6cad4a26ffff4e2f8c1b7a3d5e9f0a22"
+	idC  = "1e27a1c08a3b4c5d8e9f0a1b2c3d4e33"
+	idM  = "81e74ef5e8e24d949ed904759531985d"
+	idQ  = "2217beaddb1f4b6e9c0d1e2f3a4b5c66"
+	idR1 = "b1a2c3d4e5f647a8b9c0d1e2f3a4b5c6"
+	idR2 = "b2a2c3d4e5f647a8b9c0d1e2f3a4b5c7"
 )
 
 // withUnbuiltCommand adds a command that is known but has no run function, for the

@@ -173,6 +173,14 @@ func (v contextView) lines(d *model.ContextData) []string {
 		section(lines...)
 	}
 
+	if len(d.Rules) > 0 {
+		lines := []string{msgContextHeading("Rules", len(d.Rules))}
+		for _, r := range d.Rules {
+			lines = append(lines, v.ruleLines(r)...)
+		}
+		section(lines...)
+	}
+
 	if d.TodosTotal > 0 {
 		lines := []string{msgContextHeading("Open todos", d.TodosTotal)}
 		if left := d.TodosTotal - len(d.Todos); left > 0 {
@@ -216,6 +224,20 @@ func (v contextView) lines(d *model.ContextData) []string {
 	}
 
 	return append(out, "", "---", msgContextFooter)
+}
+
+// ruleLines is one rule: its ID, author and time on the first line, and its full
+// text, however many lines, every line of it (contextText's 100-character cut is
+// for the other sections only; a rule must not be read half cut). Lines after the
+// first are indented, with nothing else on them.
+func (v contextView) ruleLines(r *model.Record) []string {
+	body := bodyLines(r.Text)
+	out := make([]string, len(body))
+	out[0] = msgContextItem(v.id(r.ID), body[0], oneLine(r.Author.Name), v.when(r.Created))
+	for i := 1; i < len(body); i++ {
+		out[i] = "    " + body[i]
+	}
+	return out
 }
 
 // threads is a section of questions or of bugs: what is open, its state and the
@@ -270,6 +292,7 @@ func (v contextView) json(command string, d *model.ContextData, truncated bool, 
 		Repository:      v.repository,
 		Branch:          v.branch,
 		Attention:       []jsonAttention{},
+		Rules:           jsonSection{Total: len(d.Rules), Records: recordsJSON(d.Rules)},
 		OpenTodos:       jsonSection{Total: d.TodosTotal, Records: recordsJSON(d.Todos)},
 		OpenQuestions:   jsonThreadSection{Total: d.QuestionsTotal, Records: threadsJSON(d.Questions)},
 		OpenBugs:        jsonThreadSection{Total: d.BugsTotal, Records: threadsJSON(d.Bugs)},

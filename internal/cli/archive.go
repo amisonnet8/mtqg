@@ -115,13 +115,16 @@ func countArchived(records []*model.Record) jsonArchiveCounts {
 			n.Replies++
 		case model.KindGlossary:
 			n.GlossaryEntries++
+		case model.KindRule:
+			n.Rules++
 		}
 	}
 	return n
 }
 
 // countSkipped counts the records that stay although their last event is in the
-// range. Only open todos, questions and bugs, and glossary entries can be here.
+// range. Only open todos, questions and bugs, glossary entries and rules can be
+// here.
 func countSkipped(records []*model.Record) jsonArchiveSkipped {
 	n := jsonArchiveSkipped{Records: len(records)}
 	for _, r := range records {
@@ -134,6 +137,8 @@ func countSkipped(records []*model.Record) jsonArchiveSkipped {
 			n.OpenBugs++
 		case model.KindGlossary:
 			n.GlossaryEntries++
+		case model.KindRule:
+			n.Rules++
 		}
 	}
 	return n
@@ -165,6 +170,7 @@ func (n jsonArchiveCounts) parts() []string {
 		counted{n.Bugs, "bug", "bugs"},
 		counted{n.Replies, "reply", "replies"},
 		counted{n.GlossaryEntries, "glossary entry", "glossary entries"},
+		counted{n.Rules, "rule", "rules"},
 	)
 }
 
@@ -174,6 +180,7 @@ func (n jsonArchiveSkipped) parts() []string {
 		counted{n.OpenQuestions, "open question", "open questions"},
 		counted{n.OpenBugs, "open bug", "open bugs"},
 		counted{n.GlossaryEntries, "glossary entry", "glossary entries"},
+		counted{n.Rules, "rule", "rules"},
 	)
 }
 

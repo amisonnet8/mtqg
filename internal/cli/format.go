@@ -91,7 +91,7 @@ func (c *ctx) formatEvent(ev journal.Event, created map[string]journal.Event) (w
 			return "glossary", oneLine(ev.Word) + ": " + oneLine(ev.Text)
 		case ev.Re != "" && model.ReplyKind(ev.Type) != model.ParentKind(ev.Type):
 			return model.ReplyKind(ev.Type), "(to " + shortID(ev.Re, c.inv.fullID) + ") " + oneLine(ev.Text)
-		case ev.Type == journal.TypeQA || ev.Type == journal.TypeBug || ev.Type == journal.TypeMemo || ev.Type == journal.TypeTodo:
+		case ev.Type == journal.TypeQA || ev.Type == journal.TypeBug || ev.Type == journal.TypeMemo || ev.Type == journal.TypeTodo || ev.Type == journal.TypeRule:
 			return model.ParentKind(ev.Type), oneLine(ev.Text)
 		default:
 			return oneLine(ev.Type), oneLine(ev.Text)

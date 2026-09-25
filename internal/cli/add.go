@@ -7,6 +7,8 @@ import (
 
 func runAddMemo(c *ctx) int { return c.add(model.MemoCreate) }
 
+func runAddRule(c *ctx) int { return c.add(model.RuleCreate) }
+
 func runAddTodo(c *ctx) int { return c.add(model.TodoCreate) }
 
 // add records a memo or a todo and prints its ID, and nothing else: the speed of

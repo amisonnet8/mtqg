@@ -80,7 +80,8 @@ func TestContext(t *testing.T) {
 		wantExit(t, code, 0, out, errOut)
 		want := "# mtqg context — " + filepath.Base(h.root) + " (main)\n" + `
 This is the process record of this project. Read the following before you start working.
-- Respect what has been decided (answered questions, memos stating a policy)
+- Follow the rules listed under Rules
+- Respect answered questions
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
 - Record questions, decisions, findings, bugs, and todos with mtqg as they come up
@@ -280,6 +281,48 @@ func bigContextHarness(t *testing.T) *harness {
 	}
 	h.setJournal(lines...)
 	return h
+}
+
+func TestContextRules(t *testing.T) {
+	h := initialized(t)
+	h.setJournal(
+		record(idR1, "rule", "Write mtqg records in English", "yamada", "2026-09-17T09:00:00Z"),
+		record(idR2, "rule", "Long line one that is the first line of a rule\nAnd a second line of the same rule", "yamada", "2026-09-17T09:01:00Z"),
+		record(idM, "memo", "a memo", "yamada", "2026-09-17T09:02:00Z"),
+	)
+
+	out := mustRun(h, "context")
+	want := "\n## Rules (2)\n" +
+		"- " + idR1[:10] + " Write mtqg records in English (yamada, 09:00)\n" +
+		"- " + idR2[:10] + " Long line one that is the first line of a rule (yamada, 09:01)\n" +
+		"    And a second line of the same rule\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("stdout:\n%s\nwant Rules section:\n%s", out, want)
+	}
+	if !strings.Contains(out, "Follow the rules listed under Rules") {
+		t.Errorf("guide does not point at Rules:\n%s", out)
+	}
+	// Rules comes right after Attention and before Open todos/Recent, whichever of
+	// those is present.
+	if i, j := strings.Index(out, "## Rules"), strings.Index(out, "## Recent"); i < 0 || j < 0 || i > j {
+		t.Errorf("Rules is not before Recent:\n%s", out)
+	}
+
+	// However small the budget, a rule is never cut, never left out, and its text
+	// is never truncated.
+	tiny := mustRun(h, "context", "--max-tokens", "1")
+	if !strings.Contains(tiny, want) {
+		t.Errorf("a tiny budget cut a rule:\n%s", tiny)
+	}
+
+	obj := jsonObject(t, mustRun(h, "--json", "context", "--max-tokens", "1"))
+	rules := records(t, field(t, obj, "rules").(map[string]any), "records")
+	if got := field(t, obj, "rules", "total"); got != float64(2) {
+		t.Errorf("rules total = %v, want 2", got)
+	}
+	if len(rules) != 2 || rules[0]["id"] != idR1 || rules[1]["id"] != idR2 || rules[1]["text"] != "Long line one that is the first line of a rule\nAnd a second line of the same rule" {
+		t.Errorf("rules %v", rules)
+	}
 }
 
 func TestContextBudget(t *testing.T) {
@@ -547,7 +590,7 @@ func TestContextJSON(t *testing.T) {
 		if v, ok := obj["max_tokens"]; !ok || v != nil {
 			t.Errorf("max_tokens = %v (present %v)", v, ok)
 		}
-		for _, key := range []string{"open_todos", "open_questions", "open_bugs", "recent", "glossary"} {
+		for _, key := range []string{"rules", "open_todos", "open_questions", "open_bugs", "recent", "glossary"} {
 			s := field(t, obj, key).(map[string]any)
 			if s["total"] != float64(0) || len(records(t, s, "records")) != 0 {
 				t.Errorf("%s: %v", key, s)

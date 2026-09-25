@@ -27,6 +27,7 @@ var kinds = []kindSpec{
 	{"qa", "q", journal.TypeQA},
 	{"bug", "b", journal.TypeBug},
 	{"glossary", "g", journal.TypeGlossary},
+	{"rule", "r", journal.TypeRule},
 }
 
 // What a command takes after its name.
@@ -143,6 +144,8 @@ func init() {
 		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, ids: idsDone, run: runReopen},
 		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> [<definition>]", summary: "Define a term", args: argsText, minWords: 1, run: runAddGlossary},
 		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
+		{kind: "rule", name: "add", usage: "mtqg rule add <text>", summary: "Record a rule", args: argsText, run: runAddRule},
+		{kind: "rule", name: "list", usage: "mtqg rule list", summary: "List the rules", args: argsNone, run: runListRules},
 
 		{name: "init", usage: "mtqg init", summary: "Create .mtqg/ in this repository", args: argsNone, run: runInit},
 		{name: "status", usage: "mtqg status", summary: "Show what is open and what is not committed", args: argsNone, run: runStatus},

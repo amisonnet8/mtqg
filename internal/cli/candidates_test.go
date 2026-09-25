@@ -70,6 +70,7 @@ func TestCandidatesOfTheCommandLine(t *testing.T) {
 		{name: "the first word starts a kind", partial: "t", want: []string{"todo"}},
 		{name: "a kind is not offered as its letter", partial: "m", want: []string{"memo"}},
 		{name: "a command that has no kind", partial: "sta", want: []string{"status"}},
+		{name: "a kind and a command can share a prefix", partial: "r", want: []string{"rule", "review"}},
 		{name: "a command that is not built is not offered", partial: "unb"},
 		{name: "the verbs of a kind", words: []string{"t"}, want: []string{"add", "list", "done", "reopen"}},
 		{name: "the verbs of a kind spelled out", words: []string{"todo"}, want: []string{"add", "list", "done", "reopen"}},
@@ -96,7 +97,7 @@ func TestCandidatesOfTheCommandLine(t *testing.T) {
 		{name: "after the ID of edit, it is text", partial: "-", words: []string{"edit", idA}},
 		{name: "a command that takes an ID takes options anywhere", partial: "--f", words: []string{"t", "done", idA}, want: []string{"--full-id"}},
 
-		{name: "the values of --kind", words: []string{"log", "--kind"}, want: []string{"memo", "todo", "qa", "bug", "glossary"}},
+		{name: "the values of --kind", words: []string{"log", "--kind"}, want: []string{"memo", "todo", "qa", "bug", "glossary", "rule"}},
 		{name: "a value of --kind that was typed in part", partial: "b", words: []string{"log", "--kind"}, want: []string{"bug"}},
 		{name: "the value of --limit is not completed", words: []string{"log", "--limit"}},
 		{name: "a path is left to the shell", words: []string{"-C"}},
@@ -139,7 +140,7 @@ func TestCandidatesOfTheCommandLine(t *testing.T) {
 				t.Errorf("%q is not offered", name)
 			}
 		}
-		for _, letter := range []string{"m", "t", "q", "b", "g", "unbuilt"} {
+		for _, letter := range []string{"m", "t", "q", "b", "g", "r", "unbuilt"} {
 			if slices.Contains(got, letter) {
 				t.Errorf("%q is offered", letter)
 			}

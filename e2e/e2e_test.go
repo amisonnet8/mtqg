@@ -592,11 +592,12 @@ func TestJSONAndContext(t *testing.T) {
 	}
 	r.mtqg("g", "add", "lexing", "Reading source and turning it into tokens")
 	r.mtqg("g", "add", "lexing", "Splitting text into words")
+	rule := strings.TrimSpace(r.mtqg("r", "add", "--full-id", "Write mtqg records in English"))
 
 	// Every command that was built prints one JSON object, with no color and
 	// nothing on standard error, when its output is not a terminal.
 	for _, args := range [][]string{
-		{"t", "list"}, {"m", "list"}, {"q", "list", "--all"}, {"b", "list"}, {"g", "list"}, {"log"},
+		{"t", "list"}, {"m", "list"}, {"q", "list", "--all"}, {"b", "list"}, {"g", "list"}, {"r", "list"}, {"log"},
 		{"show", todo[:10]}, {"status"}, {"version"}, {"help"}, {"context"},
 	} {
 		res := r.run(nil, "", append([]string{"--json"}, args...)...)
@@ -650,7 +651,8 @@ func TestJSONAndContext(t *testing.T) {
 	repository := filepath.Base(r.dir)
 	for _, want := range []string{
 		"# mtqg context \u2014 " + repository + " (main)\n",
-		"## Attention\n- Glossary term \"lexing\" has conflicting definitions (see mtqg glossary list)\n- 5 mtqg records are not committed\n",
+		"## Attention\n- Glossary term \"lexing\" has conflicting definitions (see mtqg glossary list)\n- 6 mtqg records are not committed\n",
+		"## Rules (1)\n- " + rule[:10] + " Write mtqg records in English (yamada, ",
 		"## Open todos (1)\n- " + todo[:10] + " Skip <block> comments & 日本語 (yamada, ",
 		"## Open questions (1)\n- " + question[:10] + " Should nested block comments be supported? (awaiting confirmation, yamada, ",
 		"\u2514 Not in the first version (claude-code, ai)\n",

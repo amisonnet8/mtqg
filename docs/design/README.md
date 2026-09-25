@@ -1,6 +1,6 @@
 # mtqg 設計文書
 
-mtqg（memo / todo / qa / bug / glossary）の設計判断と、その理由の記録。日本語のみ（英語版は作らない）。bugは2026-09-21に足した5つ目の種類で、それ以前の文書は4種類の時点で書かれている（`history.md`）。
+mtqg（memo / todo / qa / bug / glossary / rule）の設計判断と、その理由の記録。日本語のみ（英語版は作らない）。bugは2026-09-21に足した5つ目の種類、ruleは2026-09-25に足した6つ目の種類で、それ以前の文書はそれぞれの種類が無かった時点で書かれている（`history.md`）。
 
 旧称：tdmqa（ToDoMemoQA）→ tmqg → mtqg。名前の由来と順序の意味は§3。
 

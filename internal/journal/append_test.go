@@ -135,7 +135,7 @@ func TestAppendValidation(t *testing.T) {
 
 func TestAppendWritesEveryKind(t *testing.T) {
 	j := newJournal(t, nil)
-	for _, typ := range []string{TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary} {
+	for _, typ := range []string{TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary, TypeRule} {
 		ev, err := j.Append(Event{Op: OpCreate, Type: typ, Text: "x"})
 		if err != nil {
 			t.Fatalf("type %s: %v", typ, err)
@@ -147,8 +147,8 @@ func TestAppendWritesEveryKind(t *testing.T) {
 		}
 	}
 	read, err := j.Read()
-	if err != nil || len(read.Events) != 10 {
-		t.Fatalf("Read = %d events, %v; want 10", len(read.Events), err)
+	if err != nil || len(read.Events) != 12 {
+		t.Fatalf("Read = %d events, %v; want 12", len(read.Events), err)
 	}
 }
 

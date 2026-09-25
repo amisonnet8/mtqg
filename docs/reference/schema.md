@@ -13,8 +13,8 @@ on, the compatibility rules in [Versioning](#versioning) apply.
 ## What mtqg records
 
 mtqg keeps the part of a project's process that does not survive in the code:
-things noticed while working, things to do, questions and their answers, and
-agreed terms. There are five kinds of record:
+things noticed while working, things to do, questions and their answers, agreed
+terms, and standing conventions. There are six kinds of record:
 
 | Kind | Meaning | State |
 |---|---|---|
@@ -23,6 +23,7 @@ agreed terms. There are five kinds of record:
 | `qa` | A question, or an answer to a question | questions: `open` / `done`; answers: none |
 | `bug` | A bug report, and the exchange about it (a reply to it) | bugs: `open` / `done`; replies: none |
 | `glossary` | A term (`word`) and its definition (`text`) | none |
+| `rule` | A convention to follow, in force until it is edited or deleted | none |
 
 `qa` and `bug` have the same shape: a record that can be replied to, and its
 replies. They differ in what they are about. A bug is `done` when it is fixed or
@@ -80,7 +81,7 @@ Example:
 |---|---|---|---|
 | `id` | string | all | ID of the record the event is about (see [IDs](#ids)) |
 | `op` | string | all | `create`, `status`, `edit` or `delete` |
-| `type` | string | `create` | `memo`, `todo`, `qa`, `bug` or `glossary` |
+| `type` | string | `create` | `memo`, `todo`, `qa`, `bug`, `glossary` or `rule` |
 | `re` | string | `create` of an answer or a reply | ID of the record this one replies to. It has the same `type` as this one |
 | `from` | string | `status` | state before the change, as the writer saw it |
 | `status` | string | `create` of todo / question / bug, `status` | state after the event (`open` or `done`) |
@@ -205,6 +206,7 @@ to `archive/<start>..<end>.jsonl`:
 | `bug` | state is `done`; its replies move with it |
 | `memo` | always |
 | `glossary` | never |
+| `rule` | never |
 
 - **The last event of a question or a bug is the latest of its own events and
   those of its answers or replies** (deleted ones included). A question closed in

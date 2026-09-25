@@ -17,6 +17,7 @@ const (
 	idQ     = "95e761d177314f10b06bf2efc6f87718"
 	idAns   = "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
 	idWord  = "f28c105d1fb14c2390c192cfd3ac94af"
+	idRule  = "b1a2c3d4e5f647a8b9c0d1e2f3a4b5c6"
 )
 
 var (

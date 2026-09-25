@@ -7,8 +7,10 @@ import (
 	"testing"
 )
 
-// jsonFixture is a journal with every kind in it, some of it awkward to write
-// as JSON: text with < and &, a control character, several lines, Japanese.
+// jsonFixture is a journal with most kinds in it (rule is covered by its own,
+// smaller tests instead, to keep this fixture's counts from having to change),
+// some of it awkward to write as JSON: text with < and &, a control character,
+// several lines, Japanese.
 func jsonFixture(h *harness) {
 	h.setJournal(
 		record(idA, "todo", "Skip <block> comments & more", "yamada", "2026-09-17T10:18:00Z"),
@@ -479,7 +481,7 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 		withUnbuiltCommand(t)
 		obj := jsonObject(t, mustRun(h, "--json", "help"))
 		kinds := records(t, obj, "kinds")
-		if len(kinds) != 5 || kinds[3]["name"] != "bug" || kinds[3]["short"] != "b" {
+		if len(kinds) != 6 || kinds[3]["name"] != "bug" || kinds[3]["short"] != "b" || kinds[5]["name"] != "rule" || kinds[5]["short"] != "r" {
 			t.Errorf("kinds %v", kinds)
 		}
 		available := map[string]any{}

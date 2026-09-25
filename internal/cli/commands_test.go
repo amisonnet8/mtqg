@@ -444,6 +444,26 @@ func TestListMemos(t *testing.T) {
 	}
 }
 
+func TestListRules(t *testing.T) {
+	h := initialized(t)
+	h.setJournal(
+		record(idM, "rule", "mtqgには日本語で登録する", "yamada", "2026-09-17T09:00:00Z"),
+		record(idA, "todo", "not a rule", "yamada", "2026-09-17T09:30:00Z"),
+	)
+	code, out, errOut := h.run("r", "list")
+	wantExit(t, code, 0, out, errOut)
+	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	if len(lines) != 2 || !strings.HasPrefix(lines[0], idM[:10]) || lines[1] != "1 rule" {
+		t.Errorf("stdout %q", out)
+	}
+
+	h.setJournal(record(idM, "rule", "a", "yamada", "2026-09-17T09:00:00Z"), record(idQ, "rule", "b", "yamada", "2026-09-17T09:01:00Z"))
+	_, out, _ = h.run("rule", "list")
+	if !strings.HasSuffix(out, "2 rules\n") {
+		t.Errorf("stdout %q", out)
+	}
+}
+
 func TestDoneAndReopen(t *testing.T) {
 	setup := func(t *testing.T) *harness {
 		h := initialized(t)
@@ -675,7 +695,7 @@ func TestHelpAndMistakes(t *testing.T) {
 
 	code, out, errOut := h.run("help")
 	wantExit(t, code, 0, out, errOut)
-	for _, want := range []string{"mtqg todo done <id>", "mtqg init", "mtqg status", "--full-id", "memo (m), todo (t), qa (q), bug (b), glossary (g)", "mtqg bug done <bug-id>"} {
+	for _, want := range []string{"mtqg todo done <id>", "mtqg init", "mtqg status", "--full-id", "memo (m), todo (t), qa (q), bug (b), glossary (g), rule (r)", "mtqg bug done <bug-id>"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("help does not mention %q:\n%s", want, out)
 		}

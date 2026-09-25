@@ -14,8 +14,8 @@ type ArchivePlan struct {
 	Move []*Record
 
 	// Skipped are the records whose last event is in the range and that stay:
-	// todos, questions and bugs that are open, and glossary entries. Answers and
-	// replies are not counted apart from their question or bug.
+	// todos, questions and bugs that are open, glossary entries, and rules. Answers
+	// and replies are not counted apart from their question or bug.
 	Skipped []*Record
 }
 
@@ -33,8 +33,8 @@ type ArchivePlan struct {
 //     to follow; or
 //   - it is a todo, a question or a bug that is done.
 //
-// A glossary entry that is not deleted is never archived. An item whose events
-// have no time that can be read is not in any range, so it stays.
+// A glossary entry or a rule that is not deleted is never archived. An item whose
+// events have no time that can be read is not in any range, so it stays.
 func (s *State) ArchiveTargets(from, to time.Time) ArchivePlan {
 	// The answers and replies of each question or bug, whether they are in view or not.
 	followers := make(map[string][]*Record)
@@ -81,7 +81,7 @@ func archivable(r *Record) bool {
 	switch {
 	case r.Deleted:
 		return true
-	case r.Type == journal.TypeGlossary:
+	case r.Type == journal.TypeGlossary, r.Type == journal.TypeRule:
 		return false
 	case r.HasState():
 		return r.Status == journal.StatusDone

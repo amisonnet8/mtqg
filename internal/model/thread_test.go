@@ -395,6 +395,7 @@ func TestKindsOfTheTypesThatHaveReplies(t *testing.T) {
 		{journal.TypeMemo, KindMemo, KindMemo},
 		{journal.TypeTodo, KindTodo, KindTodo},
 		{journal.TypeGlossary, KindGlossary, KindGlossary},
+		{journal.TypeRule, KindRule, KindRule},
 	} {
 		if got := ParentKind(tt.typ); got != tt.parent {
 			t.Errorf("ParentKind(%s) = %s, want %s", tt.typ, got, tt.parent)
@@ -410,6 +411,7 @@ func TestKindsOfTheTypesThatHaveReplies(t *testing.T) {
 		create(idQ, journal.TypeQA, "Nested block comments?", 2),
 		answer(idAns, idQ, "Not in the first version", 3, human),
 		create(idMemo, journal.TypeMemo, "m", 4),
+		create(idRule, journal.TypeRule, "Write mtqg records in English", 5),
 	})
 	for _, tt := range []struct {
 		id                     string
@@ -422,6 +424,7 @@ func TestKindsOfTheTypesThatHaveReplies(t *testing.T) {
 		{idQ, KindQuestion, true, true, false},
 		{idAns, KindAnswer, false, false, true},
 		{idMemo, KindMemo, false, false, false},
+		{idRule, KindRule, false, false, false},
 	} {
 		r := state.Record(tt.id)
 		if r.Kind() != tt.kind || r.HasState() != tt.hasState || r.CanHaveReplies() != tt.canBeReplied || r.IsReply() != tt.isReply {
@@ -615,7 +618,7 @@ func TestBugAndReplyEvents(t *testing.T) {
 	}
 
 	// Only qa and bug start something that can be replied to.
-	for _, typ := range []string{journal.TypeMemo, journal.TypeTodo, journal.TypeGlossary, "note"} {
+	for _, typ := range []string{journal.TypeMemo, journal.TypeTodo, journal.TypeGlossary, journal.TypeRule, "note"} {
 		if _, err := ParentCreate(typ, "x"); !errors.Is(err, journal.ErrInvalidEvent) {
 			t.Errorf("ParentCreate(%s): err = %v", typ, err)
 		}

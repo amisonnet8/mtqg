@@ -60,7 +60,7 @@ func (c *completionRepo) cases() []completionCase {
 		{"mtqg t reopen ", []string{c.done}},
 		{"mtqg show ", []string{c.open, c.done, c.memo}},
 		{"mtqg show " + c.memo[:6], []string{c.memo}},
-		{"mtqg log --kind ", []string{"memo", "todo", "qa", "bug", "glossary"}},
+		{"mtqg log --kind ", []string{"memo", "todo", "qa", "bug", "glossary", "rule"}},
 		{"mtqg log --l", []string{"--limit"}},
 		{"mtqg log --limit 5 --k", []string{"--kind"}},
 		{"mtqg completion ", []string{"bash", "zsh", "fish", "powershell"}},

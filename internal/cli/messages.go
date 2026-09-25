@@ -331,6 +331,13 @@ func msgMemoFooter(n int) string {
 	return fmt.Sprintf("%d memos", n)
 }
 
+func msgRuleFooter(n int) string {
+	if n == 1 {
+		return "1 rule"
+	}
+	return fmt.Sprintf("%d rules", n)
+}
+
 func msgGlossaryFooter(n, duplicateWords int) string {
 	line := fmt.Sprintf("%d terms", n)
 	if n == 1 {
@@ -507,7 +514,8 @@ func msgFormatVersion(found, supported int, known bool) string {
 // contextGuide tells the agent what it is reading and what to do with it.
 var contextGuide = []string{
 	"This is the process record of this project. Read the following before you start working.",
-	"- Respect what has been decided (answered questions, memos stating a policy)",
+	"- Follow the rules listed under Rules",
+	"- Respect answered questions",
 	"- Do not decide open questions on your own; confirm them",
 	"- Use terms as defined in the glossary",
 	"- Record questions, decisions, findings, bugs, and todos with mtqg as they come up",

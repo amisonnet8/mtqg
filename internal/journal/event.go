@@ -27,6 +27,7 @@ const (
 	TypeQA       = "qa"
 	TypeBug      = "bug"
 	TypeGlossary = "glossary"
+	TypeRule     = "rule"
 
 	StatusOpen = "open"
 	StatusDone = "done"

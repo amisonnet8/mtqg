@@ -93,9 +93,24 @@ qsokuからの報告（`docs/design/08-development.md`「12.3.1」）の3件す�
 
 **実装しながら見つけて記録したこと：** `encoding/json/v2`の`omitempty`は数値の`0`を省かない（JSON側の「空」の定義のため）。`omitzero`を使う必要がある（`.claude/rules/journal-format.md`に追記）。
 
+## 種類`rule`の追加（2026-09-25）
+
+qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話から出た提案：「読めばそのまま従える決まり事」（例：「mtqgには日本語で登録する」）を残す場所が欲しい。人間との議論の末、6つ目の種類`rule`を足すことに決めた（`docs/design/history.md`2026-09-25の項に、向き・不向きの線引きの議論を含めて詳しく記録。別のAI（ChatGPT）にcontextの表示案をレビューさせ、その指摘も一部採用した）。作業はブランチ`rule-kind`。
+
+- **形はmemoと同じ**（本文だけ、`word`なし、状態なし）。違うのは振る舞いの2点：①`archive`で移さない（glossaryと同じ、削除したときだけ移る）、②`context`で専用の区画「Rules」をAttentionの直後に置き、**予算に関わらず削らず、本文も100文字で切らない**（従うべき決まりが予算で消えたり途中で切れたりすると意味がないため）。`context`の案内文も、方針の置き場所を`Rules`に集約する形に書き換えた（`Respect what has been decided (answered questions, memos stating a policy)`→`Follow the rules listed under Rules` / `Respect answered questions`）
+- 仕様（`schema.md`・`cli.md`と日本語版、`docs/design/03-data-model.md`§5.1）を先に更新してから、ジャーナル層→モデル層→CLI層の順に実装した
+- `docs/reference/cli.md`・`cli_ja.md`に、Rules区画専用の`context`の例を1つ足した（`e2e/testdata/examples/rules`・`rules_ja`という専用の小さいフィクスチャから。共有フィクスチャ`parser`は、件数を固定した例が多数それに依存しているため広げなかった）
+- テストも同じ理由で、大きな共有フィクスチャ（`contextFixture`・`archiveFixture`・`jsonFixture`）は広げず、rule専用の小さいテスト（`TestContextRules`・`TestArchiveTreatsRulesLikeGlossary`等）を足した
+
+**手元で確かめたこと：** `qsoku check`・`qsoku test`（e2e、本物のシェルの補完も含む）・`qsoku race`が通る。`qsoku docs-examples`は冪等（手で書いた下書きと、実際に動かした出力の差は、100文字を超える本文が実際に`...`で切られなかったことを示す1点のみ）。**壊して確かめた**（mutation-checkスキル、6個の変異、すべて検出。1つ生き残ってからテストを直した詳細は`.claude/rules/testing.md`「mtqg固有の検証項目」）：`kindOf`からruleのケースを外す（質問扱いになる）、`archivable`がruleを移す、`context`の`Reduced`がRulesを削る、`context`がruleの本文を100文字で切る、`countArchived`がruleを数えない、journalの`validate`がruleを断る。
+
 ## 現在地
 
-**v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。次は、段階4（外部ツール連携：MCP・フック。設計§11）に着手するかどうかを人間が判断するのを待つ。判断材料は、qsokuの報告のうち「11章で解くもの」3件（`docs/design/08-development.md`「12.3.1」）——対話中の質問・回答が自動で残らない、memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある。**
+**v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。**
+
+**種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。ブランチ`rule-kind`で実装済み、手元で`qsoku check`・`qsoku test`・`qsoku race`・mutation-checkまで確認済み。**pushとPR作成はまだ（人間の指示待ち）。**
+
+次は、段階4（外部ツール連携：MCP・フック。設計§11）に着手するかどうかを人間が判断するのを待つ。判断材料は、qsokuの報告のうち「11章で解くもの」3件（`docs/design/08-development.md`「12.3.1」）——対話中の質問・回答が自動で残らない、memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

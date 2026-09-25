@@ -73,6 +73,14 @@ func MemoCreate(text string) (journal.Event, error) {
 	return journal.Event{Op: journal.OpCreate, Type: journal.TypeMemo, Text: text}, nil
 }
 
+// RuleCreate returns the event that creates a rule.
+func RuleCreate(text string) (journal.Event, error) {
+	if strings.TrimSpace(text) == "" {
+		return journal.Event{}, ErrEmptyText
+	}
+	return journal.Event{Op: journal.OpCreate, Type: journal.TypeRule, Text: text}, nil
+}
+
 // TodoCreate returns the event that creates a todo, which starts open.
 func TodoCreate(text string) (journal.Event, error) {
 	if strings.TrimSpace(text) == "" {

@@ -19,6 +19,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | qa (`q`) | `add <question>`<br>`add <question-id> <answer>` | `done <question-id>` | `reopen <question-id>` | open (`--all`: all) |
 | bug (`b`) | `add <bug>`<br>`add <bug-id> <reply>` | `done <bug-id>` | `reopen <bug-id>` | open (`--all`: all) |
 | glossary (`g`) | `add <word> <definition>` | — | — | all |
+| rule (`r`) | `add <text>` | — | — | all |
 
 - A kind can be abbreviated to one letter: `mtqg t add ...` is `mtqg todo add ...`.
   The verb is always required.
@@ -107,7 +108,7 @@ A record is an object:
 | Field | Meaning |
 |---|---|
 | `id` | The full ID |
-| `kind` | `memo`, `todo`, `question`, `answer`, `bug`, `reply` or `glossary` |
+| `kind` | `memo`, `todo`, `question`, `answer`, `bug`, `reply`, `glossary` or `rule` |
 | `word` | The word (glossary only) |
 | `text` | The full text (the definition, for glossary) |
 | `re` | The ID of the question or bug this answers or replies to (answer and reply only) |
@@ -146,16 +147,16 @@ What each command prints, after `command`:
 
 | Command | Fields |
 |---|---|
-| `memo add`, `todo add`, `qa add`, `bug add`, `glossary add` | `record`: the record that was written |
+| `memo add`, `todo add`, `qa add`, `bug add`, `glossary add`, `rule add` | `record`: the record that was written |
 | `todo done`, `todo reopen`, `qa done`, ... | `record`, and `changed`: `false` if the record was in that state already and nothing was written |
 | `edit` | `record` (with the new text), and `changed`: `false` if the text was the same and nothing was written |
 | `delete` | `record`: what was hidden, and `hidden_replies`: the answers or replies that were hidden with it, as records (`[]` if none) |
 | `undo` | `event`: the line that was removed, in the form of [schema.md](schema.md), and `record`: the record it belongs to as it was before, if it is in the journal |
 | `search` | `query`, `records` (newest first), `count` |
 | `review` | `concurrent_status_changes`: `{"record", "changes"}` for each record, with `changes` as lines of `journal.jsonl`; `duplicate_words`: `{"word", "records"}`; `unattached_replies`: `{"record", "re_record"}`, with `re_record` left out if the `re` names nothing in the journal. Each is `[]` if there is nothing |
-| `archive` | `range`: `{"start", "end"}` (as read, `YYYY-MM-DD`); `file`: the archive file, relative to the repository; `dry_run`; `archived`: counts `memos`, `todos`, `questions`, `answers`, `bugs`, `replies`, `glossary_entries` (deleted ones) and `records` (their total); `skipped`: counts `open_todos`, `open_questions`, `open_bugs`, `glossary_entries`, `records`. When `archived.records` is 0 no file is made |
+| `archive` | `range`: `{"start", "end"}` (as read, `YYYY-MM-DD`); `file`: the archive file, relative to the repository; `dry_run`; `archived`: counts `memos`, `todos`, `questions`, `answers`, `bugs`, `replies`, `glossary_entries` (deleted ones), `rules` (deleted ones) and `records` (their total); `skipped`: counts `open_todos`, `open_questions`, `open_bugs`, `glossary_entries`, `rules`, `records`. When `archived.records` is 0 no file is made |
 | `format` | `events` (in time order, as lines of `journal.jsonl`; a line that has a mark in the input has `mark`, `+` or `-`), `count` |
-| `memo list` | `records`, `count` |
+| `memo list`, `rule list` | `records`, `count` |
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
@@ -274,6 +275,7 @@ mtqg t add Skip block comments
 mtqg q add Should nested block comments be supported?
 mtqg b add Parser crashes on empty input
 mtqg g add token The smallest unit produced by lexing
+mtqg r add Write mtqg records in English
 ```
 
 - The remaining arguments are joined with spaces. Quotes are not needed, except
@@ -288,7 +290,7 @@ mtqg g add token The smallest unit produced by lexing
   line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
 - **When there is no text to write, `$EDITOR` opens** on an empty file, and what is
   saved is the text (trailing line breaks dropped): with no arguments at all
-  (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`), for the answer or
+  (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`, `mtqg r add`), for the answer or
   the reply that follows an ID (`mtqg q add <question-id>`,
   `mtqg b add <bug-id>`) and for the definition that follows a word
   (`mtqg g add <word>`). `$EDITOR` may hold arguments and quotes (`code --wait`);
@@ -639,6 +641,7 @@ How a list is shown:
   with U+FFFD when shown, so that a record cannot change what the terminal
   does. Output with `--json` is not affected.
 - `mtqg memo list` shows every memo and ends with `N memos`.
+- `mtqg rule list` shows every rule and ends with `N rules`.
 
 ### show
 
@@ -677,7 +680,7 @@ Events
 ```
 
 - The first line names the kind (`memo`, `todo`, `question`, `answer`, `bug`,
-  `reply` or `glossary`), the ID and, for a todo, a question or a bug, its
+  `reply`, `glossary` or `rule`), the ID and, for a todo, a question or a bug, its
   state. The second line
   says who wrote it and when, with the kind of author.
 - The text is shown in full, with every line of it, however the output is
@@ -726,7 +729,7 @@ $ mtqg log --kind bug
 
 - Every record that is not hidden, of every kind, one line each, **newest
   first**: the time, the kind (`memo`, `todo`, `question`, `answer`, `bug`,
-  `reply`, `glossary`), the ID, the text and the author. A glossary entry shows
+  `reply`, `glossary`, `rule`), the ID, the text and the author. A glossary entry shows
   its word, a colon and its definition. An answer or a reply starts with
   `(to <id>)`, the question or bug it belongs to. A finished todo, question or
   bug ends with `done`.
@@ -735,7 +738,7 @@ $ mtqg log --kind bug
   only on a terminal, control characters replaced).
 - `--limit N` shows the newest `N` records; the default is 20, and `0` shows all.
   `--kind K` shows one kind only: `memo`, `todo`, `qa` (questions and answers),
-  `bug` (bugs and replies) or `glossary`, or the letter. Both may be written `--limit=N`. A value that is not
+  `bug` (bugs and replies), `glossary` or `rule`, or the letter. Both may be written `--limit=N`. A value that is not
   a whole number of 0 or more, or a kind that does not exist, is a mistake in the
   command line.
 - The last line counts the records: `N records`, or `N of M records (--limit 0
@@ -828,7 +831,8 @@ $ mtqg context
 # mtqg context — sample-parser (main)
 
 This is the process record of this project. Read the following before you start working.
-- Respect what has been decided (answered questions, memos stating a policy)
+- Follow the rules listed under Rules
+- Respect answered questions
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
 - Record questions, decisions, findings, bugs, and todos with mtqg as they come up
@@ -885,7 +889,8 @@ $ mtqg context --max-tokens 380
 # mtqg context — sample-parser (main)
 
 This is the process record of this project. Read the following before you start working.
-- Respect what has been decided (answered questions, memos stating a policy)
+- Follow the rules listed under Rules
+- Respect answered questions
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
 - Record questions, decisions, findings, bugs, and todos with mtqg as they come up
@@ -923,8 +928,38 @@ This is the process record of this project. Read the following before you start 
 Read full entries with mtqg show <id>.
 ```
 
-- Sections, in order: Attention, Open todos, Open questions, Open bugs, Recent
-  records, Glossary. A section with nothing in it is omitted.
+Rules stay in full, however small the budget: they are not among the things a
+budget can cut.
+
+<!-- mtqg:example repo=rules -->
+```
+$ mtqg context
+# mtqg context — sample-parser (main)
+
+This is the process record of this project. Read the following before you start working.
+- Follow the rules listed under Rules
+- Respect answered questions
+- Do not decide open questions on your own; confirm them
+- Use terms as defined in the glossary
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
+
+## Rules (3)
+- 4c1d8e2a70 Write error messages in English (yamada, 2026-09-18)
+- 9e05b7f3c1 Write mtqg records in English, including the text of questions and answers, so that every contributor can read them (yamada, 2026-09-19)
+    Code identifiers and quoted output may stay as they are.
+- a27f6d0e88 Do not put personal deadlines in todos (yamada, 2026-09-20)
+
+## Recent records (newest first)
+- 2026-09-20  yamada  rule  a27f6d0e88  Do not put personal deadlines in todos
+- 2026-09-19  yamada  rule  9e05b7f3c1  Write mtqg records in English, including the text of questions and answers, so that every contrib...
+- 2026-09-18  yamada  rule  4c1d8e2a70  Write error messages in English
+
+---
+Read full entries with mtqg show <id>.
+```
+
+- Sections, in order: Attention, Rules, Open todos, Open questions, Open bugs,
+  Recent records, Glossary. A section with nothing in it is omitted.
 - The first line is the repository (the name of the directory that holds
   `.mtqg/`) and the branch (`git branch --show-current`; left out when there is
   none, as on a detached HEAD). Then come the instructions for the reader, then
@@ -933,6 +968,9 @@ Read full entries with mtqg show <id>.
   definition, and each record with concurrent status changes (see
   [review](#review); for each, the first five, then how many more), and how many
   records are not committed (`git` cannot be run: this line is left out).
+- **Rules** lists every rule, oldest first, each with its ID, its author and the
+  time. The text is shown in full, however long: it is never cut and never left
+  out, whatever the budget (see below).
 - Open todos, questions and bugs are oldest first, each with its ID, its author
   and the time (`HH:MM` for today, a date for another day, in local time). A
   question or a bug says `unanswered` (`no replies`) or `awaiting confirmation`
@@ -942,13 +980,16 @@ Read full entries with mtqg show <id>.
   shows them, with the kind and the ID; an answer or a reply ends with the
   question or bug it belongs to. Glossary lists every entry, with its ID.
 - A text is its first line, cut to 100 characters with `...`, and control
-  characters are replaced as in a list.
+  characters are replaced as in a list. **A rule's text is the one exception: it
+  is shown in full, every line of it**, so that a convention is never read half
+  cut.
 - **Budget.** `--max-tokens N` sets it (default 2000; `0` means no limit). It is
   **an estimate from the number of characters, not a token count**: 4 ASCII
   characters count as 1 token, and every other character counts as 1. The
-  header, the instructions, Attention, the headings, the last line and **the
-  newest 3 questions and the newest 3 bugs** are never left out: what is open and
-  undecided must stay in view. When the text is over budget, mtqg leaves out, in
+  header, the instructions, Attention, **Rules**, the headings, the last line and
+  **the newest 3 questions and the newest 3 bugs** are never left out: what is
+  open, undecided, or a standing convention must stay in view. When the text is
+  over budget, mtqg leaves out, in
   this order and only as much as it takes: recent records (10, then 5, then 3,
   then none), the definitions of the glossary (leaving each word), the latest
   answers and replies, the oldest questions and bugs beyond those 3 of each (of
@@ -963,8 +1004,9 @@ Read full entries with mtqg show <id>.
   `command`, the fields are `repository`, `branch`, `attention`, `truncated` (true
   if anything was left out), `max_tokens` (`null` with `0`) and
   `estimated_tokens` (of the text form), and one object for each section:
-  `open_todos`, `open_questions`, `open_bugs`, `recent`, `glossary`, each with
-  `total` and `records`. In `open_questions` and `open_bugs` a record has
+  `rules`, `open_todos`, `open_questions`, `open_bugs`, `recent`, `glossary`,
+  each with `total` and `records` (`rules` is never reduced, so its `total`
+  and `records` always agree). In `open_questions` and `open_bugs` a record has
   `reply_count` and, if it was not left out, `latest_reply`. A glossary record has
   `definitions` (how many the word has) and, if the definitions were left out,
   no `id` and no `text`. `attention` holds `{"kind": "duplicate_word", "word": ...}`,
@@ -988,7 +1030,7 @@ $ git show HEAD | mtqg format
 
 - The columns are the local date and time, what the line did, the ID, the text
   and the author. For a line that creates a record, what it did is the kind:
-  `memo`, `todo`, `question`, `answer`, `bug`, `reply` or `glossary` (an answer or
+  `memo`, `todo`, `question`, `answer`, `bug`, `reply`, `glossary` or `rule` (an answer or
   a reply starts its text with `(to <id>)`, and a glossary entry with its word and
   a colon). For the other lines it is `done` or `reopen` (a change of state),
   `edit` or `delete`. An `edit` shows the new text. A change of state or a delete
@@ -1022,8 +1064,9 @@ mtqg archive 202404..2024-09 -n
 Moves the items whose last event falls in the range from `journal.jsonl` to
 `.mtqg/archive/<start>..<end>.jsonl` (see [schema.md](schema.md#archive) for
 which items move: finished todos, questions and bugs, memos, and anything that
-was deleted). No command reads `archive/` by itself; archived IDs are simply not
-found. To read an archive file, pass it to `mtqg format`.
+was deleted; rules and glossary entries move only when deleted). No command
+reads `archive/` by itself; archived IDs are simply not found. To read an
+archive file, pass it to `mtqg format`.
 
 The range is one argument, `<start>..<end>`:
 
@@ -1060,8 +1103,8 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
   deleted record counts under its kind. `-> ` names the file. When nothing moves
   it says `Archived: nothing`, and no file is made.
 - `Skipped:` counts what has its last event in the range but stays: todos,
-  questions and bugs that are open, and glossary entries. It is left out when
-  there are none.
+  questions and bugs that are open, glossary entries, and rules. It is left out
+  when there are none.
 - The file name is always the normalized range. Archiving the same range again
   appends to the same file.
 - `-n` (`--dry-run`) prints the same report without moving anything, and does not
@@ -1119,6 +1162,7 @@ $ mtqg archive --json 2025..2025 -n
     "bugs": 0,
     "replies": 0,
     "glossary_entries": 0,
+    "rules": 0,
     "records": 3
   },
   "skipped": {
@@ -1126,6 +1170,7 @@ $ mtqg archive --json 2025..2025 -n
     "open_questions": 0,
     "open_bugs": 0,
     "glossary_entries": 0,
+    "rules": 0,
     "records": 1
   }
 }
@@ -1199,10 +1244,10 @@ What is completed:
 
 | Where | Candidates |
 |---|---|
-| The first word | The kinds (`memo`, `todo`, `qa`, `bug`, `glossary`; not their one-letter forms) and the commands that have no kind |
+| The first word | The kinds (`memo`, `todo`, `qa`, `bug`, `glossary`, `rule`; not their one-letter forms) and the commands that have no kind |
 | After a kind | Its verbs |
 | A word that starts with `-` | The options the command takes that are not on the line yet, and the global options |
-| After `--kind` | `memo`, `todo`, `qa`, `bug`, `glossary` |
+| After `--kind` | `memo`, `todo`, `qa`, `bug`, `glossary`, `rule` |
 | The ID of `todo done`, `qa done`, `bug done` | The open ones of that kind |
 | The ID of `todo reopen`, `qa reopen`, `bug reopen` | The done ones of that kind |
 | The ID of `show`, `edit`, `delete` | Every record in view, newest first |
@@ -1268,6 +1313,7 @@ todo
 qa
 bug
 glossary
+rule
 ```
 
 Two records whose first 10 digits are the same are given in full:

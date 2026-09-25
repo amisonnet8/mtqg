@@ -99,8 +99,8 @@ func (j *Journal) validate(ev Event) error {
 		if ev.ID != "" {
 			return bad("id", "the id of a new record is chosen by the journal layer")
 		}
-		if !oneOf(ev.Type, TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary) {
-			return bad("type", "must be memo, todo, qa, bug or glossary")
+		if !oneOf(ev.Type, TypeMemo, TypeTodo, TypeQA, TypeBug, TypeGlossary, TypeRule) {
+			return bad("type", "must be memo, todo, qa, bug, glossary or rule")
 		}
 		if ev.Re != "" && !isID(ev.Re) {
 			return bad("re", "must be a full ID: 32 lowercase hex digits")

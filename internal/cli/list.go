@@ -44,6 +44,24 @@ func runListMemos(c *ctx) int {
 	return exitOK
 }
 
+func runListRules(c *ctx) int {
+	j, err := c.reader()
+	if err != nil {
+		return c.fail(err)
+	}
+	state, err := c.load(j)
+	if err != nil {
+		return c.fail(err)
+	}
+	rules := state.Rules()
+	if c.inv.json {
+		return c.emit(jsonMemoList{Command: c.inv.cmd.label(), Records: recordsJSON(rules), Count: len(rules)})
+	}
+	c.printRows(rules)
+	c.println(msgRuleFooter(len(rules)))
+	return exitOK
+}
+
 // printRows shows records as a list: ID, text, author, time. Only the first
 // line of a text is shown, made safe to show, and cut to the window when the
 // output is a terminal.

@@ -46,6 +46,10 @@ type ContextData struct {
 	// that is not known.
 	Uncommitted int
 
+	// Rules are every rule, oldest first. They are never reduced: what is a
+	// standing convention must stay in view, whatever the budget.
+	Rules []*Record
+
 	Todos      []*Record // open, oldest first
 	TodosTotal int
 
@@ -75,6 +79,8 @@ func (s *State) Context(uncommitted int) *ContextData {
 	for _, c := range s.ConcurrentStatusChanges() {
 		d.Conflicts = append(d.Conflicts, c.Record)
 	}
+
+	d.Rules = s.Rules()
 
 	d.Todos = s.Todos(false)
 	d.TodosTotal = len(d.Todos)

@@ -1,0 +1,3 @@
+{"id":"4c1d8e2a70b34f1e9a2c5d6e7f809123","op":"create","type":"rule","text":"エラーメッセージは英語で書く","v":0,"ts":"2026-09-18T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"9e05b7f3c1a24d8eb6f102938475e6a1","op":"create","type":"rule","text":"mtqgの記録は英語で書く。質問や回答の本文も含め、誰でも読めるようにするため\nコードの識別子や引用した出力は、そのままでよい。","v":0,"ts":"2026-09-19T09:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"a27f6d0e88c14a3f9b6d7e8f0a1b2c34","op":"create","type":"rule","text":"todoに個人の期限を書かない","v":0,"ts":"2026-09-20T09:00:00Z","author":{"kind":"human","name":"yamada"}}

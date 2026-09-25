@@ -233,6 +233,40 @@ func contains(lines []string, line string) bool {
 	return false
 }
 
+// TestArchiveTreatsRulesLikeGlossary checks that a rule, like a glossary entry,
+// is skipped, not moved, unless it was deleted (schema.md's archive table).
+func TestArchiveTreatsRulesLikeGlossary(t *testing.T) {
+	h := initialized(t)
+	h.setJournal(
+		record(idR1, "rule", "Write mtqg records in English", "yamada", "2023-01-15T09:00:00Z"),
+		record(idR2, "rule", "A rule that was deleted", "yamada", "2023-02-01T09:00:00Z"),
+		deleteLine(idR2, "yamada", "2023-03-01T09:00:00Z"),
+	)
+	// A dry run first, so the counts can be checked without moving anything yet.
+	obj := jsonObject(t, mustRun(h, "--json", "archive", "2023..2023", "-n"))
+	if got := field(t, obj, "archived", "rules"); got != float64(1) {
+		t.Errorf("archived.rules = %v, want 1", got)
+	}
+	if got := field(t, obj, "skipped", "rules"); got != float64(1) {
+		t.Errorf("skipped.rules = %v, want 1", got)
+	}
+
+	code, out, errOut := h.run("archive", "2023..2023")
+	wantExit(t, code, 0, out, errOut)
+	want := "Range: 2023-01-01..2023-12-31\n" +
+		"Archived: 1 rule -> .mtqg/archive/2023-01-01..2023-12-31.jsonl\n" +
+		"Skipped: 1 rule\n"
+	if out != want || errOut != "" {
+		t.Errorf("stdout:\n%s\nwant:\n%s\nstderr: %q", out, want, errOut)
+	}
+
+	code, out, errOut = h.run("rule", "list")
+	wantExit(t, code, 0, out, errOut)
+	if !strings.Contains(out, idR1[:10]) || strings.Contains(out, idR2[:10]) {
+		t.Errorf("rule list after archiving:\n%s", out)
+	}
+}
+
 func TestArchiveGivesBackWhatCatPutsBack(t *testing.T) {
 	h := initialized(t)
 	all := archiveFixture(h)

@@ -43,6 +43,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg archive <開始>..<終了> [-n]` | 期間内の項目を視界から外す（`-n`：報告だけ） |
 | `mtqg init [--agent claude-code] [-n]` | `.mtqg/`を作る。合わせてエージェントのフックも配線できる（`-n`：報告だけ） |
 | `mtqg hook <agent> <event>` | エージェントのフックのイベントを1つ実行する。エージェント自身の設定から呼ばれるもので、手で打つものではない。[エージェントのフック](#エージェントのフック)を参照 |
+| `mtqg mcp` | AIエージェント向けに、標準入出力でMCPサーバーを動かす。[MCPサーバー](#mcpサーバー)を参照 |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
 | `mtqg completion <シェル>` | シェルの補完スクリプトを出力する。`bash`、`zsh`、`fish`、`powershell` |
 | `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
@@ -235,6 +236,7 @@ Commit it to share the records.
 
 - `--agent`があるとき、既存の`.mtqg/`はエラーにならない。そのまま残し、エージェントの側のファイルは書く・更新する
 - `.claude/settings.json`に、`mtqg hook claude-code`を呼ぶ`SessionStart`・`Stop`のフックと、`env`に`MTQG_AUTHOR_KIND=ai`・`MTQG_AUTHOR_NAME=claude-code`を足す。すでにあるものはすべて残す：同じコマンドを呼ぶフックが既にあれば二重に足さず、既存の`env`の値は上書きしない。ファイルの最上位のキーは決まった順で書き戻すので、手で書いたファイルは最初の1回だけ並び替わる。その後の`init --agent`は何も変えない
+- `.mcp.json`に、`mtqg mcp`を呼ぶ`mcpServers.mtqg`を足す（[MCPサーバー](#mcpサーバー)参照）。既に`mcpServers.mtqg`があれば、中身を問わずそのまま残す
 - `CLAUDE.md`に、`mtqg context`と`.mtqg/SCHEMA.md`を指す1行を、まだ無ければ足す。`CLAUDE.md`が無ければ作る
 - 各ファイルは`Created:`・`Updated:`・`Unchanged:`のいずれかで報告する
 
@@ -1067,6 +1069,40 @@ mtqg hook <agent> <event>
 `session-start`・`stop`がセッションについて覚えるものは`.mtqg/.local/sessions/`に置かれ、コミットされない（[schema_ja.md](schema_ja.md#ファイル)参照）。失っても、セッションがもう一度尋ねられるか、`session-start`が既に持っていたgitの状態を読み直すだけで済む。
 
 フックは、自分自身の問題でエージェントのターンを決して壊さない：読めない入力、`.mtqg/`が見つからない、gitが使えない、はどれも黙って何も出さず、終了コードは0（他のすべてのコマンドと違い、`hook`はこれらに終了コード1を使わない）。`hook`は自分の`--json`を持たない：出力の形は、エージェント自身のフックのやり取りですでに決まっているため。
+
+## MCPサーバー
+
+```
+mtqg mcp
+```
+
+標準入出力でMCPサーバー（JSON-RPC 2.0）を動かす。AIエージェントがサブプロセスとして起動する、CLIと同じような使われ方をする。ネットワークのポートは使わず、`.mtqg/`に書くもの以外に実行をまたいだ状態は持たない。標準入力の終わりで終了コード0を返す。`mtqg init --agent claude-code`が`.mcp.json`にこれを配線する（[init](#init)参照）。手で打つものではない。
+
+何かを変えるツールにはすべて、対応するCLIのコマンドがあり、そのコマンドの`--json`と同じJSONオブジェクトを返す（[JSON出力](#json出力)参照）。例外は`context`と`search`の2つで、分量のために専用の形を持つ。失敗したツールは、`--json`が標準エラー出力に書くのと同じ`{"error": {...}}`の形を、エラーの結果（`isError: true`）として返す。サーバー自体は動き続ける。
+
+| ツール | 入力 | 対応するコマンド | 結果 |
+|---|---|---|---|
+| `memo_add`、`rule_add`、`todo_add` | `text` | `memo add`、`rule add`、`todo add` | 記録 |
+| `todo_done`、`todo_reopen` | `id` | `todo done`、`todo reopen` | 記録と、変化したかどうか |
+| `qa_ask` | `text` | `qa add <質問>` | 記録 |
+| `qa_answer` | `id`、`text` | `qa add <id> <回答>` | 記録 |
+| `qa_done`、`qa_reopen` | `id` | `qa done`、`qa reopen` | 記録と、変化したかどうか |
+| `bug_report` | `text` | `bug add <バグ>` | 記録 |
+| `bug_reply` | `id`、`text` | `bug add <id> <返信>` | 記録 |
+| `bug_done`、`bug_reopen` | `id` | `bug done`、`bug reopen` | 記録と、変化したかどうか |
+| `glossary_define` | `word`、`definition` | `glossary add` | 記録 |
+| `edit` | `id`、`text` | `edit <id> <text>` | 記録と、変化したかどうか |
+| `context` | `max_tokens`（省略時2000） | `mtqg context` | 同じ文章 |
+| `show` | `id` | `show` | 全文と履歴を持つ記録 |
+| `search` | `query`、`limit`（省略時20） | `search` | 一致する記録（新しい順、それぞれ100文字で切る） |
+
+補足：
+
+- `qa_ask`と`qa_answer`は別のツール（`bug_report`と`bug_reply`も同様）。CLIの`qa add`のように、最初の語がIDらしいかで見分けることはしない
+- `edit`は常に新しい本文を引数として受け取り、`$EDITOR`は開かない。CLIと同じく、今と同じ本文を渡すと何も変わらない
+- ツールとして公開しないもの：`delete`・`undo`・`archive`・`review`・`format`。記録を隠す・移すか、実行する前に人間がdiffや並行変更の報告を読んで判断する必要があるもので、人が打つコマンドのままにする
+- ツールが書くものの`author`は、常に`kind: "ai"`。`author.name`は、接続時にそのエージェントが名乗った名前から取り、`MTQG_AUTHOR_NAME`やgitからは取らない（[記録者](#記録者)参照）
+- `-C <path>`は`mtqg mcp`にも効き、すべてのツール呼び出しの対象リポジトリを固定する
 
 ## シェル補完
 

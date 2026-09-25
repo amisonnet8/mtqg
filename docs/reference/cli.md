@@ -45,6 +45,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg archive <start>..<end> [-n]` | Move the items of a date range out of view (`-n`: only report) |
 | `mtqg init [--agent claude-code] [-n]` | Create `.mtqg/`, optionally wiring up an agent's hooks too (`-n`: only report) |
 | `mtqg hook <agent> <event>` | Run one agent hook event. Called from the agent's own configuration, not typed by hand. See [Agent hooks](#agent-hooks) |
+| `mtqg mcp` | Run an MCP server on standard input and output, for an AI agent. See [MCP server](#mcp-server) |
 | `mtqg version` | Show the mtqg version and the repository's format version |
 | `mtqg completion <shell>` | Print the completion script of a shell: `bash`, `zsh`, `fish` or `powershell` |
 | `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
@@ -281,6 +282,9 @@ and `CLAUDE.md`:
   existing `env` value is never overwritten. The file's top-level keys are
   written back in a fixed order, so a hand-written file is reordered once, the
   first time; running `init --agent` again after that changes nothing.
+- `.mcp.json` gets an `mcpServers.mtqg` entry that runs `mtqg mcp` (see
+  [MCP server](#mcp-server)). An existing `mcpServers.mtqg` entry is left as it
+  is, whatever it contains.
 - `CLAUDE.md` gets one line pointing at `mtqg context` and `.mtqg/SCHEMA.md`, if
   it is not there already. A missing `CLAUDE.md` is created.
 - Each file is reported as `Created:`, `Updated:` or `Unchanged:`.
@@ -1328,6 +1332,58 @@ cannot parse, no `.mtqg/` where it looked, or git being unavailable are all
 quietly nothing to print, with exit code 0 (unlike every other command, `hook`
 does not use exit code 1 for these). `hook` has no `--json` of its own: what it
 prints is already fixed by the agent's own hook protocol.
+
+## MCP server
+
+```
+mtqg mcp
+```
+
+Runs an MCP server (JSON-RPC 2.0) on standard input and output: an AI agent
+starts it as a subprocess, the way it would use a CLI. No network port, no
+state kept between runs beyond what is written to `.mtqg/`. Exits with code 0
+on end of input. `mtqg init --agent claude-code` sets this up in `.mcp.json`
+(see [init](#init)); it is not meant to be typed by hand.
+
+Every tool that changes something has a matching CLI command, and returns the
+same JSON object that command's `--json` would (see [JSON output](#json-output)).
+The two exceptions, `context` and `search`, are shaped for size instead. A tool
+that fails returns its result as an error (`isError: true`) with the same
+`{"error": {...}}` shape `--json` writes to standard error; the server itself
+keeps running.
+
+| Tool | Input | Same as | Result |
+|---|---|---|---|
+| `memo_add`, `rule_add`, `todo_add` | `text` | `memo add`, `rule add`, `todo add` | the record |
+| `todo_done`, `todo_reopen` | `id` | `todo done`, `todo reopen` | the record, and whether it changed |
+| `qa_ask` | `text` | `qa add <question>` | the record |
+| `qa_answer` | `id`, `text` | `qa add <id> <answer>` | the record |
+| `qa_done`, `qa_reopen` | `id` | `qa done`, `qa reopen` | the record, and whether it changed |
+| `bug_report` | `text` | `bug add <bug>` | the record |
+| `bug_reply` | `id`, `text` | `bug add <id> <reply>` | the record |
+| `bug_done`, `bug_reopen` | `id` | `bug done`, `bug reopen` | the record, and whether it changed |
+| `glossary_define` | `word`, `definition` | `glossary add` | the record |
+| `edit` | `id`, `text` | `edit <id> <text>` | the record, and whether it changed |
+| `context` | `max_tokens` (default 2000) | `mtqg context` | the same text |
+| `show` | `id` | `show` | the record with its full text and history |
+| `search` | `query`, `limit` (default 20) | `search` | matching records, newest first, each cut to 100 characters |
+
+Notes:
+
+- `qa_ask` and `qa_answer` are separate tools (and likewise `bug_report` and
+  `bug_reply`): unlike the CLI's `qa add`, there is no guessing from whether
+  the first word looks like an ID.
+- `edit` always takes the new text as an argument; it never opens `$EDITOR`.
+  As with the CLI, giving the same text as before changes nothing.
+- Not exposed as tools: `delete`, `undo`, `archive`, `review`, `format`. These
+  either remove or move records, or need a person to read a diff or a
+  concurrent-change report before deciding what to do; they stay commands
+  typed by a person.
+- The `author` of anything a tool writes has `kind: "ai"`. `author.name` comes
+  from the name the connecting agent gives when it starts the connection, not
+  from `MTQG_AUTHOR_NAME` or git (see [Authors](#authors)).
+- `-C <path>` applies to `mtqg mcp` too, fixing which repository every tool
+  call acts on.
 
 ## Shell completion
 

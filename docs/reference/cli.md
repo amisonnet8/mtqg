@@ -43,7 +43,8 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg context [--max-tokens N]` | Summary for AI agents |
 | `mtqg format [--mark] [file]` | Pretty-print event lines found in any text |
 | `mtqg archive <start>..<end> [-n]` | Move the items of a date range out of view (`-n`: only report) |
-| `mtqg init` | Create `.mtqg/` |
+| `mtqg init [--agent claude-code] [-n]` | Create `.mtqg/`, optionally wiring up an agent's hooks too (`-n`: only report) |
+| `mtqg hook <agent> <event>` | Run one agent hook event. Called from the agent's own configuration, not typed by hand. See [Agent hooks](#agent-hooks) |
 | `mtqg version` | Show the mtqg version and the repository's format version |
 | `mtqg completion <shell>` | Print the completion script of a shell: `bash`, `zsh`, `fish` or `powershell` |
 | `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
@@ -247,13 +248,13 @@ No command creates `.mtqg/` except `mtqg init`.
 ## init
 
 ```
-mtqg init
+mtqg init [--agent claude-code] [-n]
 ```
 
 - Walks up the same way. At the repository root (`.git`), it creates `.mtqg/`
   next to `.git`, regardless of where it was run.
-- If it finds an existing `.mtqg/` on the way: error
-  (`.mtqg/ already exists: <path>`).
+- Without `--agent`, an existing `.mtqg/` found on the way is an error
+  (`.mtqg/ already exists: <path>`), and nothing is written.
 - Outside a git repository: error.
 - Creates `.mtqg/journal.jsonl`, `.mtqg/.gitattributes`, `.mtqg/.gitignore`,
   `.mtqg/version` and `.mtqg/SCHEMA.md`.
@@ -265,6 +266,66 @@ mtqg init
 $ mtqg init
 Created .mtqg/ in /home/me/sample-parser
 Commit it to share the records.
+```
+
+**`--agent claude-code`** also wires up that agent's hooks (see
+[Agent hooks](#agent-hooks)), in the same repository's `.claude/settings.json`
+and `CLAUDE.md`:
+
+- With `--agent`, an existing `.mtqg/` is not an error: it is left as it is, and
+  the agent's files are still written or updated.
+- `.claude/settings.json` gets a `SessionStart` and a `Stop` hook that call
+  `mtqg hook claude-code`, and an `env` of `MTQG_AUTHOR_KIND=ai` and
+  `MTQG_AUTHOR_NAME=claude-code`. Everything already in the file is kept: an
+  existing hook that already calls the same command is not duplicated, and an
+  existing `env` value is never overwritten. The file's top-level keys are
+  written back in a fixed order, so a hand-written file is reordered once, the
+  first time; running `init --agent` again after that changes nothing.
+- `CLAUDE.md` gets one line pointing at `mtqg context` and `.mtqg/SCHEMA.md`, if
+  it is not there already. A missing `CLAUDE.md` is created.
+- Each file is reported as `Created:`, `Updated:` or `Unchanged:`.
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code
+Created .mtqg/ in /home/me/sample-parser
+Commit it to share the records.
+Created: .claude/settings.json
+Created: CLAUDE.md
+```
+
+**`-n`** (or `--dry-run`) reports what `init` would do (with or without
+`--agent`) and writes nothing at all, not even `.mtqg/`:
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code -n
+Created (dry run): .mtqg/ in /home/me/sample-parser
+Created (dry run): .claude/settings.json
+Created (dry run): CLAUDE.md
+```
+
+`--json` adds `agent` and `files` (each with `path` and `result`:
+`created`, `updated` or `unchanged`):
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code --json
+{
+  "command": "init",
+  "root": "/home/me/sample-parser",
+  "agent": "claude-code",
+  "files": [
+    {
+      "path": ".claude/settings.json",
+      "result": "created"
+    },
+    {
+      "path": "CLAUDE.md",
+      "result": "created"
+    }
+  ]
+}
 ```
 
 ## Adding records
@@ -1221,6 +1282,52 @@ version is newer than it knows, and asks you to update mtqg.
 The format version is `0` (unstable) and there is no command to raise it yet.
 One will be added when a format `1` or later exists (see
 [schema.md](schema.md#versioning)).
+
+## Agent hooks
+
+```
+mtqg hook <agent> <event>
+```
+
+An adapter for one agent's hook event: it reads what the agent gives it on
+standard input, and writes back in the shape that agent expects. It is meant to
+be called from the agent's own configuration (`mtqg init --agent` sets this
+up), not typed by hand. `<agent>` and `<event>` that mtqg does not know are a
+usage error (exit code 2); once they are known, `hook` never fails the agent's
+turn (see below).
+
+The only agent today is `claude-code`, with two events:
+
+- **`session-start`**: reads `session_id` and `cwd` from the input. If there is
+  no `.mtqg/` to find from `cwd`, it prints nothing. Otherwise it remembers what
+  the repository looks like right now (the commit `HEAD` points to, and a
+  digest of the working tree other than `.mtqg/` itself) under this session, and
+  prints the same text `mtqg context` would, for the agent to read.
+- **`stop`**: reads `session_id`, `cwd` and `stop_hook_active`. It says nothing
+  unless all of these hold: the session is one `session-start` saw,
+  `stop_hook_active` is not set, nothing has been recorded with mtqg since the
+  session started, something in the repository has changed since (a commit, or
+  anything in the working tree other than `.mtqg/`), and this session has not
+  already been told once. When they do, it prints one line of JSON that tells
+  the agent to keep going instead of ending its turn:
+
+  ```
+  {"decision":"block","reason":"..."}
+  ```
+
+  A session is only ever told once: after that, `stop` says nothing for the
+  rest of it, even if more goes unrecorded.
+
+What `session-start` and `stop` remember about a session is kept in
+`.mtqg/.local/sessions/`, which is never committed (see
+[schema.md](schema.md#files)). Losing it only means a session may be asked
+again, or `session-start` re-reads git state it already had.
+
+A hook never breaks the agent's turn over a problem of its own: input mtqg
+cannot parse, no `.mtqg/` where it looked, or git being unavailable are all
+quietly nothing to print, with exit code 0 (unlike every other command, `hook`
+does not use exit code 1 for these). `hook` has no `--json` of its own: what it
+prints is already fixed by the agent's own hook protocol.
 
 ## Shell completion
 

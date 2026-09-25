@@ -67,10 +67,18 @@ mtqg/
 - **README**: **看板としてのREADMEは最後に作る**（`PLAN.md`「READMEとGitHubの看板」）。先に作ってはいけない。ただしリポジトリはpublicなので、未完成の間は**注意書きだけの`README.md`・`README_ja.md`**をルートに置く（Step 1）。注意書きに売り文句・機能の説明・使い方を足さない
 - **配布物（ビルド済みバイナリ）**: リポジトリにコミットしない（distribution.md）。`.gitignore`には**ルート直下に限定して**`/mtqg`・`/mtqg.exe`・`/dist/`と書く。`mtqg`とだけ書くと、ソースの`cmd/mtqg/`まで無視されて`main.go`がコミットされない（コマンド名とディレクトリ名が同じため）
 
+## `.mtqg/`が段階4から実際に使われている
+
+段階4（2026-09-25〜）から、mtqg自身の開発過程を`.mtqg/`に記録している（`.claude/rules/mtqg-usage.md`）。`mtqg init`はmain製の安定版バイナリで一度だけ実行済み。
+
+## 段階4a（`mtqg hook`・`mtqg init --agent`）で足したもの
+
+- **`internal/hook/`は作らなかった。** `mtqg hook`は`internal/cli/hook.go`・`hook_claude.go`に置く。`session-start`が出す文章は`mtqg context`と同じもので、データを文章にするのはCLIの層の役目（cli-output.md）だから。エージェント間で共通の判断（`ShouldPrompt`）はモデル層（`internal/model/session.go`）に、セッションの状態の読み書き（`.mtqg/.local/sessions/`）はジャーナル層（`internal/journal/session.go`）に置く。段階4bでMCPを足すときに、`internal/hook/`相当の層が本当に要るかは改めて判断する
+- **`internal/cli/agent_claude.go`**：`mtqg init --agent claude-code`が`.claude/settings.json`・`CLAUDE.md`を書き換える。`.mtqg/`の外のファイルなのでジャーナル層ではなく、CLIの層に置く（利用者とのやり取りに近い：エージェントの設定ファイルという「入口の外側」を触るため）
+
 ## 後の段階で増えるもの（今は作らない）
 
-- `.mtqg/`：段階4で`mtqg init`を実行すると、mtqg自身の記録がここに入る
-- `internal/mcp/`、`internal/hook/`：段階4
-- VSCode拡張（設計§11.4）は、**別リポジトリにする方向**（最終判断は段階4・`PLAN.md`）。TypeScriptで、本体とは`--json`でつながるだけなので、本体のリポジトリをGoのツールチェーンだけで完結させる。このリポジトリにTypeScriptのコードやNode.jsの設定を持ち込まないこと
-- `mtqg mcp`・`mtqg hook`は**このリポジトリに置く**。同じバイナリのサブコマンドで、`internal/`のコアを使うため（`internal/`は別リポジトリからimportできない）
+- `internal/mcp/`：段階4b
+- VSCode拡張（設計§11.4）は、**別リポジトリにする方向**（最終判断は段階4b以降・`PLAN.md`）。TypeScriptで、本体とは`--json`でつながるだけなので、本体のリポジトリをGoのツールチェーンだけで完結させる。このリポジトリにTypeScriptのコードやNode.jsの設定を持ち込まないこと
+- `mtqg mcp`は**このリポジトリに置く**（`mtqg hook`は段階4aで既に置いた）。同じバイナリのサブコマンドで、`internal/`のコアを使うため（`internal/`は別リポジトリからimportできない）
 - `.goreleaser.yaml`：公開の段階（distribution.md）

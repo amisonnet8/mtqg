@@ -41,7 +41,8 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg context [--max-tokens N]` | AIエージェント向けの要約 |
 | `mtqg format [--mark] [ファイル]` | 任意のテキストに含まれるイベント行を整形して表示する |
 | `mtqg archive <開始>..<終了> [-n]` | 期間内の項目を視界から外す（`-n`：報告だけ） |
-| `mtqg init` | `.mtqg/`を作る |
+| `mtqg init [--agent claude-code] [-n]` | `.mtqg/`を作る。合わせてエージェントのフックも配線できる（`-n`：報告だけ） |
+| `mtqg hook <agent> <event>` | エージェントのフックのイベントを1つ実行する。エージェント自身の設定から呼ばれるもので、手で打つものではない。[エージェントのフック](#エージェントのフック)を参照 |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
 | `mtqg completion <シェル>` | シェルの補完スクリプトを出力する。`bash`、`zsh`、`fish`、`powershell` |
 | `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
@@ -214,11 +215,11 @@ No .mtqg/ found. Run `mtqg init` (will be created at /home/me/sample-parser)
 ## init
 
 ```
-mtqg init
+mtqg init [--agent claude-code] [-n]
 ```
 
 - 同じように上にたどる。リポジトリのルート（`.git`）で、どこで実行したかに関係なく、`.git`の隣に`.mtqg/`を作る
-- 途中で既存の`.mtqg/`に当たったらエラー（`.mtqg/ already exists: <パス>`）
+- `--agent`が無いとき、途中で既存の`.mtqg/`に当たったらエラー（`.mtqg/ already exists: <パス>`）で、何も書かない
 - gitリポジトリの外ではエラー
 - `.mtqg/journal.jsonl`、`.mtqg/.gitattributes`、`.mtqg/.gitignore`、`.mtqg/version`、`.mtqg/SCHEMA.md`を作る
 - gitの設定を変えず、コミットもしない。`.mtqg/`をコミットするよう案内する：
@@ -228,6 +229,54 @@ mtqg init
 $ mtqg init
 Created .mtqg/ in /home/me/sample-parser
 Commit it to share the records.
+```
+
+**`--agent claude-code`** は、そのエージェントのフック（[エージェントのフック](#エージェントのフック)参照）を、同じリポジトリの`.claude/settings.json`と`CLAUDE.md`に配線する。
+
+- `--agent`があるとき、既存の`.mtqg/`はエラーにならない。そのまま残し、エージェントの側のファイルは書く・更新する
+- `.claude/settings.json`に、`mtqg hook claude-code`を呼ぶ`SessionStart`・`Stop`のフックと、`env`に`MTQG_AUTHOR_KIND=ai`・`MTQG_AUTHOR_NAME=claude-code`を足す。すでにあるものはすべて残す：同じコマンドを呼ぶフックが既にあれば二重に足さず、既存の`env`の値は上書きしない。ファイルの最上位のキーは決まった順で書き戻すので、手で書いたファイルは最初の1回だけ並び替わる。その後の`init --agent`は何も変えない
+- `CLAUDE.md`に、`mtqg context`と`.mtqg/SCHEMA.md`を指す1行を、まだ無ければ足す。`CLAUDE.md`が無ければ作る
+- 各ファイルは`Created:`・`Updated:`・`Unchanged:`のいずれかで報告する
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code
+Created .mtqg/ in /home/me/sample-parser
+Commit it to share the records.
+Created: .claude/settings.json
+Created: CLAUDE.md
+```
+
+**`-n`**（`--dry-run`）は、`init`が（`--agent`ありでもなしでも）何をするかを報告するだけで、`.mtqg/`を含めて何も書かない：
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code -n
+Created (dry run): .mtqg/ in /home/me/sample-parser
+Created (dry run): .claude/settings.json
+Created (dry run): CLAUDE.md
+```
+
+`--json`は`agent`と`files`（それぞれ`path`と`result`：`created`・`updated`・`unchanged`）を足す：
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init --agent claude-code --json
+{
+  "command": "init",
+  "root": "/home/me/sample-parser",
+  "agent": "claude-code",
+  "files": [
+    {
+      "path": ".claude/settings.json",
+      "result": "created"
+    },
+    {
+      "path": "CLAUDE.md",
+      "result": "created"
+    }
+  ]
+}
 ```
 
 ## 記録を足す
@@ -995,6 +1044,29 @@ Repository format version: 0 (this mtqg supports up to 0)
   `Repository format version: unknown (no .mtqg/ found)`になる
 
 形式のバージョンは`0`（未確定）で、それを上げるコマンドはまだない。形式1以降ができたときに用意する（[schema_ja.md](schema_ja.md#バージョン)）。
+
+## エージェントのフック
+
+```
+mtqg hook <agent> <event>
+```
+
+エージェントの1つのフックイベントに対するアダプタ。標準入力でエージェントが渡すものを読み、そのエージェントが期待する形で書き戻す。エージェント自身の設定から呼ばれることを想定しており（`mtqg init --agent`がその配線をする）、手で打つものではない。mtqgの知らない`<agent>`・`<event>`はコマンドラインの誤り（終了コード2）。両方が分かった後は、`hook`はエージェントのターンを決して失敗させない（下記）。
+
+今のところ唯一のエージェントは`claude-code`で、2つのイベントがある。
+
+- **`session-start`**：入力から`session_id`と`cwd`を読む。`cwd`から`.mtqg/`が見つからなければ何も出さない。見つかれば、今のリポジトリの様子（`HEAD`が指すコミット、`.mtqg/`自身を除く作業ツリーのダイジェスト）をこのセッションの下に覚え、`mtqg context`と同じ文章をエージェントが読めるよう出力する。
+- **`stop`**：入力から`session_id`・`cwd`・`stop_hook_active`を読む。次のすべてが揃わない限り何も言わない：そのセッションが`session-start`で見たものであること、`stop_hook_active`が立っていないこと、セッション開始以降mtqgに何も記録されていないこと、その間にリポジトリの何か（コミット、または`.mtqg/`以外の作業ツリー）が変わっていること、このセッションでまだ一度も伝えていないこと。すべて揃ったときは、ターンを終えずに続けるようエージェントに伝える、JSON1行を出力する：
+
+  ```
+  {"decision":"block","reason":"..."}
+  ```
+
+  1つのセッションで伝えるのは一度だけ：その後は、記録されないものがどれだけ増えても、`stop`は残りのセッションの間何も言わない。
+
+`session-start`・`stop`がセッションについて覚えるものは`.mtqg/.local/sessions/`に置かれ、コミットされない（[schema_ja.md](schema_ja.md#ファイル)参照）。失っても、セッションがもう一度尋ねられるか、`session-start`が既に持っていたgitの状態を読み直すだけで済む。
+
+フックは、自分自身の問題でエージェントのターンを決して壊さない：読めない入力、`.mtqg/`が見つからない、gitが使えない、はどれも黙って何も出さず、終了コードは0（他のすべてのコマンドと違い、`hook`はこれらに終了コード1を使わない）。`hook`は自分の`--json`を持たない：出力の形は、エージェント自身のフックのやり取りですでに決まっているため。
 
 ## シェル補完
 

@@ -277,8 +277,18 @@ type jsonStatus struct {
 }
 
 type jsonInit struct {
-	Command string `json:"command"`
-	Root    string `json:"root"`
+	Command string          `json:"command"`
+	Root    string          `json:"root"`
+	Agent   string          `json:"agent,omitempty"`
+	Files   []jsonAgentFile `json:"files,omitempty"`
+}
+
+// jsonAgentFile is one file "mtqg init --agent" touched, and what happened to
+// it: "created", "updated" or "unchanged" (the same words the non-JSON output
+// uses, cli-output.md).
+type jsonAgentFile struct {
+	Path   string `json:"path"`
+	Result string `json:"result"`
 }
 
 type jsonVersion struct {

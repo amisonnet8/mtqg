@@ -156,6 +156,10 @@ func (c *ctx) candidatesAt(p position, partial string) []candidate {
 		for _, k := range kinds {
 			list = append(list, candidate{value: k.name})
 		}
+	case p.pending == "--agent":
+		for _, a := range initAgents {
+			list = append(list, candidate{value: a})
+		}
 	case p.pending != "":
 		// The value of another option: a number.
 	case strings.HasPrefix(partial, "-") && !p.optsDone:

@@ -106,13 +106,26 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **CIも3OS全ジョブgreen（PR #3、2026-09-25、人間が確認）。mainへマージ済み。**
 
+## 段階4a：`mtqg hook claude-code`・`mtqg init --agent claude-code`（2026-09-25）
+
+人間の指示で段階4（外部ツール連携。設計§11）に着手。設計§11.6の順（指示ファイル→フック→MCP）に沿い、段階4を区切って進める。**今回（4a）は、mtqg自身での記録の開始、`mtqg hook claude-code`（`session-start`・`stop`）、`mtqg init --agent claude-code`まで。** MCP（設計§11.2）・VSCode拡張（設計§11.4）は次の区切りへ送った。作業はブランチ`stage4a-hooks`。
+
+- **mtqg自身の開発過程を`.mtqg/`に記録する運用を始めた。** mainから`go install ./cmd/mtqg`した安定版バイナリを使う（開発中のビルド`./mtqg`とは分け、壊れた実装で自分の記録を壊さないため）。`.claude/rules/mtqg-usage.md`を新設し、`CLAUDE.md`の該当節を更新した
+- **`mtqg hook <agent> <event>`**：`session-start`は`mtqg context`と同じ文章を出力し、セッションの開始時の状態（`HEAD`、`.mtqg/`を除く作業ツリーのダイジェスト）を`.mtqg/.local/sessions/<session-id>.json`に覚える。`stop`は、セッション開始以降に記録が無く・何かが変わっていて・まだ促していないときだけ、1度だけ`{"decision":"block","reason":"..."}`を出す。エージェント依存でない判定（`model.ShouldPrompt`）と、Claude Code固有のアダプタ（`internal/cli/hook_claude.go`）を分けた。**`internal/hook/`は作らなかった**：`session-start`の出力はCLIの層が持つ`context`の文章そのものだから（`.claude/rules/directory-structure.md`に理由を記録）
+- **`mtqg init --agent claude-code [-n]`**：`.claude/settings.json`の`hooks`（`SessionStart`・`Stop`）と`env`（`MTQG_AUTHOR_KIND`・`MTQG_AUTHOR_NAME`）を配線し、`CLAUDE.md`に1行足す。既存の値は一切上書きしない。既存の`.mtqg/`は`--agent`付きならエラーにしない
+- 仕様（`schema.md`・`cli.md`と日本語版）を先に更新してから、ジャーナル層→モデル層→CLI層の順に実装した。`docs/design/07-integrations.md`§11.3に実装ノートを追記（session状態の置き場所は実は2026-09-19に既に決めていたが、11.3の下書きが古いままだったのを実装時に見つけて直した、など。詳細はそちら）
+
+**手元で確かめたこと：** `qsoku check`・`qsoku test`（e2e）・`qsoku race`・`qsoku shellcheck`が通る。`qsoku docs-examples`はこの区切りでは使わず、新しい例（`init --agent`・`-n`・`--json`）は手で書いてからe2eの`TestDocExamples`で実際の出力と一致することを確認した（`mtqg hook`はJSON標準入力が要るため、このドキュメント例の仕組み（`git ... | mtqg ...`しか対応しない）では動かせず、プレーンな説明文に留めた）。**壊して確かめた**（mutation-checkスキル、10個の変異、すべて検出）。1つ生き残ってからテストを足した詳細、および実装中に見つけた2つの不具合（`ShouldPrompt`の丸めの向き、`init --agent -n`が実際に書き込んでいた）は`.claude/rules/testing.md`「mtqg固有の検証項目」を参照。
+
+**CIは未確認（この区切りではまだpush・PRを行っていない）。**
+
 ## 現在地
 
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。**
 
 **種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。PR #3、CIの3OS全ジョブgreen、mainへマージ済み。
 
-次は、段階4（外部ツール連携：MCP・フック。設計§11）に着手するかどうかを人間が判断するのを待つ。判断材料は、qsokuの報告のうち「11章で解くもの」3件（`docs/design/08-development.md`「12.3.1」）——対話中の質問・回答が自動で残らない、memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある。
+**段階4a（`mtqg hook claude-code`・`mtqg init --agent claude-code`）を実装した（2026-09-25。上の「段階4a」の節）。** 手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`、mutation-check）はすべて通ったが、**CIはまだ確認していない**（push・PR未作成）。次はこれをpush・PR化してCIを確認し、マージすること。マージ後は、mtqg自身の`.claude/settings.json`に`mtqg init --agent claude-code`を実行して実地でフックを配線する予定（`.claude/settings.json`は人間の管理下のため、`-n`で内容を確認してから人間が実行する）。その後、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

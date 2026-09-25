@@ -37,13 +37,31 @@ func runContext(c *ctx) int {
 		budget = n
 	}
 
-	j, err := c.reader()
+	text, cuts, view, reduced, err := c.contextDocument(budget)
 	if err != nil {
 		return c.fail(err)
 	}
+	if c.inv.json {
+		return c.emit(view.json(c.inv.cmd.label(), reduced, cuts > 0, budget, estimateTokens(text)))
+	}
+	_, _ = c.env.Stdout.Write([]byte(text))
+	return exitOK
+}
+
+// contextDocument builds the text "mtqg context" shows, at the given budget: the
+// same document, built the same way, whether it is asked for by a person
+// (runContext) or by the session-start hook (hookClaudeCode, §11.3 - the two
+// must never disagree about what a session is told). It is the same code as
+// runContext used to have inline, split out only so a second caller can share
+// it.
+func (c *ctx) contextDocument(budget int) (text string, cuts int, view contextView, reduced *model.ContextData, err error) {
+	j, err := c.reader()
+	if err != nil {
+		return "", 0, contextView{}, nil, err
+	}
 	state, err := c.load(j)
 	if err != nil {
-		return c.fail(err)
+		return "", 0, contextView{}, nil, err
 	}
 
 	// What git says: how many records are not committed, and the branch. If git
@@ -60,24 +78,19 @@ func runContext(c *ctx) int {
 	case errors.Is(err, journal.ErrGitUnavailable):
 		c.warning(warningReport{kind: kindGitUnavailable, message: "warning: " + msgGitUnavailable(errors.Unwrap(err))})
 	default:
-		return c.fail(err)
+		return "", 0, contextView{}, nil, err
 	}
 
 	d := state.Context(uncommitted)
 	repository := filepath.Base(root)
-	view := contextView{c: c, repository: repository, branch: branch, now: c.env.Now()}
-	cuts := fitToBudget(d.Steps(), budget, func(n int) int {
+	view = contextView{c: c, repository: repository, branch: branch, now: c.env.Now()}
+	cuts = fitToBudget(d.Steps(), budget, func(n int) int {
 		return estimateTokens(strings.Join(view.lines(d.Reduced(n)), "\n") + "\n")
 	})
-	reduced := d.Reduced(cuts)
+	reduced = d.Reduced(cuts)
 	lines := view.lines(reduced)
-	text := strings.Join(lines, "\n") + "\n"
-
-	if c.inv.json {
-		return c.emit(view.json(c.inv.cmd.label(), reduced, cuts > 0, budget, estimateTokens(text)))
-	}
-	_, _ = c.env.Stdout.Write([]byte(text))
-	return exitOK
+	text = strings.Join(lines, "\n") + "\n"
+	return text, cuts, view, reduced, nil
 }
 
 // estimateTokens says roughly how many tokens a text is, from the number of

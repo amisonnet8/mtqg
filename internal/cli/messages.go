@@ -407,6 +407,49 @@ func msgBadKind(value string) string {
 	return fmt.Sprintf("Option --kind needs one of %s (or its letter), not %q.", strings.Join(names, ", "), value)
 }
 
+// hook, init --agent
+
+func msgUnknownAgent(word string, agents []string) string {
+	return fmt.Sprintf("Unknown agent %q: mtqg knows %s.", word, strings.Join(agents, ", "))
+}
+
+func msgUnknownHookEvent(agent, word string, events []string) string {
+	return fmt.Sprintf("Unknown event %q for %s: mtqg knows %s.", word, agent, strings.Join(events, ", "))
+}
+
+func msgHookBadInput(err error) string {
+	return fmt.Sprintf("could not read the hook's input: %v", err)
+}
+
+// msgHookStopReason is what Claude Code shows the agent when a Stop hook keeps
+// it from ending its turn (§11.3). It names what to do and the command to read
+// what is already recorded, in one or two lines.
+func msgHookStopReason() string {
+	return "Before ending: record with mtqg anything worth keeping from this turn " +
+		"(decisions made, questions asked and answered, bugs found - even ones already " +
+		"fixed, things left to do). Run `mtqg context` to see what is already recorded."
+}
+
+func msgWouldCreateMtqg(root string) string {
+	return fmt.Sprintf("Created (dry run): .mtqg/ in %s", root)
+}
+
+func msgAgentExisting(path string) string {
+	return fmt.Sprintf(".mtqg/ already exists: %s (left as it is)", path)
+}
+
+func msgAgentFileResult(status, path string, dryRun bool) string {
+	label := map[string]string{"created": "Created", "updated": "Updated", "unchanged": "Unchanged"}[status]
+	if dryRun && status != "unchanged" {
+		label += " (dry run)"
+	}
+	return label + ": " + path
+}
+
+func msgAgentSettingsInvalid(path string, err error) string {
+	return fmt.Sprintf("%s is not valid JSON, so mtqg will not change it: %v", path, err)
+}
+
 // review
 
 func msgReviewNothing() string { return "Nothing to review" }

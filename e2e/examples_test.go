@@ -436,6 +436,12 @@ func (r *exampleRunner) outputs(t *testing.T, ex *example, useBinary bool) []str
 	for _, c := range ex.cmds {
 		out, _ := run(t, dir, vars, c.text, useBinary)
 		if ex.opts.path != "" {
+			// A --json example can hold the path JSON-encoded, which doubles every
+			// backslash (Windows only: dir has no backslash to double elsewhere).
+			// Replace that form first, then the plain form.
+			if escaped := strings.ReplaceAll(dir, `\`, `\\`); escaped != dir {
+				out = strings.ReplaceAll(out, escaped, ex.opts.path)
+			}
 			out = strings.ReplaceAll(out, dir, ex.opts.path)
 		}
 		got = append(got, strings.TrimRight(out, "\n"))

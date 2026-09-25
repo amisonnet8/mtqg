@@ -66,13 +66,13 @@ func addTools(server *mcp.Server, env Env, dir string) {
 			return mcpAdd(c, create, in.Text)
 		})
 	}
-	add("memo_add", "memo", "add", "Record a memo: an observation or something worth remembering.", model.MemoCreate)
+	add("memo_add", "memo", "add", "Record a memo: an observation or something worth remembering. Not for a defect (something that should have worked but did not) — use bug_report for that, even if already fixed.", model.MemoCreate)
 	add("rule_add", "rule", "add", "Record a rule: something that, once read, can be followed as it stands.", model.RuleCreate)
 	add("todo_add", "todo", "add", "Record a todo.", model.TodoCreate)
 	add("qa_ask", "qa", "add", "Ask a question that will wait for an answer.", func(text string) (journal.Event, error) {
 		return model.ParentCreate(journal.TypeQA, text)
 	})
-	add("bug_report", "bug", "add", "Report a bug, including one that was already fixed.", func(text string) (journal.Event, error) {
+	add("bug_report", "bug", "add", "Report a bug: something that should have worked but did not, including one already fixed (fixing it is not a reason to skip recording it, or to record it as a memo instead).", func(text string) (journal.Event, error) {
 		return model.ParentCreate(journal.TypeBug, text)
 	})
 

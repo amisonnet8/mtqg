@@ -30,6 +30,7 @@
 - **`.claude/skills/`** — 繰り返す手順のSkill。今は**`mutation-check`**（実装を1か所ずつ壊して、テストが効いているかを確かめる。`testing.md`「壊して確かめる」）。作業の区切りで、テストを足したときに使う
 - **`.claude/rules/git-integration.md`** — 製品としてのmtqgがgitに対してしてよいこと・いけないこと
 - **`.claude/rules/distribution.md`** — 配布方法（`go install`、cgoなし、バージョンの取り方）
+- **`.claude/rules/mtqg-usage.md`** — 段階4から、mtqg自身の開発過程を`.mtqg/`に記録する際の使い方（記録者、種類の使い分け、使うバイナリ）
 
 これらのルールファイルは、実装中に得た細かい気づき・教訓を Claude Code 自身が育てていくものである。新しく気づいたルール・踏んだ落とし穴があれば、該当するファイルに追記すること。どのファイルにも当てはまらない新しい種類の気づきであれば、新しいルールファイルを作ってよい（作ったらこの一覧にも足すこと）。
 
@@ -94,7 +95,7 @@
 
 ## mtqg自身の記録について
 
-段階3まで、mtqg自身の経緯は`PLAN.md`と`docs/design/`に残す（mtqgはまだ使わない）。段階4から`.mtqg/`に記録する（`PLAN.md`「開発の段階」）。
+段階3まで、mtqg自身の経緯は`PLAN.md`と`docs/design/`に残した（mtqgはまだ使わなかった）。**段階4から`.mtqg/`に記録している**（`PLAN.md`「開発の段階」、`.claude/rules/mtqg-usage.md`）。`PLAN.md`と`docs/design/`は引き続き置き、区切りの記録・経緯の要約を担う。日々の細かい気づき・質問・不具合は`.mtqg/`へ。
 
 ## ルール・スキルの提案
 

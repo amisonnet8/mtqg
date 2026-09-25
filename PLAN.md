@@ -117,7 +117,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **手元で確かめたこと：** `qsoku check`・`qsoku test`（e2e）・`qsoku race`・`qsoku shellcheck`が通る。`qsoku docs-examples`はこの区切りでは使わず、新しい例（`init --agent`・`-n`・`--json`）は手で書いてからe2eの`TestDocExamples`で実際の出力と一致することを確認した（`mtqg hook`はJSON標準入力が要るため、このドキュメント例の仕組み（`git ... | mtqg ...`しか対応しない）では動かせず、プレーンな説明文に留めた）。**壊して確かめた**（mutation-checkスキル、10個の変異、すべて検出）。1つ生き残ってからテストを足した詳細、および実装中に見つけた2つの不具合（`ShouldPrompt`の丸めの向き、`init --agent -n`が実際に書き込んでいた）は`.claude/rules/testing.md`「mtqg固有の検証項目」を参照。
 
-**CIは未確認（この区切りではまだpush・PRを行っていない）。**
+**CIも3OS全ジョブgreen（PR #4、2026-09-25、人間が確認。mainへマージ済み、`b12183a`）。** 途中、`windows-latest`の`check`が`TestRewriteWhileGoroutinesAppend`（既知の間欠的フレーク、`testing.md`「証明にならないガード」参照）で1度落ちたが、このPRの変更とは無関係と確認のうえ再実行して通った。マージ前に、`docs/reference/`の`--json`の例（`init --agent --json`）でWindows固有の不具合を1件見つけて直した（`e2e/examples_test.go`のパス置き換えがJSONエスケープ後のバックスラッシュに対応していなかった。詳細は`.claude/rules/testing.md`「GitHub Actions CIの落とし穴」）。
 
 ## 現在地
 
@@ -125,7 +125,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。PR #3、CIの3OS全ジョブgreen、mainへマージ済み。
 
-**段階4a（`mtqg hook claude-code`・`mtqg init --agent claude-code`）を実装した（2026-09-25。上の「段階4a」の節）。** 手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`、mutation-check）はすべて通ったが、**CIはまだ確認していない**（push・PR未作成）。次はこれをpush・PR化してCIを確認し、マージすること。マージ後は、mtqg自身の`.claude/settings.json`に`mtqg init --agent claude-code`を実行して実地でフックを配線する予定（`.claude/settings.json`は人間の管理下のため、`-n`で内容を確認してから人間が実行する）。その後、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
+**段階4a（`mtqg hook claude-code`・`mtqg init --agent claude-code`）を実装した（2026-09-25。上の「段階4a」の節）。** 手元の検証（`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`、mutation-check）に加え、CIも3OS全ジョブgreen（PR #4、mainへマージ済み）。
+
+次：**まだ実地では配線していない。** mtqg自身の`.claude/settings.json`に`mtqg init --agent claude-code`を実行して、このリポジトリで実際にフックを配線する（`.claude/settings.json`は人間の管理下のため、`-n`で内容を確認してから人間が実行する）。配線後の次のセッションで、SessionStartで`context`が入ること・Stopの催促が実際に出ることを確かめる。そのあと、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

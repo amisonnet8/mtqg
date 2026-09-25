@@ -84,6 +84,22 @@ func (m *mcpHarness) decode(res *mcp.CallToolResult, v any) {
 	}
 }
 
+// callOK calls a tool expecting success: it fails the test on an isError
+// result instead of silently decoding it as v's zero value (jsonErrorBody and
+// the *Result types share no fields, so an undetected error result would
+// still "decode" without error).
+func (m *mcpHarness) callOK(name string, args map[string]any, v any) *mcp.CallToolResult {
+	m.t.Helper()
+	res := m.call(name, args)
+	if res.IsError {
+		m.t.Fatalf("%s: isError: %s", name, m.text(res))
+	}
+	if v != nil {
+		m.decode(res, v)
+	}
+	return res
+}
+
 func TestMCPToolsWriteRecords(t *testing.T) {
 	cases := []struct {
 		tool string
@@ -122,7 +138,7 @@ func TestMCPReplyTools(t *testing.T) {
 	t.Run("qa_answer answers a question found by ID", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var q jsonRecordResult
-		m.decode(m.call("qa_ask", map[string]any{"text": "why?"}), &q)
+		m.callOK("qa_ask", map[string]any{"text": "why?"}, &q)
 
 		res := m.call("qa_answer", map[string]any{"id": q.Record.ID, "text": "because"})
 		if res.IsError {
@@ -138,11 +154,10 @@ func TestMCPReplyTools(t *testing.T) {
 	t.Run("bug_reply replies to a bug found by ID", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var b jsonRecordResult
-		m.decode(m.call("bug_report", map[string]any{"text": "it crashes"}), &b)
+		m.callOK("bug_report", map[string]any{"text": "it crashes"}, &b)
 
-		res := m.call("bug_reply", map[string]any{"id": b.Record.ID, "text": "fixed"})
 		var r jsonRecordResult
-		m.decode(res, &r)
+		m.callOK("bug_reply", map[string]any{"id": b.Record.ID, "text": "fixed"}, &r)
 		if r.Record.Kind != "reply" || r.Record.Re != b.Record.ID {
 			t.Errorf("got %+v", r.Record)
 		}
@@ -151,7 +166,7 @@ func TestMCPReplyTools(t *testing.T) {
 	t.Run("qa_answer given a todo's ID is wrong_kind, not a new question", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var todo jsonRecordResult
-		m.decode(m.call("todo_add", map[string]any{"text": "do the thing"}), &todo)
+		m.callOK("todo_add", map[string]any{"text": "do the thing"}, &todo)
 
 		res := m.call("qa_answer", map[string]any{"id": todo.Record.ID, "text": "an answer"})
 		if !res.IsError {
@@ -172,16 +187,16 @@ func TestMCPChangeStatus(t *testing.T) {
 	t.Run("todo_done marks a todo done, todo_reopen opens it again", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var todo jsonRecordResult
-		m.decode(m.call("todo_add", map[string]any{"text": "do the thing"}), &todo)
+		m.callOK("todo_add", map[string]any{"text": "do the thing"}, &todo)
 
 		var done jsonChangeResult
-		m.decode(m.call("todo_done", map[string]any{"id": todo.Record.ID}), &done)
+		m.callOK("todo_done", map[string]any{"id": todo.Record.ID}, &done)
 		if !done.Changed || done.Record.Status != "done" {
 			t.Errorf("got %+v", done)
 		}
 
 		var reopen jsonChangeResult
-		m.decode(m.call("todo_reopen", map[string]any{"id": todo.Record.ID}), &reopen)
+		m.callOK("todo_reopen", map[string]any{"id": todo.Record.ID}, &reopen)
 		if !reopen.Changed || reopen.Record.Status != "open" {
 			t.Errorf("got %+v", reopen)
 		}
@@ -190,12 +205,16 @@ func TestMCPChangeStatus(t *testing.T) {
 	t.Run("marking an already-done todo done writes nothing and says changed:false", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var todo jsonRecordResult
-		m.decode(m.call("todo_add", map[string]any{"text": "do the thing"}), &todo)
+		m.callOK("todo_add", map[string]any{"text": "do the thing"}, &todo)
 		m.call("todo_done", map[string]any{"id": todo.Record.ID})
 		before := m.h.readJournal()
 
+		res := m.call("todo_done", map[string]any{"id": todo.Record.ID})
+		if res.IsError {
+			t.Fatalf("isError: %s", m.text(res))
+		}
 		var again jsonChangeResult
-		m.decode(m.call("todo_done", map[string]any{"id": todo.Record.ID}), &again)
+		m.decode(res, &again)
 		if again.Changed {
 			t.Error("changed should be false for a todo that is done already")
 		}
@@ -207,19 +226,38 @@ func TestMCPChangeStatus(t *testing.T) {
 	t.Run("qa_done and bug_done close a question and a bug", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var q jsonRecordResult
-		m.decode(m.call("qa_ask", map[string]any{"text": "why?"}), &q)
+		m.callOK("qa_ask", map[string]any{"text": "why?"}, &q)
 		var qDone jsonChangeResult
-		m.decode(m.call("qa_done", map[string]any{"id": q.Record.ID}), &qDone)
+		m.callOK("qa_done", map[string]any{"id": q.Record.ID}, &qDone)
 		if !qDone.Changed || qDone.Record.Status != "done" {
 			t.Errorf("qa_done: got %+v", qDone)
 		}
 
 		var b jsonRecordResult
-		m.decode(m.call("bug_report", map[string]any{"text": "it crashes"}), &b)
+		m.callOK("bug_report", map[string]any{"text": "it crashes"}, &b)
 		var bDone jsonChangeResult
-		m.decode(m.call("bug_done", map[string]any{"id": b.Record.ID}), &bDone)
+		m.callOK("bug_done", map[string]any{"id": b.Record.ID}, &bDone)
 		if !bDone.Changed || bDone.Record.Status != "done" {
 			t.Errorf("bug_done: got %+v", bDone)
+		}
+	})
+
+	t.Run("todo_done given a question's ID is wrong_kind, not a change to the question", func(t *testing.T) {
+		m := newMCPTest(t, "test-agent")
+		var q jsonRecordResult
+		m.callOK("qa_ask", map[string]any{"text": "why?"}, &q)
+
+		res := m.call("todo_done", map[string]any{"id": q.Record.ID})
+		if !res.IsError {
+			t.Fatalf("expected isError, got %s", m.text(res))
+		}
+		var body jsonErrorBody
+		m.decode(res, &body)
+		if body.Kind != kindWrongKind {
+			t.Errorf("error kind = %q, want %q", body.Kind, kindWrongKind)
+		}
+		if strings.Contains(m.h.readJournal(), `"op":"status"`) {
+			t.Error("no status change should have been written for the wrong kind")
 		}
 	})
 }
@@ -241,10 +279,10 @@ func TestMCPEdit(t *testing.T) {
 	t.Run("replaces the text, given directly, never $EDITOR", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var memo jsonRecordResult
-		m.decode(m.call("memo_add", map[string]any{"text": "first"}), &memo)
+		m.callOK("memo_add", map[string]any{"text": "first"}, &memo)
 
 		var edited jsonChangeResult
-		m.decode(m.call("edit", map[string]any{"id": memo.Record.ID, "text": "second"}), &edited)
+		m.callOK("edit", map[string]any{"id": memo.Record.ID, "text": "second"}, &edited)
 		if !edited.Changed || edited.Record.Text != "second" {
 			t.Errorf("got %+v", edited)
 		}
@@ -253,11 +291,11 @@ func TestMCPEdit(t *testing.T) {
 	t.Run("the same text changes nothing", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		var memo jsonRecordResult
-		m.decode(m.call("memo_add", map[string]any{"text": "first"}), &memo)
+		m.callOK("memo_add", map[string]any{"text": "first"}, &memo)
 		before := m.h.readJournal()
 
 		var edited jsonChangeResult
-		m.decode(m.call("edit", map[string]any{"id": memo.Record.ID, "text": "first"}), &edited)
+		m.callOK("edit", map[string]any{"id": memo.Record.ID, "text": "first"}, &edited)
 		if edited.Changed {
 			t.Error("changed should be false for the same text")
 		}
@@ -348,9 +386,9 @@ func TestMCPDirFixesRepository(t *testing.T) {
 func TestMCPContext(t *testing.T) {
 	t.Run("the same text as mtqg context", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
-		m.call("memo_add", map[string]any{"text": "hello"})
+		m.callOK("memo_add", map[string]any{"text": "hello"}, nil)
 
-		res := m.call("context", map[string]any{})
+		res := m.callOK("context", map[string]any{}, nil)
 		got := m.text(res)
 		_, want, _ := m.h.run("context")
 		if got != want {
@@ -361,10 +399,10 @@ func TestMCPContext(t *testing.T) {
 	t.Run("max_tokens is honored", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		for i := range 20 {
-			m.call("memo_add", map[string]any{"text": strings.Repeat("x", 50) + " " + string(rune('a'+i))})
+			m.callOK("memo_add", map[string]any{"text": strings.Repeat("x", 50) + " " + string(rune('a'+i))}, nil)
 		}
-		full := m.text(m.call("context", map[string]any{}))
-		cut := m.text(m.call("context", map[string]any{"max_tokens": 50}))
+		full := m.text(m.callOK("context", map[string]any{}, nil))
+		cut := m.text(m.callOK("context", map[string]any{"max_tokens": 50}, nil))
 		if len(cut) >= len(full) {
 			t.Errorf("a smaller max_tokens should cut the text: full=%d cut=%d", len(full), len(cut))
 		}
@@ -374,7 +412,7 @@ func TestMCPContext(t *testing.T) {
 func TestMCPShow(t *testing.T) {
 	m := newMCPTest(t, "test-agent")
 	var memo jsonRecordResult
-	m.decode(m.call("memo_add", map[string]any{"text": "hello"}), &memo)
+	m.callOK("memo_add", map[string]any{"text": "hello"}, &memo)
 
 	res := m.call("show", map[string]any{"id": memo.Record.ID})
 	if res.IsError {
@@ -390,13 +428,16 @@ func TestMCPShow(t *testing.T) {
 func TestMCPSearch(t *testing.T) {
 	t.Run("finds matches, newest first, cut to 100 characters", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
-		m.call("memo_add", map[string]any{"text": "apple pie"})
+		// Fixed ts a second apart: two records written in the same real second
+		// would otherwise sort by their random ID, not by time (testing.md).
 		long := strings.Repeat("banana ", 20) + "apple"
-		m.call("memo_add", map[string]any{"text": long})
+		m.h.setJournal(
+			record(strings.Repeat("1", 32), "memo", "apple pie", "tester", "2026-09-17T00:00:00Z"),
+			record(strings.Repeat("2", 32), "memo", long, "tester", "2026-09-17T00:00:01Z"),
+		)
 
-		res := m.call("search", map[string]any{"query": "apple"})
 		var out jsonSearchSummary
-		m.decode(res, &out)
+		m.callOK("search", map[string]any{"query": "apple"}, &out)
 		if out.Count != 2 || len(out.Records) != 2 {
 			t.Fatalf("got %+v", out)
 		}
@@ -412,11 +453,10 @@ func TestMCPSearch(t *testing.T) {
 	t.Run("limit caps how many are returned, but not the count", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		for range 5 {
-			m.call("memo_add", map[string]any{"text": "apple"})
+			m.callOK("memo_add", map[string]any{"text": "apple"}, nil)
 		}
-		res := m.call("search", map[string]any{"query": "apple", "limit": 2})
 		var out jsonSearchSummary
-		m.decode(res, &out)
+		m.callOK("search", map[string]any{"query": "apple", "limit": 2}, &out)
 		if out.Count != 5 || out.Shown != 2 || len(out.Records) != 2 {
 			t.Fatalf("got %+v", out)
 		}
@@ -425,11 +465,10 @@ func TestMCPSearch(t *testing.T) {
 	t.Run("default limit is defaultSearchLimit", func(t *testing.T) {
 		m := newMCPTest(t, "test-agent")
 		for range defaultSearchLimit + 3 {
-			m.call("memo_add", map[string]any{"text": "apple"})
+			m.callOK("memo_add", map[string]any{"text": "apple"}, nil)
 		}
-		res := m.call("search", map[string]any{"query": "apple"})
 		var out jsonSearchSummary
-		m.decode(res, &out)
+		m.callOK("search", map[string]any{"query": "apple"}, &out)
 		if out.Shown != defaultSearchLimit {
 			t.Fatalf("shown = %d, want %d", out.Shown, defaultSearchLimit)
 		}

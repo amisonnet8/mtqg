@@ -82,6 +82,30 @@ func TestHookClaudeCodeSessionStart(t *testing.T) {
 			t.Fatalf("entries = %v, err = %v", entries, err)
 		}
 	})
+
+	t.Run("a second session-start for the same session does not move the baseline", func(t *testing.T) {
+		// A change with no record between the two session-starts (a compact, say)
+		// must still be seen by stop: session-start only remembers the state of a
+		// session it has not seen before.
+		h := initialized(t)
+		h.stdin = `{"session_id":"s1"}`
+		h.run("hook", "claude-code", "session-start")
+
+		if err := os.WriteFile(filepath.Join(h.root, "changed.txt"), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		h.stdin = `{"session_id":"s1","source":"compact"}`
+		if code, _, _ := h.run("hook", "claude-code", "session-start"); code != exitOK {
+			t.Fatal("second session-start failed")
+		}
+
+		h.stdin = `{"session_id":"s1"}`
+		code, out, _ := h.run("hook", "claude-code", "stop")
+		if code != exitOK || !strings.Contains(out, `"decision":"block"`) {
+			t.Fatalf("code = %d, out = %q, want a block: the change before the second session-start was never recorded", code, out)
+		}
+	})
 }
 
 func TestHookClaudeCodeStop(t *testing.T) {

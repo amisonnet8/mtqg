@@ -23,7 +23,7 @@ var jsonOptions = jsonv2.JoinOptions(
 
 // emit writes one object to standard output, indented with two spaces.
 func (c *ctx) emit(v any) int {
-	b, err := jsonv2.Marshal(v, jsonOptions, jsontext.WithIndent("  "))
+	b, err := marshalJSON(v)
 	if err != nil {
 		// Only text that is not valid UTF-8 cannot be written, and the journal does
 		// not hold any.
@@ -31,6 +31,15 @@ func (c *ctx) emit(v any) int {
 	}
 	_, _ = c.env.Stdout.Write(append(b, '\n'))
 	return exitOK
+}
+
+// marshalJSON is the same marshaling emit and emitLine use, for a caller that
+// does not write to standard output itself: the MCP server (mcp.go), whose
+// tool results are marshaled the same way --json is, indented with two spaces
+// so a result read by a person (docs/reference/cli.md "MCP server") looks
+// like --json's.
+func marshalJSON(v any) ([]byte, error) {
+	return jsonv2.Marshal(v, jsonOptions, jsontext.WithIndent("  "))
 }
 
 // emitLine writes one object to standard error on one line: an error or a
@@ -159,6 +168,29 @@ type jsonSearch struct {
 	Query   string       `json:"query"`
 	Records []jsonRecord `json:"records"`
 	Count   int          `json:"count"`
+}
+
+// jsonSearchSummary is what the MCP server's search tool returns instead of
+// jsonSearch: the full text of a match can be long, and the tool's result goes
+// straight into an agent's context, so each match is cut to searchSummaryLimit
+// characters (mcp_tools.go) and shown says how many are included, as well as
+// counted.
+type jsonSearchSummary struct {
+	Command string                    `json:"command"`
+	Query   string                    `json:"query"`
+	Records []jsonSearchSummaryRecord `json:"records"`
+	Count   int                       `json:"count"`
+	Shown   int                       `json:"shown"`
+}
+
+type jsonSearchSummaryRecord struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Word      string `json:"word,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Text      string `json:"text,omitempty"`
+	Truncated bool   `json:"truncated"`
+	Created   string `json:"created,omitempty"`
 }
 
 // jsonFormatEvent is an event found in a text, with the mark that it had there (a +

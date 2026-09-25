@@ -40,6 +40,8 @@ linters:
               desc: the journal layer must not know the meaning of events
             - pkg: github.com/amisonnet8/mtqg/internal/cli
               desc: the journal layer must not depend on an entry point
+            - pkg: github.com/modelcontextprotocol/go-sdk
+              desc: the MCP protocol is an entry point's concern, not the core's (段階4b)
         model:
           list-mode: lax
           files:
@@ -47,6 +49,8 @@ linters:
           deny:
             - pkg: github.com/amisonnet8/mtqg/internal/cli
               desc: the model layer must not depend on an entry point
+            - pkg: github.com/modelcontextprotocol/go-sdk
+              desc: the MCP protocol is an entry point's concern, not the core's (段階4b)
         # mtqg asks the real git command; it does not reimplement git
         # (.claude/rules/git-integration.md).
         no-git-library:

@@ -175,6 +175,7 @@ func init() {
 		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move the items of a date range out of view (-n: only report)", args: argsAny, dryRun: true, run: runArchive},
 
 		{name: "hook", usage: "mtqg hook <agent> <event>", summary: "Run one hook event for an agent (called from the agent's own configuration)", args: argsAny, choices: initAgents, run: runHook},
+		{name: "mcp", usage: "mtqg mcp", summary: "Run an MCP server on standard input and output, for an AI agent", args: argsNone, run: runMCP},
 		{name: "completion", usage: "mtqg completion <shell>", summary: "Print the completion script of a shell (" + strings.Join(shells, ", ") + ")", args: argsAny, choices: shells, run: runCompletion},
 		{name: "candidates", usage: "mtqg candidates [--word=<partial>] -- <word>...", summary: "List what can come next on a command line (the completion scripts call it)", args: argsAny, values: []string{"--word"}, run: runCandidates},
 	}

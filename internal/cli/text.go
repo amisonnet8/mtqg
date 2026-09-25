@@ -35,6 +35,14 @@ func (c *ctx) inputTextFrom(words []string, initial string) (string, error) {
 	default:
 		text = strings.Join(words, " ")
 	}
+	return cleanText(text)
+}
+
+// cleanText drops trailing line breaks and refuses a text that is empty, or
+// only white space: the same rule inputText applies to what it reads, shared
+// with the MCP server (mcp_tools.go), which never opens $EDITOR and always
+// gets its text as an argument.
+func cleanText(text string) (string, error) {
 	text = strings.TrimRight(text, "\r\n")
 	if strings.TrimSpace(text) == "" {
 		return "", &failure{kindEmptyText, msgEmptyText()}

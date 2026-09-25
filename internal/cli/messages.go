@@ -97,6 +97,10 @@ func msgAIneedsName() string {
 	return "MTQG_AUTHOR_KIND=ai needs MTQG_AUTHOR_NAME: an AI is not recorded under the name in `git config`."
 }
 
+func msgMCPNoClientName() string {
+	return "No author name: the connecting client gave no name in its initialize request."
+}
+
 // The text of a record.
 
 func msgEmptyText() string { return "Aborting: the text is empty" }

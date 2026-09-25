@@ -12,3 +12,4 @@
 {"id":"42be0d55e54a441a8197f77201a99179","op":"edit","basis":1,"text":"段階4aの残作業：文書（schema.md/cli.md＋日本語版）、design/history.mdへの記録、.claude/rules/の更新、e2e/hook_test.go、壊して確かめる（mutation-check）、PLAN.mdの更新","v":0,"ts":"2026-09-25T05:16:47Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"42be0d55e54a441a8197f77201a99179","op":"status","from":"open","status":"done","basis":2,"v":0,"ts":"2026-09-25T05:21:21Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"f246912e5b454cdaa19edfcf3c3d9db8","op":"create","type":"memo","text":"mutation-checkで10個の変異を検証、すべてkilled。1つ（session-startが既存セッションを上書きする変異）が最初生き残り、TestHookClaudeCodeSessionStartにcompact相当の2回目session-startのテストを足して直した。","v":0,"ts":"2026-09-25T05:21:21Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"a9a9e475275a4457863287b068b5fdb1","op":"create","type":"rule","text":"mtqgには日本語で登録する","v":0,"ts":"2026-09-25T05:26:26Z","author":{"kind":"human","name":"amisonnet8"}}

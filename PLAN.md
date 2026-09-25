@@ -137,7 +137,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **CIも3OS全ジョブgreen（PR #5、2026-09-25、人間が確認。mainへマージ済み、`4df2674`）。** 途中、`race (macos-latest)`が`TestRewriteWhileGoroutinesAppend`（既知の間欠的フレーク、`testing.md`「証明にならないガード」参照）で1度落ちたが、このPRが`internal/journal/`を一切変更していないことを確認のうえ再実行して通った。
 
-次：mtqg自身への実地配線（`mtqg init --agent claude-code -n`→確認→本実行）と、Claude Code実機での動作確認（`mtqg`のMCPツールが実際に認識・呼び出せること）。
+**mtqg自身への実地配線・実機での動作確認とも完了した（2026-09-25）。** `mtqg init --agent claude-code`をこのリポジトリ自身に実行し`.mcp.json`を配線（コミット`2e68f2a`）。次のセッションで`SessionStart:resume`が発火し、`mcp__mtqg__*`（18個のツール）が実際にClaude Codeへ認識された。`memo_add`ツールを実際に呼び、記録者が接続したクライアント名（`ai`/`claude-code`）で正しく付くことも確認できた。
+
+次：段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある。いずれも段階4bの範囲では解いていない（PLAN.md「段階4b」のスコープ外の記述を参照）。段階4a・4bを終え、11章の外部ツール連携のうち残るのはVSCode拡張（設計§11.4、別リポジトリの方向）だけ。v1確定（設計§12.4）に進むかどうかも人間の判断。
 
 ## 現在地
 

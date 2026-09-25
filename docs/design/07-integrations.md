@@ -50,6 +50,10 @@ mtqg（単一バイナリ）
 - **ツールの結果は、対応するCLIコマンドの`--json`と同じJSONオブジェクトにした**（`context`・`search`は分量のため専用の形）。形の約束を`cli.md`の1か所に保つため。エラーはJSON-RPCのプロトコルエラーにせず、ツール結果（`isError:true`）として、`--json`が標準エラー出力に書くのと同じ`{"error":{...}}`の形で返す（サーバー自体は動き続ける）
 - **記録者**：`author.kind`は常に`ai`、`author.name`は接続時の`clientInfo.name`。`MTQG_AUTHOR_*`やgitのuser.nameは見ない（人間の環境変数をAIの記録に引き継がない、という既存の原則と同じ）
 
+#### 実地配線と確認（段階4b、2026-09-25）
+
+PR #5マージ後、このリポジトリ自身に`mtqg init --agent claude-code`を実行して配線した（安定版バイナリ、`.claude/settings.json`・`CLAUDE.md`は段階4aで既に配線済みなので`.mcp.json`だけが新規に作られた）。次のセッションで`SessionStart:resume`とともにMCPサーバーが起動し、`mcp__mtqg__*`という18個のツール（設計・実装したものと一致）が実際にClaude Codeへ認識された。`memo_add`ツールを実際に呼び出し、書かれた記録の`author`が`{"kind":"ai","name":"claude-code"}`（接続したクライアントの`clientInfo.name`）になることも確認できた。フックの実地確認（段階4aの`SessionStart`）と同じく、MCPも設計どおりに動くことを実機で確かめられた。
+
 ### 11.3 AIエージェント向け：エージェントのフック
 
 #### 位置づけ

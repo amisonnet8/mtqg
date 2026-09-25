@@ -18,6 +18,7 @@ const (
 	KindBug      = "bug"
 	KindReply    = "reply"
 	KindGlossary = "glossary entry"
+	KindRule     = "rule"
 )
 
 // Record is one memo, todo, question, answer, bug, reply or glossary entry, as
@@ -71,6 +72,8 @@ func kindOf(typ string, reply bool) string {
 		return KindTodo
 	case journal.TypeGlossary:
 		return KindGlossary
+	case journal.TypeRule:
+		return KindRule
 	case journal.TypeBug:
 		if reply {
 			return KindReply
@@ -248,6 +251,11 @@ func (s *State) Todos(includeDone bool) []*Record {
 // Memos returns the memos that are in view, oldest first.
 func (s *State) Memos() []*Record {
 	return s.pick(func(r *Record) bool { return r.Kind() == KindMemo })
+}
+
+// Rules returns the rules that are in view, oldest first.
+func (s *State) Rules() []*Record {
+	return s.pick(func(r *Record) bool { return r.Kind() == KindRule })
 }
 
 // Parents returns the records of a type that can be replied to and are in view,

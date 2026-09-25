@@ -177,6 +177,24 @@ func TestContextReducedDoesNotChangeWhatItIsGiven(t *testing.T) {
 	}
 }
 
+func TestContextRulesAreNeverReduced(t *testing.T) {
+	state := Build([]journal.Event{
+		create(cid(1), journal.TypeRule, "rule one", 0),
+		create(cid(2), journal.TypeRule, "rule two", 1),
+		create(cid(3), journal.TypeMemo, "a memo", 2),
+	})
+	d := state.Context(0)
+	sameIDs(t, "rules", d.Rules, cid(1), cid(2))
+
+	// Cutting to nothing (Steps() does not count Rules, so there is no step for
+	// them) still leaves every rule, in full.
+	r := d.Reduced(d.Steps() + 5)
+	sameIDs(t, "rules after every cut", r.Rules, cid(1), cid(2))
+	if len(r.Recent) != 0 {
+		t.Errorf("recent after every cut = %v, want none", r.Recent)
+	}
+}
+
 func TestContextKeepsTheNewestQuestionsAndBugs(t *testing.T) {
 	// Six questions (minutes 0 2 4 6 8 10), five bugs (1 3 5 7 9) and four todos.
 	var events []journal.Event

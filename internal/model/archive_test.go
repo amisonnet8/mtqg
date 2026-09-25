@@ -66,6 +66,7 @@ const (
 	i6 = "10000000000000000000000000000006"
 	i7 = "10000000000000000000000000000007"
 	i8 = "10000000000000000000000000000008"
+	i9 = "10000000000000000000000000000009"
 )
 
 func TestArchiveTargetsByKind(t *testing.T) {
@@ -78,13 +79,14 @@ func TestArchiveTargetsByKind(t *testing.T) {
 		madeWord(i6, "term", "a definition", on(4, 6)),
 		made(i7, journal.TypeQA, "open question", on(4, 7)),
 		made(i8, journal.TypeBug, "open bug", on(4, 8)),
+		made(i9, journal.TypeRule, "a rule", on(4, 9)),
 	}
 	plan := Build(events).ArchiveTargets(rangeFrom, rangeTo)
 
 	if got, want := idList(plan.Move), strings.Join([]string{i1, i3, i4, i5}, " "); got != want {
 		t.Errorf("Move = %s, want %s", got, want)
 	}
-	if got, want := idList(plan.Skipped), strings.Join([]string{i2, i6, i7, i8}, " "); got != want {
+	if got, want := idList(plan.Skipped), strings.Join([]string{i2, i6, i7, i8, i9}, " "); got != want {
 		t.Errorf("Skipped = %s, want %s", got, want)
 	}
 }
@@ -211,9 +213,10 @@ func TestArchiveTargetsMoveWhatWasDeletedWhateverItIs(t *testing.T) {
 		made(i3, journal.TypeQA, "open question, deleted", on(4, 3)),
 		madeReply(i4, journal.TypeQA, i3, "its answer", on(4, 4)), deleted(i3, on(5, 3)),
 		made(i5, journal.TypeTodo, "open todo, deleted after the range", on(4, 5)), deleted(i5, on(9, 1)),
+		made(i9, journal.TypeRule, "a rule, deleted", on(4, 6)), deleted(i9, on(5, 4)),
 	}
 	plan := Build(events).ArchiveTargets(rangeFrom, rangeTo)
-	if got, want := idList(plan.Move), strings.Join([]string{i1, i2, i3, i4}, " "); got != want {
+	if got, want := idList(plan.Move), strings.Join([]string{i1, i2, i3, i4, i9}, " "); got != want {
 		t.Errorf("Move = %s, want %s", got, want)
 	}
 	if len(plan.Skipped) != 0 {

@@ -20,6 +20,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | qa（`q`） | `add <質問>`<br>`add <質問id> <回答>` | `done <質問id>` | `reopen <質問id>` | 未クローズ（`--all`で全件） |
 | bug（`b`） | `add <バグ>`<br>`add <バグid> <返信>` | `done <バグid>` | `reopen <バグid>` | 未クローズ（`--all`で全件） |
 | glossary（`g`） | `add <用語> <定義>` | — | — | 全件 |
+| rule（`r`） | `add <本文>` | — | — | 全件 |
 
 - 種類は1文字に略せる。`mtqg t add ...`は`mtqg todo add ...`と同じ。動詞は常に必要
 - 種類の違う記録に動詞を使う（たとえばtodoのIDに`mtqg qa done`）とエラーになり、正しいコマンドを示す
@@ -87,7 +88,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | フィールド | 意味 |
 |---|---|
 | `id` | 完全なID |
-| `kind` | `memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`のいずれか |
+| `kind` | `memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`、`rule`のいずれか |
 | `word` | 用語（glossaryのみ） |
 | `text` | 本文の全文（glossaryでは定義） |
 | `re` | 回答・返信が向かう質問・バグのID（回答と返信のみ） |
@@ -124,16 +125,16 @@ $ mtqg memo list --json
 
 | コマンド | フィールド |
 |---|---|
-| `memo add`、`todo add`、`qa add`、`bug add`、`glossary add` | `record`：書いた記録 |
+| `memo add`、`todo add`、`qa add`、`bug add`、`glossary add`、`rule add` | `record`：書いた記録 |
 | `todo done`、`todo reopen`、`qa done`、... | `record`と`changed`（すでにその状態で、何も書かなかったときは`false`） |
 | `edit` | `record`（新しい本文で）と`changed`（本文が同じで、何も書かなかったときは`false`） |
 | `delete` | `record`：隠した記録、`hidden_replies`：一緒に隠れた回答・返信を、記録として（なければ`[]`） |
 | `undo` | `event`：消した行を[schema_ja.md](schema_ja.md)の形で、`record`：その行が属する記録の、消す前の姿（ジャーナルにあれば） |
 | `search` | `query`、`records`（新しい順）、`count` |
 | `review` | `concurrent_status_changes`：記録ごとの`{"record", "changes"}`（`changes`は`journal.jsonl`の行）、`duplicate_words`：`{"word", "records"}`、`unattached_replies`：`{"record", "re_record"}`（`re`がジャーナルの何も指さないときは`re_record`を出さない）。どれも、なければ`[]` |
-| `archive` | `range`：`{"start", "end"}`（読んだとおりの`YYYY-MM-DD`）、`file`：アーカイブのファイル（リポジトリからの相対）、`dry_run`、`archived`：件数`memos`・`todos`・`questions`・`answers`・`bugs`・`replies`・`glossary_entries`（削除したもの）・`records`（その合計）、`skipped`：件数`open_todos`・`open_questions`・`open_bugs`・`glossary_entries`・`records`。`archived.records`が0のときファイルは作らない |
+| `archive` | `range`：`{"start", "end"}`（読んだとおりの`YYYY-MM-DD`）、`file`：アーカイブのファイル（リポジトリからの相対）、`dry_run`、`archived`：件数`memos`・`todos`・`questions`・`answers`・`bugs`・`replies`・`glossary_entries`（削除したもの）・`rules`（削除したもの）・`records`（その合計）、`skipped`：件数`open_todos`・`open_questions`・`open_bugs`・`glossary_entries`・`rules`・`records`。`archived.records`が0のときファイルは作らない |
 | `format` | `events`（時刻順。`journal.jsonl`の行として。入力で印があった行は`mark`（`+`か`-`）を持つ）、`count` |
-| `memo list` | `records`、`count` |
+| `memo list`、`rule list` | `records`、`count` |
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
@@ -237,6 +238,7 @@ mtqg t add ブロックコメントの読み飛ばし
 mtqg q add ブロックコメントの入れ子に対応する？
 mtqg b add 空の入力でパーサーが落ちる
 mtqg g add トークン 字句解析で切り出す最小単位
+mtqg r add mtqgの記録は英語で書く
 ```
 
 - 残りの引数は空白でつないで1つの本文にする。シェルの特殊文字（`#` `*` `(` `)` `&` `|` `<` `>`）を含む場合を除き、引用符は要らない
@@ -246,7 +248,7 @@ mtqg g add トークン 字句解析で切り出す最小単位
   （[質問、回答、バグ、返信](#質問回答バグ返信)）
 - 本文の代わりに`-`を渡すと、標準入力を最後まで読む。末尾の改行は落とす：`git log -1 --format=%s | mtqg m add -`
 - **書く本文がないときは、`$EDITOR`が開く**。空のファイルが開き、保存した内容が本文になる（末尾の改行は落とす）：
-  引数がまったくないとき（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`）、IDのあとの回答・返信がないとき
+  引数がまったくないとき（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`、`mtqg r add`）、IDのあとの回答・返信がないとき
   （`mtqg q add <質問id>`、`mtqg b add <バグid>`）、用語のあとの定義がないとき（`mtqg g add <用語>`）。
   `$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは通さない。`$EDITOR`が設定されていなければ、止まって
   そう伝える。どの記録にも当てはまらないIDは、エディタが開く前に止まる
@@ -539,6 +541,7 @@ mtqgはどちらかを選ばない。
 - 記録に含まれる制御文字（エスケープ文字など）は、表示するときに U+FFFD に置き換える。記録が端末の
   動作を変えられないようにするため。`--json`の出力は影響を受けない
 - `mtqg memo list`は、すべてのmemoを表示し、`N memos`で終わる
+- `mtqg rule list`は、すべてのruleを表示し、`N rules`で終わる
 
 ### show
 
@@ -576,7 +579,7 @@ Events
   2026-09-21 10:45  create  claude-code (ai)  reply 3d8e4a0b12
 ```
 
-- 1行目は、種類（`memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`）、ID、todo・質問・バグなら状態。2行目は、誰がいつ
+- 1行目は、種類（`memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`、`rule`）、ID、todo・質問・バグなら状態。2行目は、誰がいつ
   書いたか（記録者の種別つき）
 - 本文は、どう読まれる出力でも、すべての行を全文で表示する。制御文字は一覧と同じように置き換える。glossaryの
   項目は、定義の前に`Word: <用語>`を表示する。回答は属する質問を、返信は属するバグを表示する。`re`が指す記録がなかったり
@@ -618,12 +621,12 @@ $ mtqg log --kind bug
 ```
 
 - 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、
-  `question`、`answer`、`bug`、`reply`、`glossary`）、ID、本文、記録者。glossaryの項目は、用語、コロン、定義の順に
+  `question`、`answer`、`bug`、`reply`、`glossary`、`rule`）、ID、本文、記録者。glossaryの項目は、用語、コロン、定義の順に
   表示する。回答と返信は、属する質問やバグの`(to <id>)`で始まる。終わったtodo・質問・バグは、末尾に`done`が付く
 - 時刻は、今日なら`HH:MM`、それ以外の日は`YYYY-MM-DD`で、記録を作った時刻。本文は一覧の決まりに従う（1行目だけ、
   端末に出すときだけ切る、制御文字は置き換える）
 - `--limit N`は新しい方から`N`件を表示する。既定は20で、`0`は全件。`--kind K`は1つの種類だけを表示する：
-  `memo`、`todo`、`qa`（質問と回答）、`bug`（バグと返信）、`glossary`、またはその1文字。どちらも`--limit=N`の形でも書ける。0以上の
+  `memo`、`todo`、`qa`（質問と回答）、`bug`（バグと返信）、`glossary`、`rule`、またはその1文字。どちらも`--limit=N`の形でも書ける。0以上の
   整数でない値や、存在しない種類は、コマンドラインの誤り
 - 最後の行が件数を伝える：`N records`。省いたものがあるときは`N of M records (--limit 0 for all)`
 
@@ -693,7 +696,8 @@ $ mtqg context
 # mtqg context — sample-parser (main)
 
 This is the process record of this project. Read the following before you start working.
-- Respect what has been decided (answered questions, memos stating a policy)
+- Follow the rules listed under Rules
+- Respect answered questions
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
 - Record questions, decisions, findings, bugs, and todos with mtqg as they come up
@@ -750,7 +754,8 @@ $ mtqg context --max-tokens 380
 # mtqg context — sample-parser (main)
 
 This is the process record of this project. Read the following before you start working.
-- Respect what has been decided (answered questions, memos stating a policy)
+- Follow the rules listed under Rules
+- Respect answered questions
 - Do not decide open questions on your own; confirm them
 - Use terms as defined in the glossary
 - Record questions, decisions, findings, bugs, and todos with mtqg as they come up
@@ -785,15 +790,16 @@ This is the process record of this project. Read the following before you start 
 Read full entries with mtqg show <id>.
 ```
 
-- 区画はこの順：Attention、Open todos、Open questions、Open bugs、Recent records、Glossary。空の区画は出さない
+- 区画はこの順：Attention、Rules、Open todos、Open questions、Open bugs、Recent records、Glossary。空の区画は出さない
 - 最初の行はリポジトリ（`.mtqg/`のあるディレクトリの名前）とブランチ（`git branch --show-current`。detached HEADなどで無いときは出さない）。次に読み手への指示、区画、続きの読み方の行が並ぶ
 - **Attention**は、行動が要るものを名指しする：定義が2つ以上ある用語と、並行した状態変更のある記録（[review](#review)。それぞれ先頭の5つ。残りは件数）と、コミットされていない記録の数（gitを実行できないときは、この行は出さない）
+- **Rules**は、すべてのruleを古い順に、ID・記録者・時刻とともに出す。本文は全文を出す：どれだけ長くても切らず、分量（下記）にかかわらず省かない
 - 未完了のtodo・質問・バグは古い順で、ID、記録者、時刻（今日は`HH:MM`、別の日は日付。ローカル時間）を持つ。質問とバグは`unanswered`（バグは`no replies`）または`awaiting confirmation`（回答・返信があり、閉じていない）と書き、その下に最新の回答・返信を、記録者と記録者の種別とともに出す
 - 最近の記録は、`log`と同じく、全種類の新しい記録を新しい順に、種類とIDとともに出す。回答・返信の終わりに、向かう質問・バグを書く。Glossaryは全項目を、IDとともに出す
-- 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える
-- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のことは見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ、なくなるまで）。それでも収まらないときは、そのまま出す
+- 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える。**ruleの本文だけは例外で、全文をそのまま出す**（決まり事が途中で切れて意味が変わらないようにするため）
+- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、**Rules**、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のこと・この先も効き続ける決まり事は見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ、なくなるまで）。それでも収まらないときは、そのまま出す
 - 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 older; see mtqg todo list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
-- `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`、`{"kind": "concurrent_status_change", "id": ..., "text": ...}`（完全なIDと全文）、`{"kind": "uncommitted", "count": N}`
+- `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`rules`、`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ。`rules`は削られないので、`total`と`records`は常に一致する）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`、`{"kind": "concurrent_status_change", "id": ..., "text": ...}`（完全なIDと全文）、`{"kind": "uncommitted", "count": N}`
 
 ## format
 
@@ -810,7 +816,7 @@ $ git show HEAD | mtqg format
 ```
 
 - 列は、ローカルの日付と時刻、その行がしたこと、ID、本文、記録者。記録を作る行なら、したことは種類：`memo`、`todo`、
-  `question`、`answer`、`bug`、`reply`、`glossary`（回答・返信の本文は`(to <id>)`で、glossaryの項目は用語とコロンで
+  `question`、`answer`、`bug`、`reply`、`glossary`、`rule`（回答・返信の本文は`(to <id>)`で、glossaryの項目は用語とコロンで
   始まる）。それ以外の行は、`done`か`reopen`（状態の変更）、`edit`、`delete`。`edit`は新しい本文を出す。状態の変更と
   `delete`は、その記録を作った行が同じ入力にあれば、その記録の本文を出し、なければ何も出さない
 - 行は時刻順（`ts`、次に`id`。同じ記録では作成が変更より先）で、入力での順番によらない
@@ -830,7 +836,7 @@ mtqg archive 2021..2023
 mtqg archive 202404..2024-09 -n
 ```
 
-最後のイベントが期間に入る項目を、`journal.jsonl`から`.mtqg/archive/<開始>..<終了>.jsonl`に移す（どの項目が移るかは[schema_ja.md](schema_ja.md#アーカイブ)：終わったtodo・質問・bug、memo、削除した記録）。どのコマンドも`archive/`を自分から読むことはなく、アーカイブ済みのIDは単に見つからない。アーカイブのファイルを読むときは、`mtqg format`に渡す。
+最後のイベントが期間に入る項目を、`journal.jsonl`から`.mtqg/archive/<開始>..<終了>.jsonl`に移す（どの項目が移るかは[schema_ja.md](schema_ja.md#アーカイブ)：終わったtodo・質問・bug、memo、削除した記録。ruleとglossaryの項目は、削除したときだけ移る）。どのコマンドも`archive/`を自分から読むことはなく、アーカイブ済みのIDは単に見つからない。アーカイブのファイルを読むときは、`mtqg format`に渡す。
 
 期間は1つの引数`<開始>..<終了>`で書く。
 
@@ -861,7 +867,7 @@ Skipped: 1 open todo, 1 open bug, 2 glossary entries
 
 - 1行目に、期間をどう読んだかを必ず表示する
 - `Archived:`は移したものを種類ごとに数える（1つもない種類は出さない）。削除した記録は、その種類として数える。`-> `はファイルの名前。何も移さないときは`Archived: nothing`と言い、ファイルは作らない
-- `Skipped:`は、最後のイベントが期間に入るのに残るものを数える：未完了のtodo・質問・bugと、glossaryの項目。なければ行ごと出さない
+- `Skipped:`は、最後のイベントが期間に入るのに残るものを数える：未完了のtodo・質問・bugと、glossaryの項目、rule。なければ行ごと出さない
 - ファイル名は常に正規化した期間。同じ期間をもう一度アーカイブすると、同じファイルに追記する
 - `-n`（`--dry-run`）は、何も移さずに同じ報告を表示し、`archive/`も作らない。1行目の終わりに`(dry run)`が付き、「移す予定」の報告を「移した」報告と取り違えないようにする
 - 相対的な日付（「2年前」など）は受け付けない
@@ -909,6 +915,7 @@ $ mtqg archive --json 2025..2025 -n
     "bugs": 0,
     "replies": 0,
     "glossary_entries": 0,
+    "rules": 0,
     "records": 3
   },
   "skipped": {
@@ -916,6 +923,7 @@ $ mtqg archive --json 2025..2025 -n
     "open_questions": 0,
     "open_bugs": 0,
     "glossary_entries": 0,
+    "rules": 0,
     "records": 1
   }
 }
@@ -976,10 +984,10 @@ mtqg completion powershell >> $PROFILE
 
 | 場所 | 候補 |
 |---|---|
-| 1語目 | 種類（`memo`、`todo`、`qa`、`bug`、`glossary`。1文字の略は出さない）と、種類を持たないコマンド |
+| 1語目 | 種類（`memo`、`todo`、`qa`、`bug`、`glossary`、`rule`。1文字の略は出さない）と、種類を持たないコマンド |
 | 種類の次 | その種類の動詞 |
 | `-`で始まる語 | そのコマンドが受け付けるオプションのうち、行にまだないもの、と共通のオプション |
-| `--kind`の次 | `memo`、`todo`、`qa`、`bug`、`glossary` |
+| `--kind`の次 | `memo`、`todo`、`qa`、`bug`、`glossary`、`rule` |
 | `todo done`、`qa done`、`bug done`のID | その種類の、未完了のもの |
 | `todo reopen`、`qa reopen`、`bug reopen`のID | その種類の、完了したもの |
 | `show`、`edit`、`delete`のID | 見えている記録すべて（新しい順） |

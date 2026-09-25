@@ -58,7 +58,7 @@
 - `qa`と`bug`は同じ形（返信を付けられる親と、`re`を持つ子）。**解釈は1か所**（モデル層）に書き、種類ごとに分けない
 - **返信は、親と同じ`type`を持つ**：`qa`の`re`は質問、`bug`の`re`はバグを指す。別の`type`を指す`re`は、返信として結び付けない（エラーにもしない。他のツールが書いた食い違いは、事実として見せる）
 - 親を削除すると、返信も隠れる（`qa`もbugも同じ）
-- **新しい`type`を足すときに触る場所：** ジャーナル層の許可リスト（`event.go`の定数と、`append.go`の`validate`。ここを忘れると、モデルもCLIも通るのに`add`が「invalid event」で断られる）、モデル層の`kindOf`、CLIの種類の表（`args.go`の`kinds`とコマンドの行）、文書（`schema.md`・`cli.md`と日本語版）。ジャーナル層の取りこぼしは`TestAppendWritesEveryKind`が検出する。種類ごとに実装を複製せず、表と`ParentKind`・`ReplyKind`から引く
+- **新しい`type`を足すときに触る場所：** ジャーナル層の許可リスト（`event.go`の定数と、`append.go`の`validate`。ここを忘れると、モデルもCLIも通るのに`add`が「invalid event」で断られる）、モデル層の`kindOf`（**忘れると質問扱いになる**。既定の分岐が`KindQuestion`を返すため、他のどのケースにも当てはまらない種類は静かに質問として扱われてしまう。エラーにならないので気づきにくい）、CLIの種類の表（`args.go`の`kinds`とコマンドの行）、文書（`schema.md`・`cli.md`と日本語版）。ジャーナル層の取りこぼしは`TestAppendWritesEveryKind`が検出する。種類ごとに実装を複製せず、表と`ParentKind`・`ReplyKind`から引く。**構造がmemoと同じでも「振る舞い」だけが違う種類（rule。archiveで移さない、contextで削らない）を足すときは、さらに**`internal/model/archive.go`の`archivable`（振る舞いをglossaryと揃えるならその分岐に足す）、`internal/cli/archive.go`の`countArchived`・`countSkipped`・`parts()`（**ここを忘れると、実際には移した・残したのに、報告の該当行が0件のまま黙って出ない**）、`internal/model/context.go`の区画と削る手順（`Reduced`に段を足さなければ、その種類は削られる対象に含めない＝削らない扱いになる）、件数を固定したテスト（`TestAppendWritesEveryKind`の件数、`json_test.go`の`len(kinds)`）も忘れずに触ること
 
 ## 書き出し規則
 

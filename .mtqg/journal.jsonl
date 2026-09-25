@@ -36,3 +36,4 @@
 {"id":"5fdce26af1fe4f8ba2ab0353b3079692","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-25T08:17:24Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"7623a65658754cd28923f1173e76e0ff","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-25T08:17:24Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"3c0abc8dd3af4b59b8e69acac2879ba1","op":"create","type":"memo","text":"PR #5（段階4b）のCIが3OS全ジョブgreen（check/race/shellcheck/trivyすべてpass）。マージ待ち。","v":0,"ts":"2026-09-25T08:17:32Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"711458cba918499b944c07a3a7ffda7d","op":"create","type":"memo","text":"PR #5のCIでmacos-latestのraceジョブが1度失敗。TestRewriteWhileGoroutinesAppend（既知の間欠的フレーク、testing.md記載済み）。このPRはinternal/journal/を一切変更していないと確認済み。gh run rerun --failedで再実行した。","v":0,"ts":"2026-09-25T08:34:04Z","author":{"kind":"ai","name":"claude-code"}}

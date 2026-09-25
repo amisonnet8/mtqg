@@ -30,6 +30,17 @@ var kinds = []kindSpec{
 	{"rule", "r", journal.TypeRule},
 }
 
+// hookEvents lists, for each agent mtqg has a hook adapter for (§11.3), the
+// events it understands. "mtqg hook" and "mtqg init --agent" both read this
+// table instead of having their own list.
+var hookEvents = map[string][]string{
+	"claude-code": {"session-start", "stop"},
+}
+
+// initAgents is the agents "mtqg init --agent" accepts, in a fixed order (for
+// help and error messages).
+var initAgents = []string{"claude-code"}
+
 // What a command takes after its name.
 type argMode int
 
@@ -147,7 +158,7 @@ func init() {
 		{kind: "rule", name: "add", usage: "mtqg rule add <text>", summary: "Record a rule", args: argsText, run: runAddRule},
 		{kind: "rule", name: "list", usage: "mtqg rule list", summary: "List the rules", args: argsNone, run: runListRules},
 
-		{name: "init", usage: "mtqg init", summary: "Create .mtqg/ in this repository", args: argsNone, run: runInit},
+		{name: "init", usage: "mtqg init [--agent claude-code] [-n]", summary: "Create .mtqg/ in this repository, optionally wiring up an agent (-n: only report)", args: argsNone, dryRun: true, values: []string{"--agent"}, run: runInit},
 		{name: "status", usage: "mtqg status", summary: "Show what is open and what is not committed", args: argsNone, run: runStatus},
 		{name: "version", usage: "mtqg version", summary: "Show the version of mtqg and of the repository's format", args: argsNone, run: runVersion},
 		{name: "help", usage: "mtqg help", summary: "List the commands", args: argsNone, run: runHelp},
@@ -163,6 +174,7 @@ func init() {
 		{name: "format", usage: "mtqg format [--mark] [file]", summary: "Show the event lines found in any text", args: argsAny, mark: true, run: runFormat},
 		{name: "archive", usage: "mtqg archive <start>..<end> [-n]", summary: "Move the items of a date range out of view (-n: only report)", args: argsAny, dryRun: true, run: runArchive},
 
+		{name: "hook", usage: "mtqg hook <agent> <event>", summary: "Run one hook event for an agent (called from the agent's own configuration)", args: argsAny, choices: initAgents, run: runHook},
 		{name: "completion", usage: "mtqg completion <shell>", summary: "Print the completion script of a shell (" + strings.Join(shells, ", ") + ")", args: argsAny, choices: shells, run: runCompletion},
 		{name: "candidates", usage: "mtqg candidates [--word=<partial>] -- <word>...", summary: "List what can come next on a command line (the completion scripts call it)", args: argsAny, values: []string{"--word"}, run: runCandidates},
 	}

@@ -3,6 +3,8 @@ package journal
 import (
 	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -205,6 +207,101 @@ func TestUncommittedEvents(t *testing.T) {
 		j := journalWith(t, 1)
 		t.Setenv("PATH", t.TempDir())
 		if _, err := j.UncommittedEvents(); !errors.Is(err, ErrGitUnavailable) {
+			t.Fatalf("err = %v, want ErrGitUnavailable", err)
+		}
+	})
+}
+
+func TestGitHead(t *testing.T) {
+	t.Run("no commit yet", func(t *testing.T) {
+		root := newRepo(t)
+		if got, err := GitHead(root); err != nil || got != "" {
+			t.Fatalf("got %q, %v; want \"\"", got, err)
+		}
+	})
+
+	t.Run("the commit HEAD points to", func(t *testing.T) {
+		root := newRepo(t)
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+		want := strings.TrimSpace(git(t, root, "rev-parse", "HEAD"))
+		if got, err := GitHead(root); err != nil || got != want {
+			t.Fatalf("got %q, %v; want %q", got, err, want)
+		}
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "second")
+		want = strings.TrimSpace(git(t, root, "rev-parse", "HEAD"))
+		if got, err := GitHead(root); err != nil || got != want {
+			t.Fatalf("after a second commit: got %q, %v; want %q", got, err, want)
+		}
+	})
+
+	t.Run("git cannot be run", func(t *testing.T) {
+		root := newRepo(t)
+		t.Setenv("PATH", t.TempDir())
+		if _, err := GitHead(root); !errors.Is(err, ErrGitUnavailable) {
+			t.Fatalf("err = %v, want ErrGitUnavailable", err)
+		}
+	})
+}
+
+func TestGitStatusDigest(t *testing.T) {
+	t.Run("a clean tree digests the same twice", func(t *testing.T) {
+		root := newRepo(t)
+		a, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if a != b {
+			t.Fatalf("digest changed with nothing done: %q vs %q", a, b)
+		}
+	})
+
+	t.Run("a new untracked file changes the digest", func(t *testing.T) {
+		root := newRepo(t)
+		before, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("hi"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		after, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if before == after {
+			t.Fatalf("digest did not change: %q", before)
+		}
+	})
+
+	t.Run("a change under .mtqg/ does not change the digest", func(t *testing.T) {
+		root := newRepo(t)
+		if err := os.MkdirAll(filepath.Join(root, mtqgDirName), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		before, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, mtqgDirName, journalName), []byte(`{"id":"a"}`+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		after, err := GitStatusDigest(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if before != after {
+			t.Fatalf("digest changed from a .mtqg/ file: %q vs %q", before, after)
+		}
+	})
+
+	t.Run("git cannot be run", func(t *testing.T) {
+		root := newRepo(t)
+		t.Setenv("PATH", t.TempDir())
+		if _, err := GitStatusDigest(root); !errors.Is(err, ErrGitUnavailable) {
 			t.Fatalf("err = %v, want ErrGitUnavailable", err)
 		}
 	})

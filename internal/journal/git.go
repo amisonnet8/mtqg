@@ -3,7 +3,9 @@ package journal
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 	"time"
@@ -13,10 +15,12 @@ import (
 // longer wait means something is wrong (a lock, a slow file system).
 const gitTimeout = 10 * time.Second
 
-// The journal layer reads three things from git: who the user is, what the last
-// commit holds of journal.jsonl, and which branch is checked out. It asks the real git command, so that
-// git's own configuration, worktrees and submodules are honored, and it never
-// writes anything to git (.claude/rules/git-integration.md).
+// The journal layer reads what git says: who the user is, what the last commit
+// holds of journal.jsonl, which branch is checked out, the commit HEAD points
+// to, and a digest of the working tree (for the agent hooks, §11.3). It asks
+// the real git command, so that git's own configuration, worktrees and
+// submodules are honored, and it never writes anything to git
+// (.claude/rules/git-integration.md).
 
 // What the journal layer asks git. Each is a fixed command line: the only thing
 // that comes from outside is the directory git runs in (cmd.Dir), so no
@@ -27,6 +31,8 @@ const (
 	queryUserName gitQuery = iota
 	queryCommittedJournal
 	queryBranch
+	queryHead
+	queryStatus
 )
 
 // committedJournal names journal.jsonl in the last commit. It starts with "./"
@@ -49,6 +55,10 @@ func runGit(root string, query gitQuery) (stdout []byte, exitCode int, err error
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "show", committedJournal)
 	case queryBranch:
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "branch", "--show-current")
+	case queryHead:
+		cmd = exec.CommandContext(ctx, "git", "--no-pager", "rev-parse", "HEAD")
+	case queryStatus:
+		cmd = exec.CommandContext(ctx, "git", "--no-pager", "status", "--porcelain", "-z")
 	default:
 		return nil, 0, &GitUnavailableError{Err: errors.New("unknown git query")}
 	}
@@ -92,6 +102,56 @@ func GitBranch(root string) (string, error) {
 		return "", nil
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// GitHead returns the commit HEAD points to in the repository at root, or ""
+// when there is no commit yet (a fresh repository, or a detached HEAD that
+// somehow fails). It is used to notice that a commit was made while an agent
+// session was open (§11.3). If git cannot be run, the error is
+// ErrGitUnavailable.
+func GitHead(root string) (string, error) {
+	out, code, err := runGit(root, queryHead)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", nil
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// GitStatusDigest is a hash of what "git status --porcelain -z" reports for the
+// repository at root, leaving out .mtqg/ itself. It says only whether the
+// working tree looks different from one call to the next, not what changed:
+// it is used to notice that a session did some work (§11.3), not to read the
+// status. If git cannot be run, the error is ErrGitUnavailable.
+func GitStatusDigest(root string) (string, error) {
+	out, code, err := runGit(root, queryStatus)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", nil
+	}
+	sum := sha256.Sum256(statusWithoutMtqgDir(out))
+	return fmt.Sprintf("%x", sum), nil
+}
+
+// statusWithoutMtqgDir drops the entries of a "git status --porcelain -z"
+// output that mention .mtqg/, so that mtqg's own writes (the journal, a
+// session file) never look like "the working tree changed". It matches by
+// whether an entry contains the directory name at all, which also catches the
+// second, path-only token of a rename entry.
+func statusWithoutMtqgDir(raw []byte) []byte {
+	marker := []byte(mtqgDirName + "/")
+	var kept [][]byte
+	for _, entry := range bytes.Split(raw, []byte{0}) {
+		if len(entry) == 0 || bytes.Contains(entry, marker) {
+			continue
+		}
+		kept = append(kept, entry)
+	}
+	return bytes.Join(kept, []byte{0})
 }
 
 // UncommittedEvents returns the events of journal.jsonl that are not in the last

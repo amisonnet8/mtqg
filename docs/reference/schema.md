@@ -52,7 +52,8 @@ corrections and deletions are all expressed as new lines.
   that date range (start and end inclusive, local dates, always written as
   `YYYY-MM-DD`). mtqg commands do not read `archive/`.
 - `.local/` holds things that only matter on this machine: the write lock,
-  temporary files used while rewriting, and similar. It is ignored by git
+  temporary files used while rewriting, an agent hook's session bookkeeping
+  (`sessions/`, see cli.md's "Agent hooks"), and similar. It is ignored by git
   (`.mtqg/.gitignore`), holds nothing that other readers need, and can be
   deleted at any time when mtqg is not running.
 

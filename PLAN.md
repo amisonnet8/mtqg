@@ -104,11 +104,13 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **手元で確かめたこと：** `qsoku check`・`qsoku test`（e2e、本物のシェルの補完も含む）・`qsoku race`が通る。`qsoku docs-examples`は冪等（手で書いた下書きと、実際に動かした出力の差は、100文字を超える本文が実際に`...`で切られなかったことを示す1点のみ）。**壊して確かめた**（mutation-checkスキル、6個の変異、すべて検出。1つ生き残ってからテストを直した詳細は`.claude/rules/testing.md`「mtqg固有の検証項目」）：`kindOf`からruleのケースを外す（質問扱いになる）、`archivable`がruleを移す、`context`の`Reduced`がRulesを削る、`context`がruleの本文を100文字で切る、`countArchived`がruleを数えない、journalの`validate`がruleを断る。
 
+**CIも3OS全ジョブgreen（PR #3、2026-09-25、人間が確認）。mainへマージ済み。**
+
 ## 現在地
 
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。**
 
-**種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。ブランチ`rule-kind`で実装済み、手元で`qsoku check`・`qsoku test`・`qsoku race`・mutation-checkまで確認済み。**pushとPR作成はまだ（人間の指示待ち）。**
+**種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。PR #3、CIの3OS全ジョブgreen、mainへマージ済み。
 
 次は、段階4（外部ツール連携：MCP・フック。設計§11）に着手するかどうかを人間が判断するのを待つ。判断材料は、qsokuの報告のうち「11章で解くもの」3件（`docs/design/08-development.md`「12.3.1」）——対話中の質問・回答が自動で残らない、memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある。
 

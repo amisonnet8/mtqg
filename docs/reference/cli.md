@@ -928,6 +928,36 @@ This is the process record of this project. Read the following before you start 
 Read full entries with mtqg show <id>.
 ```
 
+Rules stay in full, however small the budget: they are not among the things a
+budget can cut.
+
+<!-- mtqg:example repo=rules -->
+```
+$ mtqg context
+# mtqg context — sample-parser (main)
+
+This is the process record of this project. Read the following before you start working.
+- Follow the rules listed under Rules
+- Respect answered questions
+- Do not decide open questions on your own; confirm them
+- Use terms as defined in the glossary
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
+
+## Rules (3)
+- 4c1d8e2a70 Write error messages in English (yamada, 2026-09-18)
+- 9e05b7f3c1 Write mtqg records in English, including the text of questions and answers, so that every contributor can read them (yamada, 2026-09-19)
+    Code identifiers and quoted output may stay as they are.
+- a27f6d0e88 Do not put personal deadlines in todos (yamada, 2026-09-20)
+
+## Recent records (newest first)
+- 2026-09-20  yamada  rule  a27f6d0e88  Do not put personal deadlines in todos
+- 2026-09-19  yamada  rule  9e05b7f3c1  Write mtqg records in English, including the text of questions and answers, so that every contrib...
+- 2026-09-18  yamada  rule  4c1d8e2a70  Write error messages in English
+
+---
+Read full entries with mtqg show <id>.
+```
+
 - Sections, in order: Attention, Rules, Open todos, Open questions, Open bugs,
   Recent records, Glossary. A section with nothing in it is omitted.
 - The first line is the repository (the name of the directory that holds
@@ -1283,6 +1313,7 @@ todo
 qa
 bug
 glossary
+rule
 ```
 
 Two records whose first 10 digits are the same are given in full:

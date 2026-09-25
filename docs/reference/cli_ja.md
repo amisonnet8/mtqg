@@ -790,6 +790,35 @@ This is the process record of this project. Read the following before you start 
 Read full entries with mtqg show <id>.
 ```
 
+ruleは、分量をどれだけ絞っても全文のまま残る：削る対象に入っていない。
+
+<!-- mtqg:example repo=rules_ja -->
+```
+$ mtqg context
+# mtqg context — sample-parser (main)
+
+This is the process record of this project. Read the following before you start working.
+- Follow the rules listed under Rules
+- Respect answered questions
+- Do not decide open questions on your own; confirm them
+- Use terms as defined in the glossary
+- Record questions, decisions, findings, bugs, and todos with mtqg as they come up
+
+## Rules (3)
+- 4c1d8e2a70 エラーメッセージは英語で書く (yamada, 2026-09-18)
+- 9e05b7f3c1 mtqgの記録は英語で書く。質問や回答の本文も含め、誰でも読めるようにするため (yamada, 2026-09-19)
+    コードの識別子や引用した出力は、そのままでよい。
+- a27f6d0e88 todoに個人の期限を書かない (yamada, 2026-09-20)
+
+## Recent records (newest first)
+- 2026-09-20  yamada  rule  a27f6d0e88  todoに個人の期限を書かない
+- 2026-09-19  yamada  rule  9e05b7f3c1  mtqgの記録は英語で書く。質問や回答の本文も含め、誰でも読めるようにするため
+- 2026-09-18  yamada  rule  4c1d8e2a70  エラーメッセージは英語で書く
+
+---
+Read full entries with mtqg show <id>.
+```
+
 - 区画はこの順：Attention、Rules、Open todos、Open questions、Open bugs、Recent records、Glossary。空の区画は出さない
 - 最初の行はリポジトリ（`.mtqg/`のあるディレクトリの名前）とブランチ（`git branch --show-current`。detached HEADなどで無いときは出さない）。次に読み手への指示、区画、続きの読み方の行が並ぶ
 - **Attention**は、行動が要るものを名指しする：定義が2つ以上ある用語と、並行した状態変更のある記録（[review](#review)。それぞれ先頭の5つ。残りは件数）と、コミットされていない記録の数（gitを実行できないときは、この行は出さない）
@@ -1027,6 +1056,7 @@ todo
 qa
 bug
 glossary
+rule
 ```
 
 先頭10桁が同じ2件の記録は、完全なIDで出す：

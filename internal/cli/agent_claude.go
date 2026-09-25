@@ -19,6 +19,7 @@ type agentFileResult struct {
 
 const (
 	claudeSettingsPath = ".claude/settings.json"
+	claudeMCPPath      = ".mcp.json"
 	claudeMemoryPath   = "CLAUDE.md"
 )
 
@@ -51,11 +52,15 @@ func wireClaudeCode(root string, dryRun bool) ([]agentFileResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	mcpConfig, err := mergeClaudeMCP(r, dryRun)
+	if err != nil {
+		return nil, err
+	}
 	memory, err := appendClaudeMemory(r, dryRun)
 	if err != nil {
 		return nil, err
 	}
-	return []agentFileResult{settings, memory}, nil
+	return []agentFileResult{settings, mcpConfig, memory}, nil
 }
 
 // mergeClaudeSettings adds mtqg's hooks and default MTQG_AUTHOR_* to
@@ -143,6 +148,52 @@ func ensureEnvDefault(settings map[string]any, key, value string) {
 	}
 	if _, ok := env[key]; !ok {
 		env[key] = value
+	}
+}
+
+// mergeClaudeMCP adds an mcpServers.mtqg entry that runs "mtqg mcp" to
+// .mcp.json, keeping everything else that is there: an existing mcpServers.mtqg
+// entry is left exactly as it is, whatever it contains (docs/reference/cli.md
+// "MCP server").
+func mergeClaudeMCP(root *os.Root, dryRun bool) (agentFileResult, error) {
+	path := claudeMCPPath
+	original, existed, err := readRootFile(root, path)
+	if err != nil {
+		return agentFileResult{}, err
+	}
+
+	config := map[string]any{}
+	if existed {
+		if err := jsonv2.Unmarshal(original, &config); err != nil {
+			return agentFileResult{}, &failure{kindHookConfigInvalid, msgAgentSettingsInvalid(path, err)}
+		}
+	}
+
+	ensureMCPServer(config, "mtqg", map[string]any{
+		"type":    "stdio",
+		"command": "mtqg",
+		"args":    []any{"mcp"},
+	})
+
+	out, err := jsonv2.Marshal(config, jsontext.WithIndent("  "), jsonv2.Deterministic(true))
+	if err != nil {
+		return agentFileResult{}, fmt.Errorf("cli: %w", err)
+	}
+	out = append(out, '\n')
+	return writeRootFile(root, path, original, existed, out, dryRun)
+}
+
+// ensureMCPServer makes sure config["mcpServers"][name] exists, adding it as
+// entry only if nothing is there yet under that name (the same "leave what is
+// already there alone" rule as ensureEnvDefault).
+func ensureMCPServer(config map[string]any, name string, entry map[string]any) {
+	servers, _ := config["mcpServers"].(map[string]any)
+	if servers == nil {
+		servers = map[string]any{}
+		config["mcpServers"] = servers
+	}
+	if _, ok := servers[name]; !ok {
+		servers[name] = entry
 	}
 }
 

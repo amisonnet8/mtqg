@@ -246,6 +246,7 @@ $ mtqg init --agent claude-code
 Created .mtqg/ in /home/me/sample-parser
 Commit it to share the records.
 Created: .claude/settings.json
+Created: .mcp.json
 Created: CLAUDE.md
 ```
 
@@ -256,6 +257,7 @@ Created: CLAUDE.md
 $ mtqg init --agent claude-code -n
 Created (dry run): .mtqg/ in /home/me/sample-parser
 Created (dry run): .claude/settings.json
+Created (dry run): .mcp.json
 Created (dry run): CLAUDE.md
 ```
 
@@ -271,6 +273,10 @@ $ mtqg init --agent claude-code --json
   "files": [
     {
       "path": ".claude/settings.json",
+      "result": "created"
+    },
+    {
+      "path": ".mcp.json",
       "result": "created"
     },
     {

@@ -19,11 +19,11 @@ func TestInitAgent(t *testing.T) {
 		}
 	})
 
-	t.Run("creates .mtqg/, settings.json and CLAUDE.md", func(t *testing.T) {
+	t.Run("creates .mtqg/, settings.json, .mcp.json and CLAUDE.md", func(t *testing.T) {
 		h := newHarness(t)
 		code, out, errOut := h.run("init", "--agent", "claude-code")
 		wantExit(t, code, 0, out, errOut)
-		if !strings.Contains(out, "Created: .claude/settings.json") || !strings.Contains(out, "Created: CLAUDE.md") {
+		if !strings.Contains(out, "Created: .claude/settings.json") || !strings.Contains(out, "Created: .mcp.json") || !strings.Contains(out, "Created: CLAUDE.md") {
 			t.Fatalf("stdout = %q", out)
 		}
 		if _, err := os.Stat(filepath.Join(h.root, ".mtqg", "journal.jsonl")); err != nil {
@@ -39,6 +39,13 @@ func TestInitAgent(t *testing.T) {
 		} {
 			if !strings.Contains(settings, want) {
 				t.Errorf("settings.json missing %s:\n%s", want, settings)
+			}
+		}
+
+		mcpConfig := readAgentFile(t, h, ".mcp.json")
+		for _, want := range []string{`"command": "mtqg"`, `"args"`, `"mcp"`} {
+			if !strings.Contains(mcpConfig, want) {
+				t.Errorf(".mcp.json missing %s:\n%s", want, mcpConfig)
 			}
 		}
 
@@ -82,11 +89,40 @@ func TestInitAgent(t *testing.T) {
 
 		code, out, errOut := h.run("init", "--agent", "claude-code")
 		wantExit(t, code, 0, out, errOut)
-		if !strings.Contains(out, "Unchanged: .claude/settings.json") || !strings.Contains(out, "Unchanged: CLAUDE.md") {
+		if !strings.Contains(out, "Unchanged: .claude/settings.json") || !strings.Contains(out, "Unchanged: .mcp.json") || !strings.Contains(out, "Unchanged: CLAUDE.md") {
 			t.Fatalf("stdout = %q", out)
 		}
 		if after := readAgentFile(t, h, ".claude/settings.json"); after != before {
 			t.Errorf("settings.json changed on a second run:\nbefore: %s\nafter:  %s", before, after)
+		}
+	})
+
+	t.Run("keeps an existing mcpServers.mtqg entry exactly as it is", func(t *testing.T) {
+		h := newHarness(t)
+		existing := `{"mcpServers":{"mtqg":{"command":"/custom/path/mtqg","args":["mcp","--verbose"]}}}`
+		if err := os.WriteFile(filepath.Join(h.root, ".mcp.json"), []byte(existing), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		code, out, errOut := h.run("init", "--agent", "claude-code")
+		wantExit(t, code, 0, out, errOut)
+
+		mcpConfig := readAgentFile(t, h, ".mcp.json")
+		if !strings.Contains(mcpConfig, `"/custom/path/mtqg"`) || !strings.Contains(mcpConfig, `"--verbose"`) {
+			t.Errorf(".mcp.json's existing mtqg entry was overwritten:\n%s", mcpConfig)
+		}
+	})
+
+	t.Run("invalid JSON in .mcp.json is refused, not overwritten", func(t *testing.T) {
+		h := newHarness(t)
+		if err := os.WriteFile(filepath.Join(h.root, ".mcp.json"), []byte("not json"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		code, out, errOut := h.run("init", "--agent", "claude-code")
+		if code != exitError || out != "" || !strings.Contains(errOut, ".mcp.json") {
+			t.Fatalf("code = %d, out = %q, stderr = %q", code, out, errOut)
+		}
+		if got := readAgentFile(t, h, ".mcp.json"); got != "not json" {
+			t.Errorf(".mcp.json was changed: %q", got)
 		}
 	})
 
@@ -131,7 +167,7 @@ func TestInitAgent(t *testing.T) {
 		h := newHarness(t)
 		code, out, errOut := h.run("init", "--agent", "claude-code", "--json")
 		wantExit(t, code, 0, out, errOut)
-		for _, want := range []string{`"agent": "claude-code"`, `"path": ".claude/settings.json"`, `"result": "created"`, `"path": "CLAUDE.md"`} {
+		for _, want := range []string{`"agent": "claude-code"`, `"path": ".claude/settings.json"`, `"result": "created"`, `"path": ".mcp.json"`, `"path": "CLAUDE.md"`} {
 			if !strings.Contains(out, want) {
 				t.Errorf("--json output missing %s:\n%s", want, out)
 			}

@@ -111,6 +111,8 @@ func (c *ctx) reportOf(err error) errorReport {
 		return errorReport{kind: kindIDTooShort, lines: []string{msgIDTooShort(tooShort.Prefix)}, prefix: tooShort.Prefix}
 	case errors.Is(err, model.ErrEmptyWord):
 		return one(kindEmptyWord, msgEmptyWord())
+	case errors.Is(err, model.ErrEmptyText):
+		return one(kindEmptyText, msgEmptyText())
 	case errors.As(err, &gitMissing):
 		return one(kindGitUnavailable, msgGitUnavailable(gitMissing.Err))
 	default:
@@ -126,6 +128,13 @@ func (c *ctx) printError(rep errorReport) {
 		}
 		return
 	}
+	c.emitLine(jsonError{Error: rep.json()})
+}
+
+// json is the same shape --json writes to standard error for this error, used
+// by printError and, as a tool result instead of a line on standard error, by
+// the MCP server (mcp.go).
+func (rep errorReport) json() jsonErrorBody {
 	body := jsonErrorBody{
 		Kind:    rep.kind,
 		Message: strings.Join(rep.lines, "\n"),
@@ -139,7 +148,7 @@ func (c *ctx) printError(rep errorReport) {
 	if len(rep.candidates) > 0 {
 		body.Candidates = recordsJSON(rep.candidates)
 	}
-	c.emitLine(jsonError{Error: body})
+	return body
 }
 
 // fail prints what went wrong, in words, and returns the exit code.

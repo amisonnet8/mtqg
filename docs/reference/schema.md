@@ -107,6 +107,10 @@ Fields without a value are **omitted**, never written as `null`.
 writes down a human's decision, the author is the human (and the text says an
 AI wrote it on their behalf).
 
+`author.name` comes from wherever the record was written: the CLI takes it
+from an environment variable or from git, and the MCP server (see `cli.md`)
+takes it from the name the connecting client gives at startup.
+
 ## Operations
 
 | `op` | Meaning | Fields |

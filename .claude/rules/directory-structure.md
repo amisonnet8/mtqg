@@ -76,9 +76,12 @@ mtqg/
 - **`internal/hook/`は作らなかった。** `mtqg hook`は`internal/cli/hook.go`・`hook_claude.go`に置く。`session-start`が出す文章は`mtqg context`と同じもので、データを文章にするのはCLIの層の役目（cli-output.md）だから。エージェント間で共通の判断（`ShouldPrompt`）はモデル層（`internal/model/session.go`）に、セッションの状態の読み書き（`.mtqg/.local/sessions/`）はジャーナル層（`internal/journal/session.go`）に置く。段階4bでMCPを足すときに、`internal/hook/`相当の層が本当に要るかは改めて判断する
 - **`internal/cli/agent_claude.go`**：`mtqg init --agent claude-code`が`.claude/settings.json`・`CLAUDE.md`を書き換える。`.mtqg/`の外のファイルなのでジャーナル層ではなく、CLIの層に置く（利用者とのやり取りに近い：エージェントの設定ファイルという「入口の外側」を触るため）
 
+## 段階4b（`mtqg mcp`）で足したもの
+
+- **`internal/mcp/`は作らなかった。** `mtqg mcp`は`internal/cli/mcp.go`（サーバー起動、SDKとの接続）・`internal/cli/mcp_tools.go`（ツール表とハンドラ）に置く。MCPのハンドラが要るもの（エラーの文言と`kind`、記録のJSONの形、`context`の文章、本文の正規化、ジャーナルの開き方）は、すべて既に`internal/cli/`に1か所ずつある。別の層に分けると、これらを`cli`から公開して入口どうしの依存を作るか、複製するかになり、「入口ごとに状態の組み立てを重複させない」に反する。JSON-RPCのプロトコル層は依存ライブラリ（後述）が丸ごと引き受けるので、mtqgに残るのは「引数の解釈・文言・出力の形」だけで、これはCLIの層の役目。段階4aで`internal/hook/`を作らなかった判断と同じ構図
+- **依存ポリシーの例外**：MCPプロトコル（JSON-RPC 2.0、stdio）の実装に`github.com/modelcontextprotocol/go-sdk`（Anthropic公式、MIT）を使う。CLAUDE.mdの「標準ライブラリと`golang.org/x/`だけ」の例外（理由・承認の経緯は`PLAN.md`「段階4b」）。**機械的な歯止め**として、`.golangci.yaml`の`depguard`で`internal/journal/**`・`internal/model/**`からこのSDKへのimportを禁じ、SDKに触れるのが入口（`internal/cli/`）だけであることを固定する
+
 ## 後の段階で増えるもの（今は作らない）
 
-- `internal/mcp/`：段階4b
 - VSCode拡張（設計§11.4）は、**別リポジトリにする方向**（最終判断は段階4b以降・`PLAN.md`）。TypeScriptで、本体とは`--json`でつながるだけなので、本体のリポジトリをGoのツールチェーンだけで完結させる。このリポジトリにTypeScriptのコードやNode.jsの設定を持ち込まないこと
-- `mtqg mcp`は**このリポジトリに置く**（`mtqg hook`は段階4aで既に置いた）。同じバイナリのサブコマンドで、`internal/`のコアを使うため（`internal/`は別リポジトリからimportできない）
 - `.goreleaser.yaml`：公開の段階（distribution.md）

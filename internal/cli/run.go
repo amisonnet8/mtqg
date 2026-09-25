@@ -17,6 +17,12 @@ type ctx struct {
 	env Env
 	inv *invocation
 	st  style
+
+	// authorAs, when set, is who writerAs writes as, instead of working it out
+	// from MTQG_AUTHOR_* and git (author.go). Only the MCP server sets this
+	// (mcp.go): its author always comes from the connecting client, never from
+	// the shell's environment or from git.
+	authorAs *journal.Author
 }
 
 // failure is a complaint for people that needs no further work: its message is
@@ -109,9 +115,13 @@ func (c *ctx) writerAs() (j *journal.Journal, author journal.Author, tty string,
 	if err != nil {
 		return nil, journal.Author{}, "", err
 	}
-	author, err = c.author(loc.Root)
-	if err != nil {
-		return nil, journal.Author{}, "", err
+	if c.authorAs != nil {
+		author = *c.authorAs
+	} else {
+		author, err = c.author(loc.Root)
+		if err != nil {
+			return nil, journal.Author{}, "", err
+		}
 	}
 	tty = c.terminalID()
 	j, err = journal.Open(loc.Root, journal.Options{Author: author, TTY: tty})

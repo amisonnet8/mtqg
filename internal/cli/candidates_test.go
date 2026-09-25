@@ -68,7 +68,7 @@ func TestCandidatesOfTheCommandLine(t *testing.T) {
 		want    []string
 	}{
 		{name: "the first word starts a kind", partial: "t", want: []string{"todo"}},
-		{name: "a kind is not offered as its letter", partial: "m", want: []string{"memo"}},
+		{name: "a kind is not offered as its letter", partial: "m", want: []string{"memo", "mcp"}},
 		{name: "a command that has no kind", partial: "sta", want: []string{"status"}},
 		{name: "a kind and a command can share a prefix", partial: "r", want: []string{"rule", "review"}},
 		{name: "a command that is not built is not offered", partial: "unb"},

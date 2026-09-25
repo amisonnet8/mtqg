@@ -131,7 +131,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **SessionStartは実地で確認できた（2026-09-25、次のセッションの開始時）。** `SessionStart:resume`フックが成功し、`mtqg context`の内容（Rules・Open todos・Open bugs・Recent records）がそのままセッションの冒頭に入った。記録者も、コマンドの前に明示せず`.claude/settings.json`の`env`だけで`ai`/`claude-code`になることを確認済み（前の区切りで確認済み）。
 
-次：**Stopの催促が実際に出ることは、まだ確かめていない**（作業をして記録せずにセッションを終えようとする場面がまだ無い。ここでStopの出力の形の最終確認も兼ねる）。確認できたら、段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
+**Stopの実地確認は、ロジックの確認まではできたが、目視確認は手段が無く打ち切った（2026-09-25）。** 記録せずに応答を終える実験を複数回試み、その過程で判定の性質が2つ実地で分かった：①セッション開始より前からあった未コミットの変更は「セッション中の作業」としてカウントされない（`start`と`now`のGitStatusDigestが同じまま）。②既に変更済みのファイルへさらに追記しても`git status --porcelain`の行自体は変わらないため、StatusDigestも変わらない（ファイル単位の変更検出で、diffの中身までは見ない。いずれも設計どおりの挙動）。この2つを踏まえて条件を揃えたが、それでも会話上に促しは現れなかった。`.mtqg/.local/sessions/`のファイルから使われていそうなセッションIDを推測し、`mtqg hook claude-code stop`を手動でその入力で呼んだところ、`{"decision":"block","reason":...}`が正しく返り、**判定ロジック自体は動くことを確認できた**。ただし、**Claude Codeが実際にフックへ渡す`session_id`はエージェント側からは見えない**ため、その推測が実際のセッションのものだったかは確認できず（このシミュレーション自体が対象セッションの`prompted`をtrueにする副作用も持つ）、これ以上の目視確認の手段が無いと判断した。
+
+次：段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

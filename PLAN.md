@@ -119,6 +119,22 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **CIも3OS全ジョブgreen（PR #4、2026-09-25、人間が確認。mainへマージ済み、`b12183a`）。** 途中、`windows-latest`の`check`が`TestRewriteWhileGoroutinesAppend`（既知の間欠的フレーク、`testing.md`「証明にならないガード」参照）で1度落ちたが、このPRの変更とは無関係と確認のうえ再実行して通った。マージ前に、`docs/reference/`の`--json`の例（`init --agent --json`）でWindows固有の不具合を1件見つけて直した（`e2e/examples_test.go`のパス置き換えがJSONエスケープ後のバックスラッシュに対応していなかった。詳細は`.claude/rules/testing.md`「GitHub Actions CIの落とし穴」）。
 
+**段階4aの実地配線・確認も完了した（2026-09-25）。** `mtqg init --agent claude-code`をこのリポジトリ自身に実行し配線（コミット`c31da37`）。`SessionStart`は次のセッションの開始で実地確認できた。`Stop`は判定ロジックの動作は手動シミュレーションで確認できたが、実際のセッションでの目視確認は、Claude Codeがフックへ渡す`session_id`がエージェント側から見えないため手段が無く打ち切った（詳細は`docs/design/07-integrations.md`§11.3「実地配線と確認」）。
+
+## 段階4b：AIエージェント向けMCPサーバー（`mtqg mcp`）（2026-09-25〜）
+
+人間の指示で段階4bに着手。設計§11.6の順（指示ファイル→フック→MCP）に沿い、段階4aの次としてMCP（設計§11.2）を実装する。**スコープ外**：段階4aで残った「11章で解くもの」2件（memoとbugの使い分けの一貫性、変異確認の機械化）、VSCode拡張（設計§11.4）、`delete`・`undo`・`archive`・`review`・`format`のMCP公開（破壊的・複雑な操作をAIの判断だけで実行させない）。作業はブランチ`stage4b-mcp`。
+
+**人間と確認済みの決定**：
+- **MCPプロトコル（JSON-RPC 2.0、stdio）は公式Go SDK `github.com/modelcontextprotocol/go-sdk`（Anthropic公式、MIT）を採用する。** CLAUDE.mdの依存ポリシー（標準ライブラリと`golang.org/x/`だけ）の**例外として人間が承認済み**。理由：①標準・`x/`に無い。自前でJSON-RPC/MCPプロトコルを実装すると、仕様の細部・将来の版変更への追従を自分で持ち続けることになる。**依存の実際の規模**（手元のモジュールキャッシュ`v1.6.0`のgo.modで確認。最新は`v1.8.0`、実装ではそちらを使う）：直接依存はSDK本体1つだが、間接依存が7つ付く——`golang.org/x/`でないもの5つ（`golang-jwt/jwt/v5`、`google/jsonschema-go`、`segmentio/encoding`、`segmentio/asm`、`yosida95/uritemplate/v3`）と`x/oauth2`・`x/tools`。`go get`実行時に改めて`permissions.ask`で人間の承認が要り、その後Trivyでライセンス・脆弱性を確認して記録する（未実施）
+- **`internal/mcp/`は作らず`internal/cli/`に置く。** MCPのハンドラが要るもの（エラー文言・記録のJSON・`context`の文章・本文の正規化・ジャーナルの開き方）はすべて既にCLIの層にある。プロトコル層はSDKが引き受けるので、mtqgに残るのは「引数の解釈・文言・出力の形」＝CLIの層の役目。段階4aで`internal/hook/`を作らなかった判断と同じ構図。`.golangci.yaml`の`depguard`で、ジャーナル層・モデル層からSDKへのimportを禁じて歯止めにする
+- **公開ツールは記録作成中心に絞るが、`edit`も含める**（人間の要望）。`$EDITOR`は使わず新しい本文を引数で渡す。質問と回答、バグと返信は別ツールに分ける（CLIの「最初の語がIDらしいか」判定は使わない）
+- 記録者：`author.kind`は常に`ai`、`author.name`は`initialize`の`clientInfo.name`（`MTQG_AUTHOR_*`やgitのuser.nameは見ない）
+- 対象リポジトリ：新しい引数は作らず既存の`-C`を使う。起動時でなくツール呼び出しのたびに`.mtqg/`を探す
+- 詳細な設計（ツール一覧19個、エラーの扱い、テスト方針、進め方の順序）はプランモードで作成した計画に記録済み。実装しながら`docs/design/07-integrations.md`§11.2に実装ノートとして反映する
+
+次：文書（`cli.md`・`cli_ja.md`・`schema.md`・`directory-structure.md`・`cli-output.md`）を先に更新してから、依存の追加・実装に進む。
+
 ## 現在地
 
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている（v0.1のタグは打たない、下の段階1完了の判定を参照）。**
@@ -133,7 +149,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **Stopの実地確認は、ロジックの確認まではできたが、目視確認は手段が無く打ち切った（2026-09-25）。** 記録せずに応答を終える実験を複数回試み、その過程で判定の性質が2つ実地で分かった：①セッション開始より前からあった未コミットの変更は「セッション中の作業」としてカウントされない（`start`と`now`のGitStatusDigestが同じまま）。②既に変更済みのファイルへさらに追記しても`git status --porcelain`の行自体は変わらないため、StatusDigestも変わらない（ファイル単位の変更検出で、diffの中身までは見ない。いずれも設計どおりの挙動）。この2つを踏まえて条件を揃えたが、それでも会話上に促しは現れなかった。`.mtqg/.local/sessions/`のファイルから使われていそうなセッションIDを推測し、`mtqg hook claude-code stop`を手動でその入力で呼んだところ、`{"decision":"block","reason":...}`が正しく返り、**判定ロジック自体は動くことを確認できた**。ただし、**Claude Codeが実際にフックへ渡す`session_id`はエージェント側からは見えない**ため、その推測が実際のセッションのものだったかは確認できず（このシミュレーション自体が対象セッションの`prompted`をtrueにする副作用も持つ）、これ以上の目視確認の手段が無いと判断した。
 
-次：段階4b（MCP、設計§11.2）に進むかどうかを人間が判断する。判断材料は、qsokuの報告のうち残る「11章で解くもの」2件（`docs/design/08-development.md`「12.3.1」）——memoとbugの使い分けをAIが一貫させられない、手作業の変異確認は機械化の余地がある（「対話中の質問・回答が自動で残らない」は`AskUserQuestion`がフックの対象外と確認できたため、`.claude/rules/mtqg-usage.md`の運用ルールで対応済み）。
+**段階4b（MCP、設計§11.2）に着手した（2026-09-25。上の「段階4b」の節）。** 人間の指示とプランモードでの合意を経て、`mtqg mcp`の実装を開始。次：文書（`cli.md`・`cli_ja.md`・`schema.md`・`directory-structure.md`・`cli-output.md`）を先に更新する。
 
 **できたもの：**
 - **仕様**（`docs/reference/cli.md`・`cli_ja.md`の「Shell completion」。実装より先に書いた）。`mtqg completion <shell>`（`bash`・`zsh`・`fish`・`powershell`。ほかは終了コード2）と、`mtqg candidates [--word=<打ちかけの語>] -- <語>...`。候補は1行1件（`値`、または`値<TAB>説明`）。`help`にも`--json`のコマンド一覧にも出る（隠しコマンドにしない）。

@@ -51,3 +51,8 @@
 {"id":"87495b497b064b8e8c199b5268205a10","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-25T14:47:16Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"515012bb86c642059adeb3a475276d47","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-25T14:47:18Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"1a934e78bb7347e3a4d6b1f2123d7f02","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-25T14:47:19Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"1912220e73db47aea8bcb9fb3f2f8411","op":"status","from":"open","status":"done","basis":4,"v":0,"ts":"2026-09-25T14:51:01Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"08b09858fc8c4c25a35f51b7850b2aaa","op":"create","type":"qa","status":"open","text":"段階4a・4bが完了し、11章の外部ツール連携で残るのはVSCode拡張（設計§11.4、別リポジトリの方向）だけ。VSCode拡張の着手可否と、v1確定（設計§12.4）に進むかどうかを、いつどちらから判断するか","v":0,"ts":"2026-09-25T14:51:06Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"ae86dba898754d5bb24b7ee08501e354","op":"create","type":"rule","text":"todoは着手前に立てすぐdoneにする、区切りごとにその場でmemoを書く、人間に委ねる判断はq addでも開けておく——mtqg contextだけでこのリポジトリの現状・今後が分かる状態を保つ（PLAN.mdを読まないと分からない状態にしない）。詳細は.claude/rules/mtqg-usage.md「こまめに記録する」。","v":0,"ts":"2026-09-25T14:51:49Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"ae86dba898754d5bb24b7ee08501e354","op":"delete","v":0,"ts":"2026-09-25T14:52:16Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"792a0f2d31174208935986c720723672","op":"create","type":"rule","text":"todoは着手前に立てすぐdoneにする、区切りごとにその場でmemoを書く、人間に委ねる判断はq addでも開けておく——mtqg contextだけでこのリポジトリの現状・今後が分かる状態を保つ（PLAN.mdを読まないと分からない状態にしない）。詳細は.claude/rules/mtqg-usage.md「こまめに記録する」。","v":0,"ts":"2026-09-25T14:52:20Z","author":{"kind":"human","name":"amisonnet8"}}

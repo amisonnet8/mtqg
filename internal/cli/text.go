@@ -50,12 +50,12 @@ func cleanText(text string) (string, error) {
 	return text, nil
 }
 
-// editText opens $EDITOR on a file that holds initial (nothing, for a new text)
-// and returns what was saved.
+// editText opens $EDITOR (nano, when it is not set) on a file that holds
+// initial (nothing, for a new text) and returns what was saved.
 func (c *ctx) editText(initial string) (string, error) {
 	editor := strings.TrimSpace(c.env.Getenv("EDITOR"))
 	if editor == "" {
-		return "", &failure{kindEditor, msgNoEditor()}
+		editor = "nano"
 	}
 	argv, err := splitCommand(editor)
 	if err != nil {

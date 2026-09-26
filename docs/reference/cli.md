@@ -365,8 +365,8 @@ mtqg r add Write mtqg records in English
   the reply that follows an ID (`mtqg q add <question-id>`,
   `mtqg b add <bug-id>`) and for the definition that follows a word
   (`mtqg g add <word>`). `$EDITOR` may hold arguments and quotes (`code --wait`);
-  it is not run through a shell. If `$EDITOR` is not set, mtqg stops and says so.
-  An ID that matches no record stops before the editor opens.
+  it is not run through a shell. If `$EDITOR` is not set (or blank), mtqg opens
+  `nano`. An ID that matches no record stops before the editor opens.
 - A word that is missing is a mistake in the command line, and nothing is
   written: `mtqg g add` (no word). The text of an answer, a reply or a
   definition can be `-`, to read it from standard input.
@@ -1501,7 +1501,7 @@ $ mtqg candidates --word=7043 -- show
 | author name | `MTQG_AUTHOR_NAME`, else `git config user.name` |
 | author kind | `MTQG_AUTHOR_KIND` (`human` or `ai`), else `human` |
 | terminal | `MTQG_TTY`, else the terminal that standard input, output or error is connected to; none if there is none |
-| editor | `$EDITOR` |
+| editor | `$EDITOR`, else `nano` |
 
 - An AI agent that records through the command line says so with the two
   variables: `MTQG_AUTHOR_KIND=ai MTQG_AUTHOR_NAME=claude-code`. With `ai` the

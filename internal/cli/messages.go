@@ -105,8 +105,6 @@ func msgMCPNoClientName() string {
 
 func msgEmptyText() string { return "Aborting: the text is empty" }
 
-func msgNoEditor() string { return "No text given, and $EDITOR is not set." }
-
 func msgEditorFailed(err error) string { return fmt.Sprintf("The editor failed: %v", err) }
 
 func msgBadEditorCommand(reason string) string { return fmt.Sprintf("Cannot read $EDITOR: %s", reason) }

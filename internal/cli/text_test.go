@@ -125,10 +125,36 @@ func TestInputText(t *testing.T) {
 		failsWith(t, err, msgEmptyText())
 	})
 
-	t.Run("no $EDITOR", func(t *testing.T) {
+	t.Run("no $EDITOR falls back to nano", func(t *testing.T) {
 		h := newHarness(t)
-		_, err := newCtx(h, nil).inputText(nil)
-		failsWith(t, err, msgNoEditor())
+		var argv []string
+		editor := func(a []string) error {
+			argv = a
+			return os.WriteFile(a[len(a)-1], []byte("from nano\n"), 0o600)
+		}
+		got, err := newCtx(h, editor).inputText(nil)
+		if err != nil || got != "from nano" {
+			t.Errorf("got %q, %v", got, err)
+		}
+		if len(argv) != 2 || argv[0] != "nano" {
+			t.Errorf("argv = %q, want nano as the editor", argv)
+		}
+	})
+
+	t.Run("a blank $EDITOR also falls back to nano", func(t *testing.T) {
+		h := newHarness(t)
+		h.vars["EDITOR"] = "   "
+		var argv []string
+		editor := func(a []string) error {
+			argv = a
+			return os.WriteFile(a[len(a)-1], []byte("from nano\n"), 0o600)
+		}
+		if _, err := newCtx(h, editor).inputText(nil); err != nil {
+			t.Fatal(err)
+		}
+		if len(argv) != 2 || argv[0] != "nano" {
+			t.Errorf("argv = %q, want nano as the editor", argv)
+		}
 	})
 
 	t.Run("an editor that fails", func(t *testing.T) {

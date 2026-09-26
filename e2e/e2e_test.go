@@ -264,6 +264,38 @@ func TestTextFromStandardInputAndTheEditor(t *testing.T) {
 	}
 }
 
+// With no $EDITOR at all, mtqg falls back to nano. Proving it needs the real
+// binary and a real PATH lookup to find something actually named nano, not
+// just Run()'s internal logic, so this puts a copy of the test binary (the
+// same stand-in used above for an explicit $EDITOR) on PATH under that name,
+// ahead of git's directories, which stay reachable.
+func TestEditorFallsBackToNanoWhenUnset(t *testing.T) {
+	r := newRepo(t)
+	r.mtqg("init")
+
+	nanoDir := t.TempDir()
+	nanoName := "nano"
+	if runtime.GOOS == "windows" {
+		nanoName += ".exe"
+	}
+	data, err := os.ReadFile(os.Args[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nanoDir, nanoName), data, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	fallbackPath := nanoDir + string(os.PathListSeparator) + os.Getenv("PATH")
+
+	res := r.run([]string{"PATH=" + fallbackPath, "MTQG_E2E_EDITOR_TEXT=written by the nano stand-in\n"}, "", "m", "add")
+	if res.code != 0 {
+		t.Fatalf("m add with no $EDITOR: %+v", res)
+	}
+	if memos := r.mtqg("m", "list"); !strings.Contains(memos, "written by the nano stand-in") {
+		t.Errorf("memos =\n%s", memos)
+	}
+}
+
 func TestExitCodesAndStreams(t *testing.T) {
 	r := newRepo(t)
 	r.mtqg("init")
@@ -413,12 +445,12 @@ func TestQuestionsAnswersAndTheGlossary(t *testing.T) {
 		t.Errorf("a mistyped ID: %+v", res)
 	}
 	// An ID and no answer opens the editor, which the test binary stands in for.
+	// (The fallback to nano when $EDITOR is unset has its own dedicated test,
+	// TestEditorFallsBackToNanoWhenUnset, so it does not shift the record counts
+	// this test checks below.)
 	editor := `"` + os.Args[0] + `"`
 	if res := r.run([]string{"EDITOR=" + editor, "MTQG_E2E_EDITOR_TEXT=An answer written in the editor\n"}, "", "q", "add", question[:10]); res.code != 0 {
 		t.Errorf("an ID and no answer: %+v", res)
-	}
-	if res := r.run(nil, "", "q", "add", question[:10]); res.code != 1 || !strings.Contains(res.stderr, "$EDITOR is not set") {
-		t.Errorf("an ID and no answer, and no editor: %+v", res)
 	}
 
 	if got := r.mtqg("q", "done", question[:10]); !strings.HasPrefix(got, "Done: "+question[:10]+"  ") {

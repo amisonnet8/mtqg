@@ -307,8 +307,8 @@ mtqg r add mtqgの記録は英語で書く
 - **書く本文がないときは、`$EDITOR`が開く**。空のファイルが開き、保存した内容が本文になる（末尾の改行は落とす）：
   引数がまったくないとき（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`、`mtqg r add`）、IDのあとの回答・返信がないとき
   （`mtqg q add <質問id>`、`mtqg b add <バグid>`）、用語のあとの定義がないとき（`mtqg g add <用語>`）。
-  `$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは通さない。`$EDITOR`が設定されていなければ、止まって
-  そう伝える。どの記録にも当てはまらないIDは、エディタが開く前に止まる
+  `$EDITOR`には引数や引用符を含められる（`code --wait`）。シェルは通さない。`$EDITOR`が設定されていなければ（空白だけのときも）、
+  `nano`を開く。どの記録にも当てはまらないIDは、エディタが開く前に止まる
 - 足りない語があるのはコマンドラインの誤りで、何も書かない：`mtqg g add`（用語がない）。回答・返信・定義の本文は`-`にでき、
   標準入力から読む
 - 本文は複数行でもよい（標準入力かエディタから）。`list`は1行目だけを表示する
@@ -1189,7 +1189,7 @@ $ mtqg candidates --word=7043 -- show
 | 記録者名 | `MTQG_AUTHOR_NAME`、なければ`git config user.name` |
 | 記録者の種別 | `MTQG_AUTHOR_KIND`（`human`か`ai`）、なければ`human` |
 | 端末 | `MTQG_TTY`、なければ標準入力・標準出力・標準エラー出力がつながっている端末。なければなし |
-| エディタ | `$EDITOR` |
+| エディタ | `$EDITOR`、無ければ`nano` |
 
 - コマンドラインから記録するAIエージェントは、2つの変数で名乗る：
   `MTQG_AUTHOR_KIND=ai MTQG_AUTHOR_NAME=claude-code`。`ai`のときは名前が必須。

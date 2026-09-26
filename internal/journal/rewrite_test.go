@@ -344,8 +344,17 @@ func TestRewriteWhileGoroutinesAppend(t *testing.T) {
 
 // The same across processes, which is how mtqg is used: several agents append
 // while a person runs undo or archive.
+//
+// The processes append until they are killed, so every rewrite runs while
+// lines are being appended, however the lock (which is not fair, see lock) is
+// shared out. A fixed count on both sides (a process exiting on its own after
+// a set number of lines, the rewriter stopping once it had counted 3) was the
+// same design flaw already fixed in TestRewriteWhileGoroutinesAppend: how many
+// lines each process got in is read back from journal.jsonl afterwards,
+// rather than reported by a process that was killed mid-loop (mtqg's bug
+// 5e7e4a8492, 2026-09-26).
 func TestRewriteWhileProcessesAppend(t *testing.T) {
-	const processes, perProcess = 3, 40
+	const processes, wantRewrites = 3, 3
 	j := newJournal(t, nil)
 	seedDroppable(t, j, 10)
 
@@ -353,7 +362,7 @@ func TestRewriteWhileProcessesAppend(t *testing.T) {
 	outputs := make([]*syncBuffer, processes)
 	waits := make(chan error, processes)
 	for p := range processes {
-		cmds[p] = helper(t, j.loc.Root, "append", fmt.Sprintf("MTQG_TAG=p%d", p), fmt.Sprintf("MTQG_COUNT=%d", perProcess), "MTQG_PAUSE_MS=1")
+		cmds[p] = helper(t, j.loc.Root, "append", fmt.Sprintf("MTQG_TAG=p%d", p), "MTQG_PAUSE_MS=1")
 		outputs[p] = &syncBuffer{}
 		cmds[p].Stdout, cmds[p].Stderr = outputs[p], outputs[p]
 		if err := cmds[p].Start(); err != nil {
@@ -362,34 +371,80 @@ func TestRewriteWhileProcessesAppend(t *testing.T) {
 	}
 	for p, cmd := range cmds {
 		go func() {
-			if err := cmd.Wait(); err != nil {
-				waits <- fmt.Errorf("process %d: %w\n%s", p, err, outputs[p].String())
-				return
+			err := cmd.Wait()
+			if err != nil {
+				err = fmt.Errorf("process %d: %w\n%s", p, err, outputs[p].String())
 			}
-			waits <- nil
+			waits <- err
 		}()
 	}
 
-	rewrites, finished := 0, 0
-	for finished < processes {
-		select {
-		case err := <-waits:
-			if err != nil {
-				t.Fatal(err)
+	killed := false
+	kill := func() {
+		killed = true
+		for p, cmd := range cmds {
+			if err := cmd.Process.Kill(); err != nil {
+				t.Errorf("process %d: killing: %v", p, err)
 			}
-			finished++
-		default:
-			if err := j.Rewrite(dropDroppable); err != nil {
-				t.Fatal(err)
-			}
-			rewrites++
-			time.Sleep(2 * time.Millisecond)
+		}
+		for range cmds {
+			<-waits // each reports that it was killed
 		}
 	}
-	if rewrites < 3 {
-		t.Fatalf("only %d rewrites ran while the processes appended: the test proves nothing", rewrites)
+	defer func() {
+		if !killed {
+			kill()
+		}
+	}()
+
+	appended := func() int {
+		read, err := j.Read()
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, ev := range read.Events {
+			if !strings.HasPrefix(ev.Text, "drop-") {
+				n++
+			}
+		}
+		return n
 	}
-	checkAllWritten(t, j, processes, perProcess, "p")
+
+	// wantRewrites is reached quickly; going past it only happens if nothing
+	// has been appended yet, which a healthy run does not need (the cap is a
+	// safety net against a genuine hang, not a timing budget).
+	for rewrites := 0; rewrites < wantRewrites || appended() == 0; rewrites++ {
+		select {
+		case err := <-waits:
+			t.Fatalf("a process exited before being told to stop: %v", err)
+		default:
+		}
+		if err := j.Rewrite(dropDroppable); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(2 * time.Millisecond) // let a waiting append take its turn
+		if rewrites > 500 {
+			t.Fatalf("still nothing appended after %d rewrites: the test proves nothing", rewrites)
+		}
+	}
+	kill()
+
+	read, err := j.Read()
+	if err != nil || len(read.Warnings) != 0 {
+		t.Fatalf("reading: %v, warnings %+v", err, read.Warnings)
+	}
+	next := make([]int, processes)
+	for _, ev := range read.Events {
+		var p, i int
+		if _, err := fmt.Sscanf(ev.Text, "p%d-%d", &p, &i); err != nil || p >= processes {
+			t.Fatalf("unexpected text %q", ev.Text)
+		}
+		if i != next[p] {
+			t.Fatalf("process %d: got number %d, want %d: its lines are out of order", p, i, next[p])
+		}
+		next[p]++
+	}
 }
 
 // seedDroppable puts lines into the journal that dropDroppable removes.

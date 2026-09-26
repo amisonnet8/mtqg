@@ -31,9 +31,12 @@ func TestHelperProcess(t *testing.T) {
 	}
 	switch mode {
 	case "append":
+		// MTQG_COUNT<=0 (unset counts as 0) means: append until killed. That is
+		// how a test proves a rewrite ran while lines were still being appended
+		// without racing a fixed count on both sides (rewrite_test.go).
 		count, _ := strconv.Atoi(os.Getenv("MTQG_COUNT"))
 		pause, _ := strconv.Atoi(os.Getenv("MTQG_PAUSE_MS"))
-		for i := range count {
+		for i := 0; count <= 0 || i < count; i++ {
 			text := fmt.Sprintf("%s-%d", os.Getenv("MTQG_TAG"), i)
 			if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: text}); err != nil {
 				fail(err)

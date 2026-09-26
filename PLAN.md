@@ -154,7 +154,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **`$EDITOR`未設定時のnanoフォールバック（2026-09-26）。** `$EDITOR`が空（未設定・空白のみ）のとき、以前は止まっていたのを`nano`にフォールバックするよう変更（人間の指示によるtodo）。`docs/reference/cli.md`・`cli_ja.md`も更新、e2eは本物のバイナリを`nano`という名前でPATHに置いて本物のPATH解決で確認。
 
-**段階4の最後の項目、VSCode拡張の着手が決まった（2026-09-26、人間の回答。質問`08b09858fc`）。** 順序は「VSCode拡張対応→mtqgを使ってqsoku側で改修を行って出た問題を修正（これを段階5とする）→v1確定」。設計§11.4（`docs/design/07-integrations.md`）に画面構成（ToDo・QA・用語集の3画面＋Slack風メモのタイムライン）・実装方針（VSCodeのWebview、`--json`経由でコアとつながる、別リポジトリにする）まで書いてあるが、レイアウトの詳細は未定（設計「14章」）。**新しいリポジトリは`/home/vscode/mtqg-vscode`に作ることに決めた（このmtqgリポジトリの外。人間の指示、2026-09-26）。** 初期構成（環境のみ：`CLAUDE.md`・`.claude/`・`docs/design/`・`.devcontainer/`・`LICENSE`・`.gitattributes`・`trivy.yaml`・`.mtqg/`。`mtqg init --agent claude-code`で`.mcp.json`とCLAUDE.mdの配線も完了）を人間の指示メモに従って作り、コミット済み（`af21674`）。mtqgのrule 3件を人間名義で移植し、3つの質問（雛形の範囲・npm依存の線引き・rule移植）をq add→回答→doneまで記録した。拡張自身の雛形（`package.json`・`tsconfig.json`・`src/`・`qsokufile`）と`.github/workflows/`は、Node.jsが要るためmtqg-vscode側の次のtodoとして残した。**以降の進捗はmtqg-vscode側の`.mtqg/`で記録され、このPLAN.mdやこのリポジトリの`.mtqg/`には残らない。**
+**段階4の最後の項目、VSCode拡張の着手が決まった（2026-09-26、人間の回答。質問`08b09858fc`）。** 順序は「VSCode拡張対応→mtqgを使ってqsoku側で改修を行って出た問題を修正（これを段階5とする）→v1確定」。設計§11.4（`docs/design/07-integrations.md`）に画面構成（ToDo・QA・Bugs・Rules・用語集の5画面＋Slack風メモのタイムライン、計6画面。2026-09-26に見直してBugs・Rulesを追加。下記）・実装方針（VSCodeのWebview、`--json`経由でコアとつながる、別リポジトリにする）まで書いてあるが、レイアウトの詳細は未定（設計「14章」）。**新しいリポジトリは`/home/vscode/mtqg-vscode`に作ることに決めた（このmtqgリポジトリの外。人間の指示、2026-09-26）。** 初期構成（環境のみ：`CLAUDE.md`・`.claude/`・`docs/design/`・`.devcontainer/`・`LICENSE`・`.gitattributes`・`trivy.yaml`・`.mtqg/`。`mtqg init --agent claude-code`で`.mcp.json`とCLAUDE.mdの配線も完了）を人間の指示メモに従って作り、コミット済み（`af21674`）。mtqgのrule 3件を人間名義で移植し、3つの質問（雛形の範囲・npm依存の線引き・rule移植）をq add→回答→doneまで記録した。拡張自身の雛形（`package.json`・`tsconfig.json`・`src/`・`qsokufile`）と`.github/workflows/`は、Node.jsが要るためmtqg-vscode側の次のtodoとして残した。**以降の進捗はmtqg-vscode側の`.mtqg/`で記録され、このPLAN.mdやこのリポジトリの`.mtqg/`には残らない。**
+
+**人間から3件の指摘を受け、mtqg本体→mtqg-vscodeの順で見直した（2026-09-26）。** ①タグラインに`rule`を反映：`(m)emo & rules, (t)odo, (q)a & bugs, (g)lossary`（上の「READMEとGitHubの看板」）。②設計§11.4の画面構成が`bug`・`rule`追加後一度も更新されておらず両方とも抜けていたのを見直し、Bugs画面・Rules画面を足して6画面にした（`docs/design/07-integrations.md`§11.4「見直し」）。③devcontainer・CIの`qsoku`インストールを`@v0.1.1`固定から`@latest`に変更（qsokuの開発がまだ活発なため。mtqgの開発が一段落したら固定し直す）、あわせてmtqg本体のdevcontainerに`mtqg`自身のインストールと補完の登録を追加した。3点ともmtqg-vscode側に追随済み（コミット`dd69202`）。詳細は`docs/design/history.md`2026-09-26。
 
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている。**
 
@@ -446,9 +448,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **GitHubのDescription（仮決め。看板のREADMEを作るときに一緒に見直す）**
 
-> mtqg - (m)emo, (t)odo, (q)a & bugs, (g)lossary: a project journal in your git repo, for humans and AI agents.
+> mtqg - (m)emo & rules, (t)odo, (q)a & bugs, (g)lossary: a project journal in your git repo, for humans and AI agents.
 
-`bug`を足した（2026-09-21）ので、`(q)a`のあとに`& bugs`を添えた。名前は変えない（設計§3）。**実際のDescriptionは、当面`work in progress`とだけ書いてある**（人間の判断、2026-09-21）。気にしなくてよい。看板のREADMEを作るときに、この仮決めと一緒に見直す。
+`bug`を足した（2026-09-21）ので`(q)a`のあとに`& bugs`を、`rule`を足した（2026-09-25）ので`(m)emo`のあとに`& rules`を、それぞれ構造が同じ種類として添えた（2026-09-26に更新）。名前は変えない（設計§3）。**実際のDescriptionは、当面`work in progress`とだけ書いてある**（人間の判断、2026-09-21）。気にしなくてよい。看板のREADMEを作るときに、この仮決めと一緒に見直す。
 
 未完成の間は、末尾に`(work in progress)`を足す。READMEを開かない人にも伝わるようにするため。
 

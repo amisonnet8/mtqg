@@ -133,7 +133,7 @@
 
 > **出所:** 別プロジェクト（ExecDB・SanDBox）で、初回push後にCI上でのみ顕在化した事象。mtqgも同じ構成（3OSのホステッドランナー）を採るため、あらかじめ対処しておく。
 
-- **`windows-latest`で`qsoku`を`go install`しても、内部で呼ぶ`sh`がそのままPATHに乗るとは限らない。** `qsokufile`のコマンドは常に`sh`（Git Bash付属）で実行される（qsoku自身の仕様）。CIの`run:`ステップは`shell: bash`を明示し、Git Bashが通ったPATHでqsokuを実行する（`.github/workflows/ci.yml`。Makefile時代の`choco install make -y`は不要になった。qsoku自身のバージョンはCI・devcontainerとも`go install .../qsoku@v0.1.1`で固定する。理由・経緯は`docs/design/history.md`2026-09-23）
+- **`windows-latest`で`qsoku`を`go install`しても、内部で呼ぶ`sh`がそのままPATHに乗るとは限らない。** `qsokufile`のコマンドは常に`sh`（Git Bash付属）で実行される（qsoku自身の仕様）。CIの`run:`ステップは`shell: bash`を明示し、Git Bashが通ったPATHでqsokuを実行する（`.github/workflows/ci.yml`。Makefile時代の`choco install make -y`は不要になった。qsoku自身のバージョンはCI・devcontainerとも同じ形で入れる（当初は`@v0.1.1`に固定していたが、2026-09-26から双方とも`@latest`。qsoku自身の開発がまだ活発なうちは、固定するとかえって古いまま気づかず使い続けることになるため。mtqgの開発が一段落ついたら、その時点のバージョンで固定し直す。理由・経緯は`docs/design/history.md`2026-09-23・2026-09-26）
 - **`/dev/stderr`等のUnix固有のパスはWindows（Git Bash）で壊れる。** `tee /dev/stderr`などを使わず、標準のリダイレクトだけで書く
 - **Windowsのcheckoutで改行がCRLFになると、`gofmt -l`が全ファイルを未整形と誤検知する。** ルートの`.gitattributes`（`* text=auto eol=lf`）で防ぐ。最初のpush前に置く（配置済み）
 - **`uses: owner/repo@TAG`はタグ名と厳密に一致しないと失敗する。** `v`の有無を見落としやすい。書く前に実際のタグ名を確かめる

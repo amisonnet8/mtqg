@@ -4,7 +4,7 @@
 
 - **`mtqg`は常に小文字**で書く。文頭でも`Mtqg`・`MTQG`にしない（コマンド名とそろえる）
 - 由来は **(m)emo・(t)odo・(q)a・(g)lossary**。順序にも意味がある（設計§3）
-- **`bug`・`rule`を足したが、名前は変えない**（設計§3。GitHubのDescriptionは`(q)a & bugs`と書く）。今後、種類が増えても改名しない
+- **`bug`・`rule`を足したが、名前は変えない**（設計§3）。今後、種類が増えても改名しない。GitHubのDescriptionは`(m)emo & rules, (t)odo, (q)a & bugs, (g)lossary`と書く（`bug`はqaの隣、`rule`はmemoの隣に、それぞれ構造が同じ種類として添える。`PLAN.md`「READMEとGitHubの看板」）
 - 旧称（tdmqa、tmqg）は使わない
 
 ## 用語の対応

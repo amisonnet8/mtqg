@@ -1,6 +1,6 @@
 # mtqg自身の使い方（段階4から）
 
-段階4（`PLAN.md`「開発の段階」）から、mtqg自身の開発過程を`.mtqg/`に記録する。ここでの`mtqg`は**mainから入れた安定版のバイナリ**（`go install ./cmd/mtqg`。ルート直下の開発中のビルド`./mtqg`とは別）。壊れた実装で自分自身の記録を壊さないため（distribution.md）。mainがマージで進むたびに、`go install ./cmd/mtqg`で入れ直す。
+段階4（`PLAN.md`「開発の段階」）から、mtqg自身の開発過程を`.mtqg/`に記録する。ここでの`mtqg`は**mainから入れた安定版のバイナリ**（`go install ./cmd/mtqg`。ルート直下の開発中のビルド`./mtqg`とは別）。壊れた実装で自分自身の記録を壊さないため（distribution.md）。mainがマージで進むたびに、`go install ./cmd/mtqg`で入れ直す。**`.devcontainer/postCreate.sh`が同じコマンドでコンテナ作成時に一度入れる**（2026-09-26。補完の登録に実行ファイルが要るため）が、これは最初の1回だけで、以後の入れ直しは引き続き手動（このセッション・人間のどちらが行ってもよい）。
 
 ## 記録者
 

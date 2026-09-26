@@ -380,14 +380,20 @@ func msgThreadState(typ string, replies int, done bool) string {
 
 // log
 
-func msgLogFooter(shown, total int) string {
+// msgLogFooter is log's last line: the count, and, with --before, that it is a
+// count of records before the given ID.
+func msgLogFooter(shown, total int, before string) string {
+	suffix := ""
+	if before != "" {
+		suffix = " before " + before
+	}
 	switch {
 	case shown < total:
-		return fmt.Sprintf("%d of %d records (--limit 0 for all)", shown, total)
+		return fmt.Sprintf("%d of %d records%s (--limit 0 for all)", shown, total, suffix)
 	case total == 1:
-		return "1 record"
+		return fmt.Sprintf("1 record%s", suffix)
 	default:
-		return fmt.Sprintf("%d records", total)
+		return fmt.Sprintf("%d records%s", total, suffix)
 	}
 }
 

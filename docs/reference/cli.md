@@ -36,7 +36,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg delete <id>` | Hide a record. Deleting a question or a bug also hides its answers or replies |
 | `mtqg undo` | Remove the last line this author wrote from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
-| `mtqg log [--limit N] [--kind K]` | Records of all kinds, newest first |
+| `mtqg log [--limit N] [--kind K] [--before <id>]` | Records of all kinds, newest first |
 | `mtqg show <id>` | One record with its full text and history |
 | `mtqg search <text>` | Records whose text contains `<text>`, newest first |
 | `mtqg review` | Concurrent status changes, duplicate glossary definitions, and answers or replies with no parent |
@@ -165,7 +165,7 @@ What each command prints, after `command`:
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
-| `log` | `records` (newest first), `shown`, `total` |
+| `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`) |
 | `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply) |
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
@@ -806,6 +806,12 @@ $ mtqg log --kind bug
 2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) Fixed by treating a tab as one column  claude-code
 2026-09-19  bug    b2c3d4e5f6  Linter crashes on tab characters                       yamada       done
 5 records
+
+$ mtqg log --before 1e27a1c08a --limit 3
+11:05  question  2217beaddb  Should error positions show both line and column?  claude-code
+10:52  todo      6513270e26  Ignore // inside string literals                   yamada
+10:46  reply     9a8b7c6d5e  (to 1012f037b6) Also fails with an empty file      claude-code
+3 of 18 records before 1e27a1c08a (--limit 0 for all)
 ```
 
 - Every record that is not hidden, of every kind, one line each, **newest
@@ -824,6 +830,16 @@ $ mtqg log --kind bug
   command line.
 - The last line counts the records: `N records`, or `N of M records (--limit 0
   for all)` when some are left out.
+- **`--before <id>` shows only records created strictly earlier than the one
+  the ID names** (a way to page: pass the ID of the oldest record shown so
+  far). The named record is not included. The ID is resolved the same way as
+  anywhere else (4 or more digits, unique, in view; the same `not_found`,
+  `id_too_short` or `ambiguous` errors). It only marks a position, so it may
+  name a record of any kind, even together with a `--kind` that filters
+  differently. `--kind` and `--limit` are applied after it, in the same order
+  as without it. The last line becomes `N records before <id>`, or `N of M
+  records before <id> (--limit 0 for all)` when some are left out; `M` counts
+  only the records before it.
 
 ### search
 
@@ -1430,13 +1446,15 @@ What is completed:
 | The ID of `todo done`, `qa done`, `bug done` | The open ones of that kind |
 | The ID of `todo reopen`, `qa reopen`, `bug reopen` | The done ones of that kind |
 | The ID of `show`, `edit`, `delete` | Every record in view, newest first |
+| The ID of `log --before` | Every record in view, newest first (any kind) |
 | The first word of `qa add`, `bug add` | The questions (the bugs), open or done: it may be the ID of the one to answer (reply to) |
 | After `completion` | The four shells |
 
 Nothing else is completed: the text of a record, the words of `search`, the
-range of `archive`, the value of `--limit`. Where a path is wanted (`-C`,
-`format`), the completion of files that the shell has is left to work. The form
-with an equals sign (`--kind=todo`) is not completed; write `--kind <TAB>`.
+range of `archive`, the value of `--limit`, the path of `--at`. Where a path is
+wanted (`-C`, `format`, `--at`), the completion of files that the shell has is
+left to work. The form with an equals sign (`--kind=todo`) is not completed;
+write `--kind <TAB>`.
 
 ### candidates
 

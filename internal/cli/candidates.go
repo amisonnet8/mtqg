@@ -160,8 +160,13 @@ func (c *ctx) candidatesAt(p position, partial string) []candidate {
 		for _, a := range initAgents {
 			list = append(list, candidate{value: a})
 		}
+	case p.pending == "--before":
+		if state := c.quietState(p.dir); state != nil {
+			list = idCandidates(state, idsAll, "", partial)
+		}
 	case p.pending != "":
-		// The value of another option: a number.
+		// The value of another option: a number, or a path (--at), which the
+		// shell knows about.
 	case strings.HasPrefix(partial, "-") && !p.optsDone:
 		list = optionsAt(p)
 	case p.cmd == nil && p.kind == nil:
@@ -246,7 +251,7 @@ func (c *ctx) firstArgument(p position, partial string) []candidate {
 	if state == nil {
 		return nil
 	}
-	return idCandidates(state, p.cmd, partial)
+	return idCandidates(state, p.cmd.ids, p.cmd.spec().typ, partial)
 }
 
 // quietState reads the journal for a completion. Anything that goes wrong (no
@@ -275,17 +280,16 @@ func (c *ctx) quietState(dir string) *model.State {
 // with its ID and its text. The ID is its first 10 digits, which is what every list
 // shows; the full ID when more has been typed than that, or when the 10 digits fit
 // another record too, so that what is put in names one record.
-func idCandidates(state *model.State, cmd *command, partial string) []candidate {
+func idCandidates(state *model.State, ids idSet, typ, partial string) []candidate {
 	all := state.All()
 	digits := map[string]int{}
 	for _, r := range all {
 		digits[prefix(r.ID, shortIDDigits)]++
 	}
 
-	typ := cmd.spec().typ
 	var list []candidate
 	for _, r := range slices.Backward(all) {
-		if !takesID(cmd.ids, typ, r) || !strings.HasPrefix(r.ID, partial) {
+		if !takesID(ids, typ, r) || !strings.HasPrefix(r.ID, partial) {
 			continue
 		}
 		value := prefix(r.ID, shortIDDigits)

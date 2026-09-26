@@ -34,7 +34,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg delete <id>` | 記録を隠す。質問やバグを消すと、その回答や返信も隠れる |
 | `mtqg undo` | この記録者がこの端末から書いた最後の行を消す |
 | `mtqg status` | 未完了の項目と未コミットの記録の概況 |
-| `mtqg log [--limit N] [--kind K]` | 全種類の記録を、新しいものから |
+| `mtqg log [--limit N] [--kind K] [--before <id>]` | 全種類の記録を、新しいものから |
 | `mtqg show <id>` | 1件の記録を、全文と履歴とともに |
 | `mtqg search <語>` | 本文に`<語>`を含む記録を、新しいものから |
 | `mtqg review` | 並行した状態変更、用語の重複定義、親のない回答・返信 |
@@ -142,7 +142,7 @@ $ mtqg memo list --json
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
-| `log` | `records`（新しい順）、`shown`、`total` |
+| `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ） |
 | `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む） |
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
@@ -682,6 +682,12 @@ $ mtqg log --kind bug
 2026-09-19  reply  d4e5f6a7b8  (to b2c3d4e5f6) タブを1桁として数えるよう直した  claude-code
 2026-09-19  bug    b2c3d4e5f6  タブ文字でリンターが落ちる                       yamada       done
 5 records
+
+$ mtqg log --before 1e27a1c08a --limit 3
+11:05  question  2217beaddb  エラー位置は行と列の両方を出しますか？  claude-code
+10:52  todo      6513270e26  文字列リテラル中の // を無視する        yamada
+10:46  reply     9a8b7c6d5e  (to 1012f037b6) 空のファイルでも落ちる  claude-code
+3 of 18 records before 1e27a1c08a (--limit 0 for all)
 ```
 
 - 隠れていないすべての記録を、種類を問わず1件1行で、**新しいものから**表示する：時刻、種類（`memo`、`todo`、
@@ -693,6 +699,12 @@ $ mtqg log --kind bug
   `memo`、`todo`、`qa`（質問と回答）、`bug`（バグと返信）、`glossary`、`rule`、またはその1文字。どちらも`--limit=N`の形でも書ける。0以上の
   整数でない値や、存在しない種類は、コマンドラインの誤り
 - 最後の行が件数を伝える：`N records`。省いたものがあるときは`N of M records (--limit 0 for all)`
+- **`--before <id>`は、指定したIDの記録より厳密に古い（作成順で前の）記録だけを表示する**（ページングの方法：
+  そこまでに表示した最古の記録のIDを渡す）。指定した記録自身は含まない。IDの解決は他のコマンドと同じ
+  （4桁以上、一意、見えている記録限定。`not_found`・`id_too_short`・`ambiguous`も同じ）。**位置を示すだけなので、
+  `--kind`と違う種類の記録を指してもよい。** `--kind`・`--limit`は、指定が無いときと同じ順でその後に適用される。
+  最後の行は`N records before <id>`、省いたものがあれば`N of M records before <id> (--limit 0 for all)`になる
+  （`M`はそれより前の件数だけを数える）
 
 ### search
 
@@ -1141,10 +1153,11 @@ mtqg completion powershell >> $PROFILE
 | `todo done`、`qa done`、`bug done`のID | その種類の、未完了のもの |
 | `todo reopen`、`qa reopen`、`bug reopen`のID | その種類の、完了したもの |
 | `show`、`edit`、`delete`のID | 見えている記録すべて（新しい順） |
+| `log --before`のID | 見えている記録すべて（新しい順、種類を問わない） |
 | `qa add`、`bug add`の1語目 | 質問（バグ）。完了したものも含む。回答（返信）する相手のIDかもしれないため |
 | `completion`の次 | 4つのシェル |
 
-これ以外は補完しない。記録の本文、`search`の語、`archive`の期間、`--limit`の値など。パスが要るところ（`-C`、`format`）は、シェルのファイル補完に任せる。等号の形（`--kind=todo`）は補完しない。`--kind <TAB>`と書く。
+これ以外は補完しない。記録の本文、`search`の語、`archive`の期間、`--limit`の値、`--at`のパスなど。パスが要るところ（`-C`、`format`、`--at`）は、シェルのファイル補完に任せる。等号の形（`--kind=todo`）は補完しない。`--kind <TAB>`と書く。
 
 ### candidates
 

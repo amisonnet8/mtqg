@@ -217,6 +217,8 @@ func TestParseArgsMistakes(t *testing.T) {
 		{"--all where it means nothing", []string{"t", "add", "--all", "x"}, "Unknown option --all"},
 		{"--at with no value", []string{"m", "add", "--at"}, "Option --at needs a value"},
 		{"--at on a command that has none", []string{"t", "list", "--at", "x"}, "Unknown option --at"},
+		{"--before with no value", []string{"log", "--before"}, "Option --before needs a value"},
+		{"--before on a command that has none", []string{"m", "list", "--before", "x"}, "Unknown option --before"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

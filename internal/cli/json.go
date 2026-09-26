@@ -287,6 +287,7 @@ type jsonLog struct {
 	Records []jsonRecord `json:"records"`
 	Shown   int          `json:"shown"`
 	Total   int          `json:"total"`
+	Before  string       `json:"before,omitempty"`
 }
 
 // jsonShow gives the events as they are in the journal: the format of

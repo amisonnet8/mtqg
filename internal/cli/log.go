@@ -40,8 +40,19 @@ func runLog(c *ctx) int {
 		return c.fail(err)
 	}
 
+	source := state.All()
+	before := "" // the full ID --before resolved to, if given
+	if v, ok := c.inv.values["--before"]; ok {
+		rec, err := state.Resolve(v)
+		if err != nil {
+			return c.fail(err)
+		}
+		source = state.Before(rec)
+		before = rec.ID
+	}
+
 	var records []*model.Record
-	for _, r := range state.All() {
+	for _, r := range source {
 		if typ == "" || r.Type == typ {
 			records = append(records, r)
 		}
@@ -53,10 +64,14 @@ func runLog(c *ctx) int {
 	}
 
 	if c.inv.json {
-		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total})
+		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total, Before: before})
 	}
 	c.printRecordLines(state, records)
-	c.println(msgLogFooter(len(records), total))
+	beforeShown := ""
+	if before != "" {
+		beforeShown = shortID(before, c.inv.fullID)
+	}
+	c.println(msgLogFooter(len(records), total, beforeShown))
 	return exitOK
 }
 

@@ -107,6 +107,82 @@ func TestLog(t *testing.T) {
 		}
 	})
 
+	t.Run("--before shows only records created earlier than the one named", func(t *testing.T) {
+		h := initialized(t)
+		logFixture(h)
+
+		// f28c105d1f is the glossary entry, the newest of the 5: before it comes
+		// every other record, newest first.
+		_, out, _ := h.run("log", "--before", "f28c105d1f")
+		want := "10:32       memo      81e74ef5e8  Policy: use English for all error messages  yamada\n" +
+			"09:41       answer    a1a1a1a1a1  (to 1012f037b6) Not in the first version    yamada\n" +
+			"09:10       question  1012f037b6  Should nested block comments be supported?  claude-code\n" +
+			"2026-09-16  todo      6cad4a268d  Skip block comments                         yamada       done\n" +
+			"4 records before f28c105d1f\n"
+		if out != want {
+			t.Errorf("stdout:\n%s\nwant:\n%s", out, want)
+		}
+
+		// --limit narrows within the records before the cursor, and the footer
+		// counts only those.
+		_, out, _ = h.run("log", "--before", "f28c105d1f", "--limit", "1")
+		if !strings.HasSuffix(out, "\n1 of 4 records before f28c105d1f (--limit 0 for all)\n") {
+			t.Errorf("stdout %q", out)
+		}
+
+		// The ID only marks a position: --kind may filter to a different kind than
+		// the one named.
+		_, out, _ = h.run("log", "--kind", "todo", "--before", "1012f037b6") // before the question
+		if !strings.Contains(out, "Skip block comments") || !strings.HasSuffix(out, "1 record before 1012f037b6\n") {
+			t.Errorf("stdout %q", out)
+		}
+
+		// Before the oldest record, there is nothing.
+		_, out, _ = h.run("log", "--before", "6cad4a268d")
+		if out != "0 records before 6cad4a268d\n" {
+			t.Errorf("stdout %q", out)
+		}
+	})
+
+	t.Run("--before with a bad ID fails the way any other ID does", func(t *testing.T) {
+		h := initialized(t)
+		logFixture(h)
+		h.setJournal(append(strings.Split(strings.TrimSuffix(h.readJournal(), "\n"), "\n"),
+			record(idB, "todo", "shares its first 8 digits with idA", "yamada", "2026-09-17T12:00:00Z"))...)
+
+		for _, tt := range []struct {
+			id, wantKind string
+		}{
+			{"deadbeef00", "not_found"},
+			{"12", "id_too_short"},
+			{idA[:8], "ambiguous"}, // idA and idB share their first 8 digits
+		} {
+			before := h.readJournal()
+			code, out, errOut := h.run("--json", "log", "--before", tt.id)
+			wantExit(t, code, 1, out, errOut)
+			obj := oneLineOfJSON(t, errOut)
+			if kind := field(t, obj, "error", "kind"); kind != tt.wantKind {
+				t.Errorf("%s: kind = %v, want %q", tt.id, kind, tt.wantKind)
+			}
+			if h.readJournal() != before {
+				t.Errorf("%s: log wrote to the journal", tt.id)
+			}
+		}
+	})
+
+	t.Run("--json includes before, and only with --before", func(t *testing.T) {
+		h := initialized(t)
+		logFixture(h)
+		obj := jsonObject(t, mustRun(h, "--json", "log"))
+		if _, ok := obj["before"]; ok {
+			t.Errorf("before present without --before: %v", obj)
+		}
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--before", "f28c105d1f"))
+		if obj["before"] != idW1 || obj["total"] != float64(4) || obj["shown"] != float64(4) {
+			t.Errorf("%v", obj)
+		}
+	})
+
 	t.Run("hidden records are left out", func(t *testing.T) {
 		h := initialized(t)
 		h.setJournal(

@@ -217,6 +217,9 @@ func optionsAt(p position) []candidate {
 		if p.cmd.dryRun {
 			names = append(names, "-n", "--dry-run")
 		}
+		if p.cmd.events {
+			names = append(names, "--events")
+		}
 		names = append(names, p.cmd.values...)
 	}
 	names = append(names, globalOptions...)

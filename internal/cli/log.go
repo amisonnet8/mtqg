@@ -14,6 +14,9 @@ const defaultLogLimit = 20
 
 // runLog shows the newest records of every kind, one line each, newest first.
 func runLog(c *ctx) int {
+	if c.inv.events && !c.inv.json {
+		return c.usageFailure(msgEventsNeedsJSON())
+	}
 	limit := defaultLogLimit
 	if v, ok := c.inv.values["--limit"]; ok {
 		n, err := strconv.Atoi(v)
@@ -64,7 +67,13 @@ func runLog(c *ctx) int {
 	}
 
 	if c.inv.json {
-		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recordsJSON(records), Shown: len(records), Total: total, Before: before})
+		recs := recordsJSON(records)
+		if c.inv.events {
+			for i, r := range records {
+				recs[i].Events = r.Events
+			}
+		}
+		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recs, Shown: len(records), Total: total, Before: before})
 	}
 	c.printRecordLines(state, records)
 	beforeShown := ""

@@ -34,7 +34,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg delete <id>` | 記録を隠す。質問やバグを消すと、その回答や返信も隠れる |
 | `mtqg undo` | この記録者がこの端末から書いた最後の行を消す |
 | `mtqg status` | 未完了の項目と未コミットの記録の概況 |
-| `mtqg log [--limit N] [--kind K] [--before <id>]` | 全種類の記録を、新しいものから |
+| `mtqg log [--limit N] [--kind K] [--before <id>] [--events]` | 全種類の記録を、新しいものから |
 | `mtqg show <id>` | 1件の記録を、全文と履歴とともに |
 | `mtqg search <語>` | 本文に`<語>`を含む記録を、新しいものから |
 | `mtqg review` | 並行した状態変更、用語の重複定義、親のない回答・返信 |
@@ -142,8 +142,8 @@ $ mtqg memo list --json
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
-| `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ） |
-| `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む） |
+| `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ）、`--events`指定時は各記録に`events` |
+| `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む。`log --events`はその記録自身のものだけ） |
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
@@ -705,6 +705,48 @@ $ mtqg log --before 1e27a1c08a --limit 3
   `--kind`と違う種類の記録を指してもよい。** `--kind`・`--limit`は、指定が無いときと同じ順でその後に適用される。
   最後の行は`N records before <id>`、省いたものがあれば`N of M records before <id> (--limit 0 for all)`になる
   （`M`はそれより前の件数だけを数える）
+- **`--events`（`--json`のときだけ有効）は各記録に`events`を足す**：その記録自身の`journal.jsonl`の行を、作成順に、
+  [schema_ja.md](schema_ja.md)の形で。`show`と違い、質問・バグでも返信の`create`は含まない（返信は`log`の
+  別の項目として既に出るため）。`--json`が無いのに`--events`を付けるのはコマンドラインの誤り
+
+<!-- mtqg:example repo=parser_ja -->
+```
+$ mtqg log --kind glossary --limit 1 --json --events
+{
+  "command": "log",
+  "records": [
+    {
+      "id": "f28c105d1fb14c2390c192cfd3ac94af",
+      "kind": "glossary",
+      "word": "字句解析",
+      "text": "ソースを読み、トークンの並びに変換する処理",
+      "author": {
+        "kind": "ai",
+        "name": "claude-code"
+      },
+      "created": "2026-09-21T11:24:00Z",
+      "updated": "2026-09-21T11:24:00Z",
+      "events": [
+        {
+          "id": "f28c105d1fb14c2390c192cfd3ac94af",
+          "op": "create",
+          "type": "glossary",
+          "word": "字句解析",
+          "text": "ソースを読み、トークンの並びに変換する処理",
+          "v": 0,
+          "ts": "2026-09-21T11:24:00Z",
+          "author": {
+            "kind": "ai",
+            "name": "claude-code"
+          }
+        }
+      ]
+    }
+  ],
+  "shown": 1,
+  "total": 4
+}
+```
 
 ### search
 

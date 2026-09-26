@@ -425,6 +425,46 @@ func TestJSONAddAndChange(t *testing.T) {
 	}
 }
 
+// TestJSONEventsOnlyOnLog confirms that "events" only ever appears inside a
+// jsonRecord when log --events asked for it: every other command that
+// produces jsonRecord (list, search, show's record, add) must not carry it,
+// even though they share the same type.
+func TestJSONEventsOnlyOnLog(t *testing.T) {
+	h := initialized(t)
+	jsonFixture(h)
+
+	noEvents := func(t *testing.T, label string, rec map[string]any) {
+		t.Helper()
+		if _, ok := rec["events"]; ok {
+			t.Errorf("%s: record has events: %v", label, rec)
+		}
+	}
+
+	for _, args := range [][]string{
+		{"--json", "todo", "list", "--all"},
+		{"--json", "qa", "list", "--all"},
+		{"--json", "bug", "list", "--all"},
+		{"--json", "glossary", "list"},
+		{"--json", "search", "block"},
+	} {
+		obj := jsonObject(t, mustRun(h, args...))
+		for _, rec := range records(t, obj, "records") {
+			noEvents(t, strings.Join(args, " "), rec)
+			if _, ok := rec["replies"]; ok {
+				for _, reply := range records(t, rec, "replies") {
+					noEvents(t, strings.Join(args, " ")+" (reply)", reply)
+				}
+			}
+		}
+	}
+
+	obj := jsonObject(t, mustRun(h, "--json", "show", idA))
+	noEvents(t, "show", field(t, obj, "record").(map[string]any))
+
+	obj = jsonObject(t, mustRun(h, "--json", "rule", "add", "Write mtqg records in English"))
+	noEvents(t, "rule add", field(t, obj, "record").(map[string]any))
+}
+
 func TestJSONAddEchoesAt(t *testing.T) {
 	h := initialized(t)
 

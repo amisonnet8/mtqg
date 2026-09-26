@@ -86,6 +86,7 @@ type command struct {
 	all     bool // accepts --all
 	mark    bool // accepts --mark
 	dryRun  bool // accepts -n and --dry-run
+	events  bool // accepts --events
 
 	// values are the options that take a value, as --limit 5 or --limit=5.
 	values []string
@@ -166,7 +167,7 @@ func init() {
 		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, ids: idsAll, run: runEdit},
 		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, ids: idsAll, run: runDelete},
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line you wrote from this terminal", args: argsNone, run: runUndo},
-		{name: "log", usage: "mtqg log [--limit N] [--kind K] [--before <id>]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind", "--before"}, run: runLog},
+		{name: "log", usage: "mtqg log [--limit N] [--kind K] [--before <id>] [--events]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind", "--before"}, events: true, run: runLog},
 		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, ids: idsAll, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Find the records whose text contains a text", args: argsText, minWords: 1, run: runSearch},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes, duplicate definitions and answers with no parent", args: argsNone, run: runReview},
@@ -228,6 +229,7 @@ type invocation struct {
 	json    bool
 	mark    bool
 	dryRun  bool
+	events  bool
 	help    bool
 
 	// values holds the options that take a value, by their names (--limit).
@@ -245,8 +247,8 @@ func (e *usageError) Error() string { return e.msg }
 // parseArgs reads a command line: options, then the command (a kind and a verb,
 // or a command word), then its arguments.
 //
-// Options are -C <path>, --all, --mark, -n or --dry-run, --full-id, --no-color,
-// --json and -h or --help. Before the command they may stand anywhere. After it, a command that takes a text
+// Options are -C <path>, --all, --mark, -n or --dry-run, --events, --full-id,
+// --no-color, --json and -h or --help. Before the command they may stand anywhere. After it, a command that takes a text
 // (memo add, todo add) reads options only up to the first word of the text: from
 // there on every word is text, even one that starts with -. "--" ends the
 // options. Other commands read options anywhere. A single "-" is a word (it
@@ -300,6 +302,8 @@ func parseArgs(args []string) (*invocation, error) {
 			inv.mark = true
 		case arg == "-n" || arg == "--dry-run":
 			inv.dryRun = true
+		case arg == "--events":
+			inv.events = true
 		case arg == "-h" || arg == "--help":
 			inv.help = true
 		default:
@@ -385,6 +389,9 @@ func parseArgs(args []string) (*invocation, error) {
 	}
 	if inv.dryRun && !inv.cmd.dryRun && !inv.help {
 		return nil, &usageError{msgUnknownOption("--dry-run", inv.cmd.usage)}
+	}
+	if inv.events && !inv.cmd.events && !inv.help {
+		return nil, &usageError{msgUnknownOption("--events", inv.cmd.usage)}
 	}
 	if !inv.help {
 		if err := checkArity(inv.cmd, inv.words); err != nil {

@@ -65,6 +65,9 @@ type jsonRecord struct {
 	Updated string       `json:"updated,omitempty"`
 	At      *journal.At  `json:"at,omitempty"`
 	Replies []jsonRecord `json:"replies,omitzero"`
+	// Events is set only by log --events (its own lines of journal.jsonl, oldest
+	// first): every other command that produces a jsonRecord leaves it unset.
+	Events []journal.Event `json:"events,omitzero"`
 }
 
 type jsonAuthor struct {

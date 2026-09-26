@@ -36,7 +36,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg delete <id>` | Hide a record. Deleting a question or a bug also hides its answers or replies |
 | `mtqg undo` | Remove the last line this author wrote from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
-| `mtqg log [--limit N] [--kind K] [--before <id>]` | Records of all kinds, newest first |
+| `mtqg log [--limit N] [--kind K] [--before <id>] [--events]` | Records of all kinds, newest first |
 | `mtqg show <id>` | One record with its full text and history |
 | `mtqg search <text>` | Records whose text contains `<text>`, newest first |
 | `mtqg review` | Concurrent status changes, duplicate glossary definitions, and answers or replies with no parent |
@@ -165,8 +165,8 @@ What each command prints, after `command`:
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
-| `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`) |
-| `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply) |
+| `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`); with `--events`, each record has `events` (its own, not a reply's) |
+| `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply; `log --events` gives only a record's own) |
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
@@ -840,6 +840,50 @@ $ mtqg log --before 1e27a1c08a --limit 3
   as without it. The last line becomes `N records before <id>`, or `N of M
   records before <id> (--limit 0 for all)` when some are left out; `M` counts
   only the records before it.
+- **`--events` (only with `--json`) adds `events` to each record**: its own
+  lines of `journal.jsonl`, oldest first, in the form of
+  [schema.md](schema.md). Unlike `show`, a question or a bug does not include
+  its replies' `create`: a reply is already its own entry of `log`. Without
+  `--json`, `--events` is a mistake in the command line.
+
+<!-- mtqg:example repo=parser -->
+```
+$ mtqg log --kind glossary --limit 1 --json --events
+{
+  "command": "log",
+  "records": [
+    {
+      "id": "f28c105d1fb14c2390c192cfd3ac94af",
+      "kind": "glossary",
+      "word": "lexing",
+      "text": "Reading source and turning it into a sequence of tokens",
+      "author": {
+        "kind": "ai",
+        "name": "claude-code"
+      },
+      "created": "2026-09-21T11:24:00Z",
+      "updated": "2026-09-21T11:24:00Z",
+      "events": [
+        {
+          "id": "f28c105d1fb14c2390c192cfd3ac94af",
+          "op": "create",
+          "type": "glossary",
+          "word": "lexing",
+          "text": "Reading source and turning it into a sequence of tokens",
+          "v": 0,
+          "ts": "2026-09-21T11:24:00Z",
+          "author": {
+            "kind": "ai",
+            "name": "claude-code"
+          }
+        }
+      ]
+    }
+  ],
+  "shown": 1,
+  "total": 4
+}
+```
 
 ### search
 

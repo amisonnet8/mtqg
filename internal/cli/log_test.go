@@ -183,6 +183,49 @@ func TestLog(t *testing.T) {
 		}
 	})
 
+	t.Run("--events adds each record's own lines, not a reply's", func(t *testing.T) {
+		h := initialized(t)
+		logFixture(h)
+
+		obj := jsonObject(t, mustRun(h, "--json", "log", "--kind", "memo"))
+		rec := records(t, obj, "records")[0]
+		if _, ok := rec["events"]; ok {
+			t.Errorf("events present without --events: %v", rec)
+		}
+
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--kind", "memo", "--events"))
+		rec = records(t, obj, "records")[0]
+		if evs := records(t, rec, "events"); len(evs) != 1 || evs[0]["op"] != "create" {
+			t.Errorf("memo events = %v", evs)
+		}
+
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--kind", "todo", "--events"))
+		rec = records(t, obj, "records")[0]
+		if evs := records(t, rec, "events"); len(evs) != 2 || evs[0]["op"] != "create" || evs[1]["op"] != "status" {
+			t.Errorf("todo events = %v", evs)
+		}
+
+		// The question's own events do not include the answer's create: the
+		// answer is already its own entry of log, with its own events.
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--kind", "qa", "--events"))
+		for _, rec := range records(t, obj, "records") {
+			evs := records(t, rec, "events")
+			if len(evs) != 1 || evs[0]["op"] != "create" {
+				t.Errorf("%v: events = %v", rec["kind"], evs)
+			}
+		}
+	})
+
+	t.Run("--events without --json is a mistake in the command line", func(t *testing.T) {
+		h := initialized(t)
+		logFixture(h)
+		code, out, errOut := h.run("log", "--events")
+		wantExit(t, code, 2, out, errOut)
+		if !strings.Contains(errOut, "Option --events only works with --json") {
+			t.Errorf("stderr %q", errOut)
+		}
+	})
+
 	t.Run("hidden records are left out", func(t *testing.T) {
 		h := initialized(t)
 		h.setJournal(

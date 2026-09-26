@@ -79,9 +79,9 @@ func TestCandidatesOfTheCommandLine(t *testing.T) {
 		{name: "an unknown kind or command gets nothing", partial: "", words: []string{"frobnicate"}},
 		{name: "an unknown verb gets nothing", partial: "", words: []string{"t", "frobnicate"}},
 
-		{name: "the options of a command", partial: "--", words: []string{"log"}, want: []string{"--limit", "--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
-		{name: "an option on the line is not offered again", partial: "--", words: []string{"log", "--limit", "5"}, want: []string{"--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
-		{name: "the form with = counts too", partial: "--", words: []string{"log", "--limit=5"}, want: []string{"--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
+		{name: "the options of a command", partial: "--", words: []string{"log"}, want: []string{"--events", "--limit", "--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
+		{name: "an option on the line is not offered again", partial: "--", words: []string{"log", "--limit", "5"}, want: []string{"--events", "--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
+		{name: "the form with = counts too", partial: "--", words: []string{"log", "--limit=5"}, want: []string{"--events", "--kind", "--before", "--full-id", "--no-color", "--json", "--help"}},
 		{name: "-n and --dry-run are one option", partial: "-", words: []string{"archive", "-n"}, want: []string{"-C", "--full-id", "--no-color", "--json", "-h", "--help"}},
 		{name: "-h and --help are one option", partial: "-", words: []string{"t", "list", "--help"}, want: []string{"--all", "-C", "--full-id", "--no-color", "--json"}},
 		{name: "-C on the line is not offered again", partial: "-", words: []string{"format", "-C", "x"}, want: []string{"--mark", "--full-id", "--no-color", "--json", "-h", "--help"}},

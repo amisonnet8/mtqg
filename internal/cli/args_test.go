@@ -219,6 +219,7 @@ func TestParseArgsMistakes(t *testing.T) {
 		{"--at on a command that has none", []string{"t", "list", "--at", "x"}, "Unknown option --at"},
 		{"--before with no value", []string{"log", "--before"}, "Option --before needs a value"},
 		{"--before on a command that has none", []string{"m", "list", "--before", "x"}, "Unknown option --before"},
+		{"--events on a command that has none", []string{"t", "list", "--events"}, "Unknown option --events"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

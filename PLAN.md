@@ -158,6 +158,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **人間から3件の指摘を受け、mtqg本体→mtqg-vscodeの順で見直した（2026-09-26）。** ①タグラインに`rule`を反映：`(m)emo & rules, (t)odo, (q)a & bugs, (g)lossary`（上の「READMEとGitHubの看板」）。②設計§11.4の画面構成が`bug`・`rule`追加後一度も更新されておらず両方とも抜けていたのを見直し、Bugs画面・Rules画面を足して6画面にした（`docs/design/07-integrations.md`§11.4「見直し」）。③devcontainer・CIの`qsoku`インストールを`@v0.1.1`固定から`@latest`に変更（qsokuの開発がまだ活発なため。mtqgの開発が一段落したら固定し直す）、あわせてmtqg本体のdevcontainerに`mtqg`自身のインストールと補完の登録を追加した。3点ともmtqg-vscode側に追随済み（コミット`dd69202`）。詳細は`docs/design/history.md`2026-09-26。
 
+**mtqg-vscode側の実装計画中に見つかったCLIの不足3件を、すべて実装した（2026-09-26）。** mtqg-vscode側から依頼が届いた（`/home/vscode/01-vscode-extension.md`「mtqg本体への依頼」）：①記録作成時に位置（`at`：path・line）を渡す手段が無い、②`log`にページングの手段が無い、③`log --json`がイベント履歴を含まない。設計はCLAUDE.mdの禁止事項（成果物の位置の*追跡*）とは無関係（`at`は§5.5で承認済みの「書いた時点の事実」）と確認したうえで、実装方針3点を人間に確認（`AskUserQuestion`→`q add`）：`--at`は全ての作成コマンドに一律／`log`のページングはカーソル型`--before <id>`／イベント履歴は`--events`フラグで`log --json`に埋め込む。**3つとも実装・テスト・mutation-check・docs更新（英日）まで完了**（コミット`40e8f66`・`bf4545f`・`d7ccbae`）。設計判断の詳細は`docs/design/cli.md`§11。MCPのadd系ツールへの対応は見送り、追跡todoとして記録済み。mtqg-vscode側への回答は`/home/vscode/mtqg-cli-response.md`に書き出した（人間が向こうのコンテナへ運ぶ）。
+
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている。**
 
 **種類`rule`を追加した（2026-09-25。上の「種類`rule`の追加」の節）。** qsoku・人間との対話から出た、v0.2区切り後の追加機能。PR #3、CIの3OS全ジョブgreen、mainへマージ済み。

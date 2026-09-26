@@ -271,22 +271,32 @@ func TestRewriteWhileAnotherHandleIsOpen(t *testing.T) {
 
 // A line whose Append returned must still be there after any number of
 // rewrites: this is the reason the rewrite takes the same lock as an append.
+//
+// The appenders go on until the rewrites have run wantRewrites times, so every
+// rewrite runs while lines are being appended, however the lock (which is not
+// fair, see lock) is shared out. A fixed count on both sides flaked in CI
+// (windows-latest, macos-latest race: "only 1 rewrites ran while appending",
+// 2026-09-25) because the appenders could finish before the rewriter got its
+// share of the lock.
 func TestRewriteWhileGoroutinesAppend(t *testing.T) {
-	const writers, perWriter = 4, 30
+	const writers, wantRewrites = 4, 3
 	j := newJournal(t, nil)
 	seedDroppable(t, j, 10)
 
+	var stop atomic.Bool
+	written := make([]int, writers) // how many lines each writer got in; read after they stop
 	var appenders sync.WaitGroup
-	errs := make(chan error, writers*perWriter+1)
+	errs := make(chan error, writers+1)
 	for w := range writers {
 		appenders.Add(1)
 		go func() {
 			defer appenders.Done()
-			for i := range perWriter {
+			for i := 0; !stop.Load(); i++ {
 				if _, err := j.Append(Event{Op: OpCreate, Type: TypeMemo, Text: fmt.Sprintf("w%d-%d", w, i)}); err != nil {
 					errs <- err
 					return
 				}
+				written[w] = i + 1
 				// The lock is not fair (see lock): without a pause the appenders
 				// could keep the rewriter out for the whole test.
 				time.Sleep(time.Millisecond)
@@ -294,32 +304,42 @@ func TestRewriteWhileGoroutinesAppend(t *testing.T) {
 		}()
 	}
 
-	var done atomic.Bool
-	rewrites := make(chan int, 1)
-	go func() {
-		n := 0
-		for !done.Load() {
-			if err := j.Rewrite(dropDroppable); err != nil {
-				errs <- err
-				break
-			}
-			n++
-			time.Sleep(2 * time.Millisecond) // let a waiting append take its turn
+	for n := 0; n < wantRewrites; n++ {
+		if err := j.Rewrite(dropDroppable); err != nil {
+			errs <- err
+			break
 		}
-		rewrites <- n
-	}()
-
+		time.Sleep(2 * time.Millisecond) // let a waiting append take its turn
+	}
+	stop.Store(true)
 	appenders.Wait()
-	done.Store(true)
-	n := <-rewrites
 	close(errs)
 	for err := range errs {
 		t.Fatal(err)
 	}
-	if n < 3 {
-		t.Fatalf("only %d rewrites ran while appending: the test proves nothing", n)
+
+	read, err := j.Read()
+	if err != nil || len(read.Warnings) != 0 {
+		t.Fatalf("reading: %v, warnings %+v", err, read.Warnings)
 	}
-	checkAllWritten(t, j, writers, perWriter, "w")
+	total := 0
+	for _, n := range written {
+		total += n
+	}
+	if len(read.Events) != total {
+		t.Fatalf("journal.jsonl holds %d events, want the %d that were appended: lines were lost (or a drop- line survived the last rewrite)", len(read.Events), total)
+	}
+	next := make([]int, writers)
+	for _, ev := range read.Events {
+		var w, i int
+		if _, err := fmt.Sscanf(ev.Text, "w%d-%d", &w, &i); err != nil || w >= writers {
+			t.Fatalf("unexpected text %q", ev.Text)
+		}
+		if i != next[w] {
+			t.Fatalf("writer %d: got number %d, want %d: its lines are out of order", w, i, next[w])
+		}
+		next[w]++
+	}
 }
 
 // The same across processes, which is how mtqg is used: several agents append

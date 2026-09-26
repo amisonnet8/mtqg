@@ -547,25 +547,108 @@ func (r *exampleRunner) copyOf(t *testing.T, fixture string) string {
 		if err != nil {
 			return err
 		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return os.MkdirAll(filepath.Join(dst, rel), info.Mode().Perm()|0o700)
-		}
-		data, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		// Git makes its objects read-only, and a copy that cannot be removed is a
-		// problem on Windows.
-		return os.WriteFile(filepath.Join(dst, rel), data, info.Mode().Perm()|0o600)
+		return copyEntry(dst, rel, p, d)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return dst
+}
+
+// copyEntry copies one WalkDir entry (p, listed as rel under dst) from a fixture's
+// git repository. Git itself creates and removes files under .git/objects/ (seen:
+// maintenance.lock, macos-latest, 2026-09-25); an entry that vanishes between being
+// listed and being read is skipped rather than failing the whole copy.
+func copyEntry(dst, rel, p string, d fs.DirEntry) error {
+	info, err := d.Info()
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if d.IsDir() {
+		return os.MkdirAll(filepath.Join(dst, rel), info.Mode().Perm()|0o700)
+	}
+	data, err := os.ReadFile(p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	// Git makes its objects read-only, and a copy that cannot be removed is a
+	// problem on Windows.
+	return os.WriteFile(filepath.Join(dst, rel), data, info.Mode().Perm()|0o600)
+}
+
+// A file that vanishes between being listed and being read (as git's own
+// background activity does to files under .git/objects/) must not fail the
+// whole copy. os.DirEntry.Info() re-stats on every call, so removing the file
+// after ReadDir reproduces the race deterministically.
+func TestCopyEntrySkipsVanishedFiles(t *testing.T) {
+	src := t.TempDir()
+	for _, name := range []string{"keep", "gone"} {
+		if err := os.WriteFile(filepath.Join(src, name), []byte(name), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(src, "gone")); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := t.TempDir()
+	for _, e := range entries {
+		if err := copyEntry(dst, e.Name(), filepath.Join(src, e.Name()), e); err != nil {
+			t.Fatalf("copying %s: %v", e.Name(), err)
+		}
+	}
+	if got, err := os.ReadFile(filepath.Join(dst, "keep")); err != nil || string(got) != "keep" {
+		t.Errorf("keep was not copied: %q, %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(dst, "gone")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("gone should have been skipped, got err=%v", err)
+	}
+}
+
+// vanishesAfterInfo wraps a fs.DirEntry and removes the file it names as a side
+// effect of a successful Info(), reproducing (deterministically) the narrower race
+// where a file is still there when stat'd but gone by the time it is read.
+type vanishesAfterInfo struct {
+	fs.DirEntry
+	path string
+}
+
+func (v vanishesAfterInfo) Info() (fs.FileInfo, error) {
+	info, err := v.DirEntry.Info()
+	if err == nil {
+		_ = os.Remove(v.path)
+	}
+	return info, err
+}
+
+func TestCopyEntrySkipsFilesThatVanishAfterStat(t *testing.T) {
+	src := t.TempDir()
+	p := filepath.Join(src, "gone")
+	if err := os.WriteFile(p, []byte("gone"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("ReadDir: %v, %d entries", err, len(entries))
+	}
+
+	dst := t.TempDir()
+	if err := copyEntry(dst, "gone", p, vanishesAfterInfo{entries[0], p}); err != nil {
+		t.Fatalf("copying: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dst, "gone")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("gone should have been skipped, got err=%v", err)
+	}
 }
 
 // template builds the repository of a fixture once. The files of the fixture, in the

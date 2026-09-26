@@ -148,7 +148,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
-**初回リリース`v0.2.0`をタグ付け・push済み（2026-09-25）。** `go install github.com/amisonnet8/mtqg/cmd/mtqg@v0.2.0`でインストールでき、`mtqg version`が`v0.2.0`を正しく表示することを確認した（上の「公開の2段階」）。段階1（コア・CLI）・段階3（qsokuでのCLIで直すもの）・`rule`の追加・段階4a（フック）・4b（MCP）までの内容を含む。「公開中・未完成」の段階自体は変わらない（READMEは注意書きのまま）。
+**初回リリース`v0.2.0`をタグ付け・push済み（2026-09-25）。** `go install github.com/amisonnet8/mtqg/cmd/mtqg@v0.2.0`でインストールでき、`mtqg version`が`v0.2.0`を正しく表示することを確認した（上の「公開の2段階」）。段階1（コア・CLI）・段階3（qsokuでのCLIで直すもの）・`rule`の追加・段階4a（フック）・4b（MCP）までの内容を含む。「公開中・未完成」の段階自体は変わらない（READMEは注意書きのまま）。qsoku側でも`go install .../mtqg@latest`でインストール・動作確認ができた（人間の報告、2026-09-26）。
+
+**リリース前後に「様子見」で開いていたCIフレーク2件を調査し、どちらも直した（2026-09-26）。** インフラの偶発事象ではなく、テスト側の設計に原因があった：①`TestRewriteWhileGoroutinesAppend`（`internal/journal/rewrite_test.go`）が、追記側の決めた回数（4×30）に対し書き直し側の「3回以上」を事後に確かめるだけの古い形のままで、CIで3回flakeした（`only 1 rewrites ran while appending`。windows-latest・race macos-latest）。兄弟の`TestArchiveWhileGoroutinesAppend`が既に採っている「追記は書き直しが必要な回数を終えるまで続ける」形に直して解消。②`e2e/examples_test.go`の`copyOf`が、フィクスチャのgitリポジトリを`filepath.WalkDir`でコピーする際、gitが`.git/objects/`の中に作って消す一時ファイル（`maintenance.lock`）に競合してmacos-latestで1回落ちた。一覧に載ってから読むまでに消えたファイルは飛ばすようにし、決定的な回帰テスト（`TestCopyEntrySkipsVanishedFiles`・`TestCopyEntrySkipsFilesThatVanishAfterStat`）を追加、mutation-checkで両方killedを確認。詳細は`.claude/rules/testing.md`（「並行テストには『証明にならない』ガードを入れる」「GitHub Actions CIの落とし穴」）。同型の潜在リスクとして`TestRewriteWhileProcessesAppend`が残っている（未発生、`TestHelperProcess`の変更が要るため今回は保留、mtqgにbugとして記録）。
 
 **v0.2の区切り（設計§12.4）に達した（2026-09-24）：サンプルPJ（qsoku）を最後まで作り切り、そこで出た「CLIで直すもの」3件をすべて片付けた（上の「段階3：CLIで直すもの」の節、PR #2、CIの3OSがgreen、mainへマージ済み）。開発ツールもMakeからqsokuへ置き換え済み（上の節、PR #1、マージ済み）。段階1のステップもすべて終わっている。**
 

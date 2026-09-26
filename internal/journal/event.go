@@ -73,7 +73,7 @@ type Author struct {
 // writing time and is never updated.
 type At struct {
 	Path string `json:"path,omitempty"`
-	Line int    `json:"line,omitempty"`
+	Line int    `json:"line,omitzero"`
 	Head string `json:"head,omitempty"`
 }
 

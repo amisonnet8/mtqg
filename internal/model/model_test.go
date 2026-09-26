@@ -85,6 +85,88 @@ func TestBuildCreatesRecords(t *testing.T) {
 	}
 }
 
+func TestBuildSetsAt(t *testing.T) {
+	ev := create(idMemo, journal.TypeMemo, "See the spec", 0)
+	ev.At = &journal.At{Path: "docs/spec.md", Line: 42, Head: "3f9a1c0"}
+
+	state := Build([]journal.Event{ev})
+	rec := state.Record(idMemo)
+	if rec.At == nil || *rec.At != *ev.At {
+		t.Fatalf("At = %+v, want %+v", rec.At, ev.At)
+	}
+
+	// A later edit does not change At: it comes only from the create event.
+	edited := journal.Event{ID: idMemo, Op: journal.OpEdit, Text: "changed", TS: at(1), Author: human}
+	state = Build([]journal.Event{ev, edited})
+	rec = state.Record(idMemo)
+	if rec.At == nil || *rec.At != *ev.At {
+		t.Fatalf("after an edit: At = %+v, want unchanged %+v", rec.At, ev.At)
+	}
+
+	// A create with no --at leaves At nil.
+	state = Build([]journal.Event{create(idTodoA, journal.TypeTodo, "Skip block comments", 2)})
+	if rec := state.Record(idTodoA); rec.At != nil {
+		t.Fatalf("At = %+v, want nil", rec.At)
+	}
+}
+
+func TestBefore(t *testing.T) {
+	events := []journal.Event{
+		create(idTodoA, journal.TypeTodo, "Skip block comments", 0),
+		create(idMemo, journal.TypeMemo, "Use English for errors", 1),
+		create(idQ, journal.TypeQA, "Nested block comments?", 2),
+	}
+	state := Build(events)
+	all := state.All()
+	if len(all) != 3 {
+		t.Fatalf("test setup: got %d records, want 3", len(all))
+	}
+
+	if got := state.Before(all[0]); len(got) != 0 {
+		t.Errorf("before the first record: got %v, want none", got)
+	}
+	if got := state.Before(all[2]); !slicesEqual(got, all[:2]) {
+		t.Errorf("before the last record: got %v, want %v", got, all[:2])
+	}
+	if got := state.Before(all[1]); !slicesEqual(got, all[:1]) {
+		t.Errorf("before the middle record: got %v, want %v", got, all[:1])
+	}
+
+	t.Run("does not depend on the order of the events", func(t *testing.T) {
+		shuffled := []journal.Event{events[2], events[0], events[1]}
+		state2 := Build(shuffled)
+		got := state2.Before(state2.Record(idQ))
+		if len(got) != 2 || got[0].ID != idTodoA || got[1].ID != idMemo {
+			t.Errorf("got %v, want [%s %s]", got, idTodoA, idMemo)
+		}
+	})
+
+	t.Run("a deleted record is excluded and cannot be a position", func(t *testing.T) {
+		withDelete := append(append([]journal.Event{}, events...),
+			journal.Event{ID: idMemo, Op: journal.OpDelete, TS: at(3), Author: human})
+		state2 := Build(withDelete)
+		if state2.Before(&Record{ID: idMemo}) != nil {
+			t.Error("a rec not found by identity in this State must give nil")
+		}
+		got := state2.Before(state2.Record(idQ))
+		if len(got) != 1 || got[0].ID != idTodoA {
+			t.Errorf("got %v, want only [%s] (the deleted memo excluded)", got, idTodoA)
+		}
+	})
+}
+
+func slicesEqual(a, b []*Record) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestBuildAppliesChangesInOrder(t *testing.T) {
 	events := []journal.Event{
 		create(idTodoA, journal.TypeTodo, "Skip block comments", 0),

@@ -72,7 +72,9 @@ Color is only decoration and is used only when the output is a terminal.
 
 - Options come **before** the text of a record. From the first word of the text
   on, every word is text, even one that starts with `-`:
-  `mtqg t add fix the -x flag` records `fix the -x flag`.
+  `mtqg t add fix the -x flag` records `fix the -x flag`. This includes `--at`
+  (see [Adding records](#adding-records)): for a reply or an answer, it comes
+  before the ID, not between the ID and the text.
 - A text that itself starts with `-` needs `--` in front of it:
   `mtqg t add -- -1 is not allowed`. A single `-` means standard input (see
   [Adding records](#adding-records)).
@@ -118,6 +120,7 @@ A record is an object:
 | `author` | `{"kind": "human" or "ai", "name": "..."}` |
 | `created` | The time of the first event |
 | `updated` | The time of the last event |
+| `at` | `{"path", "line", "head"}`, only when the record was written with `--at` |
 
 <!-- mtqg:example repo=parser -->
 ```
@@ -359,6 +362,13 @@ mtqg r add Write mtqg records in English
   [Questions, answers, bugs and replies](#questions-answers-bugs-and-replies)).
 - `-` instead of the text reads it from standard input, to its end. Trailing
   line breaks are dropped: `git log -1 --format=%s | mtqg m add -`
+- **`--at <path>[:<line>]` records where in the project the record was written
+  about** (any kind, including an answer or a reply): `mtqg t add --at
+  src/lex.go:42 Skip block comments`. The split is at the last `:`; the line is
+  optional (`--at src/lex.go` alone is fine). mtqg fills in which commit `HEAD`
+  pointed to at that moment; there is no option for this. Without a commit yet,
+  or if git cannot be run, the record is still written, just without that part
+  (see [schema.md](schema.md) `at`).
 - **When there is no text to write, `$EDITOR` opens** on an empty file, and what is
   saved is the text (trailing line breaks dropped): with no arguments at all
   (`mtqg m add`, `mtqg t add`, `mtqg q add`, `mtqg b add`, `mtqg r add`), for the answer or

@@ -719,7 +719,7 @@ func TestHelpAndMistakes(t *testing.T) {
 	if !strings.HasPrefix(out, "usage: mtqg todo <verb> [<args>]\n") {
 		t.Errorf("stdout %q", out)
 	}
-	for _, want := range []string{"mtqg todo add <text>", "mtqg todo done <id>", "mtqg todo reopen <id>"} {
+	for _, want := range []string{"mtqg todo add [--at <path>[:<line>]] <text>", "mtqg todo done <id>", "mtqg todo reopen <id>"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("kind help does not mention %q:\n%s", want, out)
 		}

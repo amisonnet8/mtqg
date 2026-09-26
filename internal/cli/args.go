@@ -138,24 +138,24 @@ var commands []*command
 
 func init() {
 	commands = []*command{
-		{kind: "memo", name: "add", usage: "mtqg memo add <text>", summary: "Record a memo", args: argsText, run: runAddMemo},
+		{kind: "memo", name: "add", usage: "mtqg memo add [--at <path>[:<line>]] <text>", summary: "Record a memo", args: argsText, values: []string{"--at"}, run: runAddMemo},
 		{kind: "memo", name: "list", usage: "mtqg memo list", summary: "List the memos", args: argsNone, run: runListMemos},
-		{kind: "todo", name: "add", usage: "mtqg todo add <text>", summary: "Record something to do", args: argsText, run: runAddTodo},
+		{kind: "todo", name: "add", usage: "mtqg todo add [--at <path>[:<line>]] <text>", summary: "Record something to do", args: argsText, values: []string{"--at"}, run: runAddTodo},
 		{kind: "todo", name: "list", usage: "mtqg todo list [--all]", summary: "List the todos that are open (--all: all)", args: argsNone, all: true, run: runListTodos},
 		{kind: "todo", name: "done", usage: "mtqg todo done <id>", summary: "Mark a todo as done", args: argsID, ids: idsOpen, run: runDone},
 		{kind: "todo", name: "reopen", usage: "mtqg todo reopen <id>", summary: "Mark a todo as open again", args: argsID, ids: idsDone, run: runReopen},
 
-		{kind: "qa", name: "add", usage: "mtqg qa add <question> | mtqg qa add <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, ids: idsParents, run: runAddThread},
+		{kind: "qa", name: "add", usage: "mtqg qa add [--at <path>[:<line>]] <question> | mtqg qa add [--at <path>[:<line>]] <question-id> <answer>", summary: "Ask a question, or answer one", args: argsText, values: []string{"--at"}, ids: idsParents, run: runAddThread},
 		{kind: "qa", name: "list", usage: "mtqg qa list [--all]", summary: "List the questions that are open (--all: all)", args: argsNone, all: true, run: runListThread},
 		{kind: "qa", name: "done", usage: "mtqg qa done <question-id>", summary: "Close a question", args: argsID, ids: idsOpen, run: runDone},
 		{kind: "qa", name: "reopen", usage: "mtqg qa reopen <question-id>", summary: "Open a question again", args: argsID, ids: idsDone, run: runReopen},
-		{kind: "bug", name: "add", usage: "mtqg bug add <bug> | mtqg bug add <bug-id> <reply>", summary: "Report a bug, or reply to one", args: argsText, ids: idsParents, run: runAddThread},
+		{kind: "bug", name: "add", usage: "mtqg bug add [--at <path>[:<line>]] <bug> | mtqg bug add [--at <path>[:<line>]] <bug-id> <reply>", summary: "Report a bug, or reply to one", args: argsText, values: []string{"--at"}, ids: idsParents, run: runAddThread},
 		{kind: "bug", name: "list", usage: "mtqg bug list [--all]", summary: "List the bugs that are open (--all: all)", args: argsNone, all: true, run: runListThread},
 		{kind: "bug", name: "done", usage: "mtqg bug done <bug-id>", summary: "Close a bug", args: argsID, ids: idsOpen, run: runDone},
 		{kind: "bug", name: "reopen", usage: "mtqg bug reopen <bug-id>", summary: "Open a bug again", args: argsID, ids: idsDone, run: runReopen},
-		{kind: "glossary", name: "add", usage: "mtqg glossary add <word> [<definition>]", summary: "Define a term", args: argsText, minWords: 1, run: runAddGlossary},
+		{kind: "glossary", name: "add", usage: "mtqg glossary add [--at <path>[:<line>]] <word> [<definition>]", summary: "Define a term", args: argsText, values: []string{"--at"}, minWords: 1, run: runAddGlossary},
 		{kind: "glossary", name: "list", usage: "mtqg glossary list", summary: "List the terms", args: argsNone, run: runListGlossary},
-		{kind: "rule", name: "add", usage: "mtqg rule add <text>", summary: "Record a rule", args: argsText, run: runAddRule},
+		{kind: "rule", name: "add", usage: "mtqg rule add [--at <path>[:<line>]] <text>", summary: "Record a rule", args: argsText, values: []string{"--at"}, run: runAddRule},
 		{kind: "rule", name: "list", usage: "mtqg rule list", summary: "List the rules", args: argsNone, run: runListRules},
 
 		{name: "init", usage: "mtqg init [--agent claude-code] [-n]", summary: "Create .mtqg/ in this repository, optionally wiring up an agent (-n: only report)", args: argsNone, dryRun: true, values: []string{"--agent"}, run: runInit},

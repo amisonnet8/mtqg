@@ -32,6 +32,7 @@ const (
 	queryCommittedJournal
 	queryBranch
 	queryHead
+	queryShortHead
 	queryStatus
 )
 
@@ -57,6 +58,8 @@ func runGit(root string, query gitQuery) (stdout []byte, exitCode int, err error
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "branch", "--show-current")
 	case queryHead:
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "rev-parse", "HEAD")
+	case queryShortHead:
+		cmd = exec.CommandContext(ctx, "git", "--no-pager", "rev-parse", "--short", "HEAD")
 	case queryStatus:
 		cmd = exec.CommandContext(ctx, "git", "--no-pager", "status", "--porcelain", "-z")
 	default:
@@ -111,6 +114,22 @@ func GitBranch(root string) (string, error) {
 // ErrGitUnavailable.
 func GitHead(root string) (string, error) {
 	out, code, err := runGit(root, queryHead)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", nil
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// GitShortHead returns the abbreviated commit hash HEAD points to in the
+// repository at root, the way "git show" would print it (following
+// core.abbrev), or "" when there is no commit yet. It is used to record which
+// commit was checked out when a record was written (§5.5, the "at" field). If
+// git cannot be run, the error is ErrGitUnavailable.
+func GitShortHead(root string) (string, error) {
+	out, code, err := runGit(root, queryShortHead)
 	if err != nil {
 		return "", err
 	}

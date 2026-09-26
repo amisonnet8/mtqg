@@ -10,6 +10,7 @@ mtqgはgitの上に乗るツールだが、**gitの運用には何も要求し�
   - `git branch --show-current`（今のブランチ名。`context`の最初の行。detached HEADでは空）
   - `git -C <ルート> show HEAD:.mtqg/journal.jsonl`（未コミットの記録の件数を出すため。`HEAD`の`journal.jsonl`の行と、今の行を比べる。`HEAD`やそのパスが無ければ、全行が未コミット）
   - `git -C <ルート> rev-parse HEAD`（`GitHead`。エージェントのフック（段階4a）が、セッション開始時と終了時で比べるため。コミットが無ければ空）
+  - `git -C <ルート> rev-parse --short HEAD`（`GitShortHead`。`--at`（設計§5.5）が記録に`head`を自動で埋めるため。`core.abbrev`に従う短い値。コミットが無ければ空）
   - `git -C <ルート> status --porcelain -z`（`GitStatusDigest`。`.mtqg/`を含む行を除いてハッシュ化したもの。同じくフックが「作業ツリーが変わったか」を見るためだけに使い、`--json`にも表示にも中身は出さない）
 - gitのライブラリ（go-gitなど）でgitの動きを再実装しない。`exec`で`git`を呼ぶ。gitの設定・フック・worktree・サブモジュールの扱いが本物と食い違うため
 - gitの私的な領域（`.git/`の中）には何も置かない。mtqgの状態はすべて`.mtqg/`の中に収まる（このマシンだけの一時的なものは`.mtqg/.local/`・journal-format.md）

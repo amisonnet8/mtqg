@@ -243,6 +243,45 @@ func TestGitHead(t *testing.T) {
 	})
 }
 
+func TestGitShortHead(t *testing.T) {
+	t.Run("no commit yet", func(t *testing.T) {
+		root := newRepo(t)
+		if got, err := GitShortHead(root); err != nil || got != "" {
+			t.Fatalf("got %q, %v; want \"\"", got, err)
+		}
+	})
+
+	t.Run("matches git rev-parse --short HEAD", func(t *testing.T) {
+		root := newRepo(t)
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+		want := strings.TrimSpace(git(t, root, "rev-parse", "--short", "HEAD"))
+		if got, err := GitShortHead(root); err != nil || got != want {
+			t.Fatalf("got %q, %v; want %q", got, err, want)
+		}
+	})
+
+	t.Run("follows core.abbrev", func(t *testing.T) {
+		root := newRepo(t)
+		git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+		git(t, root, "config", "core.abbrev", "12")
+		want := strings.TrimSpace(git(t, root, "rev-parse", "--short", "HEAD"))
+		if len(want) != 12 {
+			t.Fatalf("test setup: git itself gave %q, not 12 characters", want)
+		}
+		if got, err := GitShortHead(root); err != nil || got != want {
+			t.Fatalf("got %q, %v; want %q", got, err, want)
+		}
+	})
+
+	t.Run("git cannot be run", func(t *testing.T) {
+		root := newRepo(t)
+		t.Setenv("PATH", t.TempDir())
+		if _, err := GitShortHead(root); !errors.Is(err, ErrGitUnavailable) {
+			t.Fatalf("err = %v, want ErrGitUnavailable", err)
+		}
+	})
+}
+
 func TestGitStatusDigest(t *testing.T) {
 	t.Run("a clean tree digests the same twice", func(t *testing.T) {
 		root := newRepo(t)

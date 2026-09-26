@@ -425,6 +425,22 @@ func TestJSONAddAndChange(t *testing.T) {
 	}
 }
 
+func TestJSONAddEchoesAt(t *testing.T) {
+	h := initialized(t)
+
+	obj := jsonObject(t, mustRun(h, "--json", "memo", "add", "no --at here"))
+	rec := field(t, obj, "record").(map[string]any)
+	if _, ok := rec["at"]; ok {
+		t.Errorf("record has at without --at: %v", rec)
+	}
+
+	obj = jsonObject(t, mustRun(h, "--json", "memo", "add", "--at", "x.go:3", "with --at"))
+	at, ok := field(t, obj, "record", "at").(map[string]any)
+	if !ok || at["path"] != "x.go" || at["line"] != float64(3) {
+		t.Errorf("record.at = %v", field(t, obj, "record", "at"))
+	}
+}
+
 func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 	h := newHarness(t)
 

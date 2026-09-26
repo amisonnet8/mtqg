@@ -9,6 +9,10 @@ import (
 // in the editor if there is none.
 func runAddGlossary(c *ctx) int {
 	words := c.inv.words
+	at, err := c.atOption()
+	if err != nil {
+		return c.usageFailure(err.Error())
+	}
 	j, err := c.writer()
 	if err != nil {
 		return c.fail(err)
@@ -21,6 +25,7 @@ func runAddGlossary(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	ev.At = withHead(at, j.Location().Root)
 	written, err := j.Append(ev)
 	if err != nil {
 		return c.fail(err)

@@ -107,6 +107,15 @@ func TestEncodeLineGolden(t *testing.T) {
 			ev:   Event{ID: idA, Op: OpDelete, V: 1, TS: "2026-09-17T02:00:00Z", Author: yamada},
 			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"delete","v":1,"ts":"2026-09-17T02:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
 		},
+		{
+			name: "at with no line does not write line:0",
+			ev: Event{
+				ID: idA, Op: OpCreate, Type: "memo", Text: "See the spec",
+				At: &At{Path: "docs/spec.md"},
+				V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada,
+			},
+			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"memo","text":"See the spec","at":{"path":"docs/spec.md"},"v":0,"ts":"2026-09-17T04:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

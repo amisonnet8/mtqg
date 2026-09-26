@@ -526,7 +526,7 @@ func TestGlossary(t *testing.T) {
 		h.env.RunEditor = func([]string) error { opened = true; return nil }
 		code, out, errOut := h.run("g", "add")
 		wantExit(t, code, 2, out, errOut)
-		if !strings.Contains(errOut, "Missing argument. Usage: mtqg glossary add <word> [<definition>]") || out != "" {
+		if !strings.Contains(errOut, "Missing argument. Usage: mtqg glossary add [--at <path>[:<line>]] <word> [<definition>]") || out != "" {
 			t.Errorf("stdout %q, stderr %q", out, errOut)
 		}
 		if opened || h.readJournal() != "" {

@@ -28,6 +28,11 @@ func runAddThread(c *ctx) int {
 		return c.add(func(text string) (journal.Event, error) { return model.ParentCreate(typ, text) })
 	}
 
+	// Parsed first so that a bad --at is reported before the journal is read.
+	at, err := c.atOption()
+	if err != nil {
+		return c.usageFailure(err.Error())
+	}
 	// Opening first means that a missing .mtqg/ or author is reported before the
 	// journal is read.
 	j, err := c.writer()
@@ -59,6 +64,7 @@ func runAddThread(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	ev.At = withHead(at, j.Location().Root)
 	written, err := j.Append(ev)
 	if err != nil {
 		return c.fail(err)

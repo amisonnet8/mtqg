@@ -125,6 +125,14 @@ func (j *Journal) validate(ev Event) error {
 	if ev.Basis < 0 {
 		return bad("basis", "must not be negative")
 	}
+	if ev.At != nil {
+		if ev.At.Path == "" {
+			return bad("at.path", "must not be empty when at is present")
+		}
+		if ev.At.Line < 0 {
+			return bad("at.line", "must not be negative")
+		}
+	}
 	if !oneOf(j.opts.Author.Kind, AuthorHuman, AuthorAI) {
 		return bad("author.kind", "must be human or ai")
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"slices"
 	"sort"
 	"time"
 
@@ -53,6 +54,11 @@ type Record struct {
 	// are the zero time if the ts of an event could not be read.
 	Created time.Time
 	Updated time.Time
+
+	// At is where in the project the record was written about, from its create
+	// event, or nil if it was not given. It is a fact at writing time and is never
+	// updated (journal-format.md, schema.md §5.5).
+	At *journal.At
 
 	// Events are the events of the record in order.
 	Events []journal.Event
@@ -154,7 +160,7 @@ func Build(events []journal.Event) *State {
 		}
 		rec := &Record{
 			ID: ev.ID, Type: ev.Type, Text: ev.Text, Word: ev.Word, Re: ev.Re,
-			Author: ev.Author, Created: parseTime(ev.TS),
+			Author: ev.Author, Created: parseTime(ev.TS), At: ev.At,
 		}
 		if rec.HasState() {
 			rec.Status = ev.Status
@@ -238,6 +244,18 @@ func (s *State) parentOf(r *Record) *Record {
 // All returns every record that is in view, of every kind, oldest first.
 func (s *State) All() []*Record {
 	return s.pick(func(*Record) bool { return true })
+}
+
+// Before returns the records in view that were created earlier than rec, oldest
+// first: a prefix of All(). rec itself is not included. A rec that came from a
+// different State, or that is no longer in view, gives nil.
+func (s *State) Before(rec *Record) []*Record {
+	all := s.All()
+	i := slices.Index(all, rec)
+	if i < 0 {
+		return nil
+	}
+	return all[:i]
 }
 
 // Todos returns the todos that are in view, oldest first. Done ones are included

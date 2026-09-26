@@ -103,6 +103,12 @@ Fields without a value are **omitted**, never written as `null`.
 "at": {"path": "docs/spec.md", "line": 42, "head": "3f9a1c0"}
 ```
 
+`path` is required whenever `at` is present. `line` is 1 or more, and left out
+when it is not known. `head` is the short commit hash `HEAD` pointed to at
+writing time, and left out when it is not known (no commit yet, or git could
+not be run). `validate` enforces `path` and `line`; `head` is a fact about the
+repository, not something a caller supplies.
+
 `author.kind` is the kind of the party responsible for the content. When an AI
 writes down a human's decision, the author is the human (and the text says an
 AI wrote it on their behalf).

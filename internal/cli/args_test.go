@@ -116,6 +116,26 @@ func TestParseArgs(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "--at after the text is text, like any other option",
+			args: []string{"m", "add", "fix", "--at", "x"}, cmd: "mtqg memo add",
+			words: []string{"fix", "--at", "x"},
+			check: func(t *testing.T, inv *invocation) {
+				if _, ok := inv.values["--at"]; ok {
+					t.Error("--at after the text should be text, not an option")
+				}
+			},
+		},
+		{
+			name: "--at before the text is an option, and comes before the id of a reply",
+			args: []string{"qa", "add", "--at", "f", "1012", "ans"}, cmd: "mtqg qa add",
+			words: []string{"1012", "ans"},
+			check: func(t *testing.T, inv *invocation) {
+				if inv.values["--at"] != "f" {
+					t.Errorf("values = %v", inv.values)
+				}
+			},
+		},
 		{name: "a glossary entry with a word and a definition", args: []string{"g", "add", "token", "a", "unit"}, cmd: "mtqg glossary add", words: []string{"token", "a", "unit"}},
 		{name: "help asked for by -h", args: []string{"-h"}, cmd: "mtqg help", check: func(t *testing.T, inv *invocation) {
 			if !inv.help {
@@ -195,6 +215,8 @@ func TestParseArgsMistakes(t *testing.T) {
 		{"a glossary entry with no word", []string{"g", "add"}, "Missing argument"},
 		{"words for log", []string{"log", "extra"}, "Too many arguments"},
 		{"--all where it means nothing", []string{"t", "add", "--all", "x"}, "Unknown option --all"},
+		{"--at with no value", []string{"m", "add", "--at"}, "Option --at needs a value"},
+		{"--at on a command that has none", []string{"t", "list", "--at", "x"}, "Unknown option --at"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

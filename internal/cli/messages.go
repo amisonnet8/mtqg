@@ -40,6 +40,10 @@ func msgUnknownOption(opt, usage string) string {
 
 func msgOptionNeedsValue(opt string) string { return fmt.Sprintf("Option %s needs a value.", opt) }
 
+func msgBadAt(value string) string {
+	return fmt.Sprintf("Option --at needs <path> or <path>:<line> with a line of 1 or more, not %q.", value)
+}
+
 func msgMissingArgument(usage string) string { return "Missing argument. Usage: " + usage }
 
 func msgTooManyArguments(usage string) string { return "Too many arguments. Usage: " + usage }

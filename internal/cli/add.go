@@ -14,6 +14,11 @@ func runAddTodo(c *ctx) int { return c.add(model.TodoCreate) }
 // add records a memo or a todo and prints its ID, and nothing else: the speed of
 // writing a note down comes first. It does not read the journal.
 func (c *ctx) add(create func(text string) (journal.Event, error)) int {
+	// Parsed first so that a bad --at is reported before an editor is opened.
+	at, err := c.atOption()
+	if err != nil {
+		return c.usageFailure(err.Error())
+	}
 	// Opening first means that a missing .mtqg/ or author is reported before an
 	// editor is opened.
 	j, err := c.writer()
@@ -28,6 +33,7 @@ func (c *ctx) add(create func(text string) (journal.Event, error)) int {
 	if err != nil {
 		return c.fail(err)
 	}
+	ev.At = withHead(at, j.Location().Root)
 	written, err := j.Append(ev)
 	if err != nil {
 		return c.fail(err)

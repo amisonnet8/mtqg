@@ -148,6 +148,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
+**Step 4〜7（GoReleaser・README用素材・看板のREADME・公開前の点検）を完了した（2026-09-28）。** Step 4：`.goreleaser.yaml`と`.github/workflows/release.yml`を追加（`cmd/mtqg`をlinux/darwin/windows×amd64/arm64向けにビルド、`v*`タグのpushでGitHub Releasesへ。`goreleaser check`・`release --snapshot --clean`で手元確認済み）。Step 5：`docs/assets/logo.svg`（`mtqg`の由来を4色チップで表現、`prefers-color-scheme`対応）と`docs/assets/demo.tape`/`demo.gif`（vhs v0.11.0で録画。`init`→`t add`→`q add`→回答→`q list`→`log`→`context`。`mtqg log`は人間の指摘で追加）。Step 6：看板の`README_ja.md`→`README.md`を作成（ロゴ・バッジ・Features・Demo・Install・Quick start・Learn more。出力例は`docs/examples/`の検証済みブロックと完全一致することをスクリプトで確認。対話形式ガイド（Gemini Notebook製、人間が用意したURL）へのリンクも追加）。`docs/design/README.md`の章立て表のファイル名リンク化も同時期に実施（人間の指摘）。Step 7：名前の同名チェックを再確認（下記「名前の同名チェックの再確認」）、`qsoku check`・`test`・`race`・`shellcheck`・`trivy`すべてgreen。**次はStep 8（`v1.0.0`タグ、push・CI確認は人間、pkg.go.devへの反映）。**
+
 **`docs/tour/`を廃止し、`docs/examples/`に統合した（2026-09-28、人間の指摘：単体の文書としては小さすぎた）。** 直後の下の段落で新設した`tour.md`・`tour_ja.md`の内容（`init`から6種類すべて・`--at`・`log`まで）を、`examples.md`・`examples_ja.md`の冒頭の節（mtqgとは・始める・起きたことを書き留める・どこについて書いたかを示す・見て回る・ブランチ/マージ/AIエージェント）として統合し、そのあとに元からあった「小さなプロジェクト」「mtqg自身の開発」を続けた。見出しを9+2=11から8つに減らし、内容が薄い節を統合して読みやすくした。フィクスチャ`tour-at`・`tour-at_ja`は`at-demo`・`at-demo_ja`に改名（「tour」の呼び名が無くなったため）。`e2e/examples_test.go`の`documents`から`tour/tour.md`・`tour/tour_ja.md`のペアを外すだけで、(英語,日本語)ペアを一般化した実装はそのまま使えた。`docs/tour/`ディレクトリ自体を削除。
 
 **`docs/tour/`・`docs/examples/`を新設した（2026-09-28、v1確定・公開に向けた作業のStep 3）。** `tour.md`・`tour_ja.md`は、何もないところから`mtqg init`し、6つの種類すべてと`--at`・`log`・`context`・ブランチ/マージ・AIエージェント連携に触れる歩いて回る入門。`examples.md`・`examples_ja.md`は、既存の`parser`・`parser_ja`フィクスチャを「実際に何日か使われたリポジトリ」として通しで読む例（`context`→`archive`→復元）と、mtqg自身の`.mtqg/`を実例として案内するプロース。実装面では、`e2e/examples_test.go`の`documents`を(英語,日本語)ペアのリストに一般化し、`docs/reference/`だけでなく`docs/`配下の任意のペアを対象にできるようにした（既存の`cli.md`/`cli_ja.md`は無変更で動作確認済み）。**教訓（`.claude/rules/testing.md`に記録済み）：** `repo=empty ids=any`で作った直後の記録を`t list`・`log`・`context`でそのまま見せると、日付が実行時の本物の時計由来で再現できない（`Journal.now`は本物の時計、`Env.Now`は表示の「今日」判定だけに効く）。避けるため、`add`はID出力止まりにするか、日付が固定されたフィクスチャ側の読み取りだけに絞った。`--at`の実演も同じ理由で、`at`付きの記録1件だけを持つ最小フィクスチャ（`tour-at`・`tour-at_ja`）を新設し、`show --json`で読むだけにした。
@@ -343,6 +345,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 **名前の同名チェック（2026-09-20、Claude Codeが実施。公開中・未完成の段階として十分）：** `amisonnet8/mtqg`は未使用（404）。pkg.go.devの検索は0件、モジュールプロキシにも記録なし。npm・PyPI・crates.io・Homebrew（core）に`mtqg`は無い。GitHubの名前検索では別のアカウントの`mtqg`（中国語のEC系の記述が2件）と、ベトナム語の略語`MTQG`（「国家目標」）を使うリポジトリがあるが、いずれも無関係で、Goのパスは`github.com/amisonnet8/mtqg`なので衝突しない。**製品・企業・ブランドの同名チェック（同日）：** Web検索（ソフトウェア・製品・企業・商標・略語の意味）で、`MTQG`という製品・企業・ブランドは見つからなかった。紛らわしいのは綴りが近いものだけ：`MTG`（株式会社MTG＝美容機器、Magic: The Gathering、「meeting」の略）と`MQTT`（IoTのプロトコルとそのツール群）。どちらも綴りが違い、分野も違う。`mtqg.com`はGoDaddyの売り出し用の駐車ページ（製品や企業のサイトではない）。`mtqg.dev`・`mtqg.io`は名前解決できなかったが、登録の有無は確認できていない（RDAPが403）。**未確認：** apt・Scoop・winget・Nixなどの他のパッケージマネージャー、正式な商標調査（USPTO・J-PlatPat・WIPOの検索は、Web検索では確かめられなかった）、ドメインの登録状況。完成として公開するとき（「公開前にやること」）に、範囲を広げて再確認する
 
+**名前の同名チェックの再確認（2026-09-28、Step 7・完成として公開する直前）：** WebSearchで再度確認した。GitHub：`amisonnet8/mtqg`・`amisonnet8/mtqg-vscode`本体以外に見つかったのは`morganmichael08/mtqg`（説明が`content`とだけの、同じアカウントの`nfimp`・`hhhx`などと並ぶ量産型の空リポジトリで、無関係）。pkg.go.dev・npm・PyPI・crates.io・Homebrewはいずれも該当なし（前回と同じ）。**新たに見つかった綴りの近い既存語：**`MTQG`はShureのワイヤレスマイク用コネクタ規格の型番サフィックス（TQGロッキングカラー、例：`DH5T/O-MTQG`）として音響機器業界で使われているが、ソフトウェア・分野とも無関係で、綴りが一致していても実害のある衝突ではないと判断した。`MTQ Corporation`（オフショア掘削機器の会社）も見つかったが綴りが`MTQ`で異なる。**結論：Goのモジュールパス・GitHubリポジトリ名として問題になる衝突は無い。** apt・Scoop・winget・Nix、正式な商標調査、ドメイン登録状況は今回も確認していない（CLIツールの配布先として現実的な干渉経路ではないと判断し、範囲を広げなかった）
+
 `docs/design/`は、開発開始前に書かれた「構想メモ」と「CLI検討案」を分割したもの。未決事項はこのファイルに移した。
 
 ## 未確認事項（実装前に決める・確かめる）
@@ -408,6 +412,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 |---|---|---|
 | **公開中・未完成**（Step 1〜v0.1の前まで） | リポジトリはpublic。使ってほしくない | 注意書きだけの`README.md`・`README_ja.md`。`docs/tour/`・`docs/examples/`は無くてよい |
 | **完成として公開**（v0.1以降、看板を掲げるとき） | 使ってよい | 下記「公開前にやること」をすべて満たす。看板としてのREADMEを最後に作る |
+
+**「完成として公開」の条件をすべて満たした（2026-09-28、Step 7）。** 下記「公開前にやること」の文書（英日）・名前の同名チェックは済み、看板の`README.md`・`README_ja.md`も作成済み（Step 6）。**残るのはStep 8（`v1.0.0`タグ・push・pkg.go.devへの反映）だけ。** タグを打ってpushするまでは、実際のGitHub上の見た目（Description・Releases・pkg.go.dev）はまだ「公開中・未完成」のまま。
 
 公開中・未完成の間の決まり：
 

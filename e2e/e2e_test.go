@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // binary is the mtqg that TestMain built.
@@ -325,7 +327,8 @@ func TestExitCodesAndStreams(t *testing.T) {
 		t.Errorf("help: %+v", res)
 	}
 	res = r.run(nil, "", "version")
-	if res.code != 0 || !strings.HasPrefix(res.stdout, "mtqg ") || !strings.HasSuffix(res.stdout, "Repository format version: 0 (this mtqg supports up to 0)\n") {
+	wantVersionLine := fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)\n", journal.SupportedVersion, journal.SupportedVersion)
+	if res.code != 0 || !strings.HasPrefix(res.stdout, "mtqg ") || !strings.HasSuffix(res.stdout, wantVersionLine) {
 		t.Errorf("version: %+v", res)
 	}
 }
@@ -747,7 +750,8 @@ func TestUndoKeepsTheLinesOfOtherTerminalsAndAuthors(t *testing.T) {
 
 	// Only a hash of the terminal is written, never what it was made from.
 	written := readFile(t, journalPath)
-	if strings.Contains(written, "terminal-") || !regexp.MustCompile(`"text":"written at b","v":0,"ts":"[^"]+","author":\{[^}]*\},"tty":"[0-9a-f]{8}"`).MatchString(written) {
+	vPattern := fmt.Sprintf(`"v":%d`, journal.SupportedVersion)
+	if strings.Contains(written, "terminal-") || !regexp.MustCompile(`"text":"written at b",`+vPattern+`,"ts":"[^"]+","author":\{[^}]*\},"tty":"[0-9a-f]{8}"`).MatchString(written) {
 		t.Errorf("journal =\n%s", written)
 	}
 	if strings.Contains(strings.Split(written, "\n")[2], `"tty"`) {

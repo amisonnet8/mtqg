@@ -10,8 +10,10 @@ import (
 )
 
 // SupportedVersion is the newest format version this build reads and writes.
-// Format 0 means "not yet stable" (docs/reference/schema.md).
-const SupportedVersion = 0
+// Before mtqg v1 the version was 0, meaning "not yet stable"; mtqg upgrade
+// raises a repository to this version without touching any line
+// (docs/reference/schema.md "Versioning").
+const SupportedVersion = 1
 
 // maxVersionDigits keeps the number far from overflowing an int.
 const maxVersionDigits = 9

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -73,11 +74,12 @@ func TestOpen(t *testing.T) {
 
 	t.Run("a format newer than this build is refused", func(t *testing.T) {
 		root := newRepo(t)
-		newMtqg(t, root, "1\n", str(lineOf(t, memo(idA, "x"))+"\n"))
+		newer := strconv.Itoa(SupportedVersion + 1)
+		newMtqg(t, root, newer+"\n", str(lineOf(t, memo(idA, "x"))+"\n"))
 		j, err := Open(root, Options{})
 		var tooNew *FormatTooNewError
-		if !errors.As(err, &tooNew) || tooNew.Found != 1 || tooNew.Supported != SupportedVersion {
-			t.Fatalf("err = %v, want a FormatTooNewError for version 1", err)
+		if !errors.As(err, &tooNew) || tooNew.Found != SupportedVersion+1 || tooNew.Supported != SupportedVersion {
+			t.Fatalf("err = %v, want a FormatTooNewError for version %s", err, newer)
 		}
 		if j != nil {
 			t.Error("a Journal was returned for a format that is refused: it could be read or written")

@@ -40,7 +40,7 @@ func Init(start, schema string) (Location, error) {
 		{".gitattributes", "*.jsonl text eol=lf merge=union\n"},
 		{".gitignore", localName + "/\n"},
 		{versionName, fmt.Sprintf("%d\n", SupportedVersion)},
-		{"SCHEMA.md", schema},
+		{schemaName, schema},
 	})
 }
 

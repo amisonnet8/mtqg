@@ -162,6 +162,7 @@ func init() {
 		{name: "init", usage: "mtqg init [--agent claude-code] [-n]", summary: "Create .mtqg/ in this repository, optionally wiring up an agent (-n: only report)", args: argsNone, dryRun: true, values: []string{"--agent"}, run: runInit},
 		{name: "status", usage: "mtqg status", summary: "Show what is open and what is not committed", args: argsNone, run: runStatus},
 		{name: "version", usage: "mtqg version", summary: "Show the version of mtqg and of the repository's format", args: argsNone, run: runVersion},
+		{name: "upgrade", usage: "mtqg upgrade [-n]", summary: "Raise the repository's format version (-n: only report)", args: argsNone, dryRun: true, run: runUpgrade},
 		{name: "help", usage: "mtqg help", summary: "List the commands", args: argsNone, run: runHelp},
 
 		{name: "edit", usage: "mtqg edit <id> [<text>]", summary: "Replace the text of a record", args: argsIDText, ids: idsAll, run: runEdit},

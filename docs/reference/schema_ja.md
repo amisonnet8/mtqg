@@ -6,7 +6,7 @@
 
 この文書は、mtqgが記録をどう保存するかを定める。英語版は、`mtqg init`が各プロジェクトに書き出す`.mtqg/SCHEMA.md`の元であり、mtqgのコマンドがなくても、人やAIが記録を読めるようにするためのもの。
 
-**形式のバージョン：0（未確定）。** mtqg v1までは、形式が予告なく変わることがあり、既存の行が書き換え・変換されることがある。形式1以降は、[バージョン](#バージョン)の互換性のルールが適用される。
+**形式のバージョン：1。** [バージョン](#バージョン)の互換性のルールが適用される：古い読み手が無視しても構わないフィールドは足せるが、フィールドの意味は変えず、既存の行は書き換えない。
 
 ## mtqgが記録するもの
 
@@ -53,13 +53,13 @@ mtqgは、プロジェクトの過程のうち、コードに残らない部分�
 例：
 
 ```jsonl
-{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"C言語対応やりたい","v":0,"ts":"2026-09-17T00:00:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"ブロックコメントの入れ子に対応する？","v":0,"ts":"2026-09-17T00:10:00Z","author":{"kind":"ai","name":"claude-code"}}
-{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"初版では非対応。需要が出たら再検討","v":0,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}
-{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"空の入力でパーサーが落ちる","v":0,"ts":"2026-09-17T00:50:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"トークン","text":"字句解析で切り出す最小単位","v":0,"ts":"2026-09-17T01:00:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"macOSでも再現した。空のファイルには最初のトークンがない","v":0,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}
-{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"C言語対応やりたい","v":1,"ts":"2026-09-17T00:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"ブロックコメントの入れ子に対応する？","v":1,"ts":"2026-09-17T00:10:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"初版では非対応。需要が出たら再検討","v":1,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}
+{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"空の入力でパーサーが落ちる","v":1,"ts":"2026-09-17T00:50:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"トークン","text":"字句解析で切り出す最小単位","v":1,"ts":"2026-09-17T01:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"macOSでも再現した。空のファイルには最初のトークンがない","v":1,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":1,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}
 ```
 
 ## フィールド
@@ -179,7 +179,7 @@ rm .mtqg/archive/2021-01-01..2024-09-18.jsonl
 - 書き手は、より新しい形式を知っていても、`version`が宣言する形式で書く。形式を上げるのは明示的な格上げのときだけで、そのとき`version`と`SCHEMA.md`を同時に書き換える。既存の行は書き換えない
 - 各行は、書いたときの形式`v`を持つ。読み手は各行をその行の`v`で解釈する
 - 古い読み手が無視しても読み違えないフィールドの追加では、バージョンを変えない。フィールドの意味の変更や、新しい`op`の追加では変える
-- 形式`0`は「まだ確定していない」ことを意味する。mtqg v1のリリース時に`1`になり、形式0で書かれた記録はそのとき一度だけ変換される
+- mtqg v1より前は、形式`0`だった。「まだ確定していない」ことを意味し、形式を自由に変えてよく、既存の行を書き換え・破棄してもよかった。`mtqg upgrade`が、行には触れずに`1`へ上げた。行自身の`v`はそのまま読む（`v:0`の行も`v:1`の行と同じ意味）。`0`はもう使わない
 
 ## 書き出し規則
 

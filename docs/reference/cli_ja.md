@@ -45,6 +45,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg hook <agent> <event>` | エージェントのフックのイベントを1つ実行する。エージェント自身の設定から呼ばれるもので、手で打つものではない。[エージェントのフック](#エージェントのフック)を参照 |
 | `mtqg mcp` | AIエージェント向けに、標準入出力でMCPサーバーを動かす。[MCPサーバー](#mcpサーバー)を参照 |
 | `mtqg version` | mtqgのバージョンと、リポジトリの形式のバージョンを表示する |
+| `mtqg upgrade [-n]` | リポジトリの形式のバージョンを上げる（`-n`：報告だけ）。[upgrade](#upgrade)を参照 |
 | `mtqg completion <シェル>` | シェルの補完スクリプトを出力する。`bash`、`zsh`、`fish`、`powershell` |
 | `mtqg candidates [--word=<打ちかけの語>] -- <語>...` | コマンドラインの次に来られるものを並べる。補完スクリプトが呼ぶ。[シェル補完](#シェル補完)を参照 |
 | `mtqg help` | コマンドの一覧を表示する（`-h`、`--help`も同じ） |
@@ -78,7 +79,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 
 ## JSON出力
 
-`--json`はプログラム（エディタの拡張、フック、スクリプト）のためのもの。出力は約束であり、変えるときはフィールドを足すだけにする。読む側は、知らないフィールドを無視する。（形式はv1まで`0`で、[schema_ja.md](schema_ja.md#バージョン)にある。それまではこの約束もまだ固定ではない。）
+`--json`はプログラム（エディタの拡張、フック、スクリプト）のためのもの。出力は約束であり、変えるときはフィールドを足すだけにする。読む側は、知らないフィールドを無視する。
 
 - 出力は**JSONオブジェクト1つ**。2スペースで字下げし、改行で終える。最初のフィールドは`command`で、打ったコマンドを略さずに書く（`todo list`、`qa add`、`log`）
 - キーは`snake_case`。値のないフィールドは`journal.jsonl`と同じく省く。件数は省かない
@@ -1119,7 +1120,34 @@ Repository format version: 0 (this mtqg supports up to 0)
 - リポジトリの外、または`.mtqg/`のない場所では、2行目は
   `Repository format version: unknown (no .mtqg/ found)`になる
 
-形式のバージョンは`0`（未確定）で、それを上げるコマンドはまだない。形式1以降ができたときに用意する（[schema_ja.md](schema_ja.md#バージョン)）。
+## upgrade
+
+```
+mtqg upgrade
+mtqg upgrade -n
+```
+
+`mtqg upgrade`は、`.mtqg/version`が宣言する形式のバージョンを、このmtqgが対応する番号まで上げ、`.mtqg/SCHEMA.md`をそれに合わせて書き換える。触るのはこの2つのファイルだけ：`journal.jsonl`は書き直さず、すでにある各行は、書かれたときの意味のまま読まれ続ける（[schema_ja.md](schema_ja.md#バージョン)を参照）。`-n`は何が起きるかを報告するだけ。
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg upgrade
+Unchanged: format 1
+```
+
+すでにこのmtqgが対応する番号のリポジトリは、そう言って何も変えない（終了コード0）。遅れているリポジトリは、上げた内容を`-n`と実際の実行の両方で言う：
+
+<!-- mtqg:example skip="depends on the repository's format version" -->
+```
+$ mtqg upgrade -n
+Upgraded (dry run): format 0 -> 1
+$ mtqg upgrade
+Upgraded: format 0 -> 1
+```
+
+- 変わるのは`.mtqg/version`と`.mtqg/SCHEMA.md`だけ。記録は1件も触らず、順序も変わらず、失われない
+- `journal.jsonl`に衝突マーカーが残っている間は、書き込みと同じ理由で断る（[schema_ja.md](schema_ja.md#journaljsonlの衝突を解決する)を参照）
+- `archive`と同じく記録者を要らない：イベントを1つも書かないため
 
 ## エージェントのフック
 

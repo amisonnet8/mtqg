@@ -94,13 +94,22 @@ func replaceJournal(root *os.Root, out []byte, exists bool) error {
 		}
 		perm = info.Mode().Perm()
 	}
-	tmp, err := writeTemp(root, out, perm)
+	return replaceRootFile(root, journalName, out, perm)
+}
+
+// replaceRootFile writes data to .local/tmp/, syncs it, and puts it in place of
+// target (a file directly under .mtqg/), keeping perm. It is the general form
+// of replaceJournal: Upgrade uses it for version and SCHEMA.md, which are
+// replaced the same way journal.jsonl is (a crash leaves the old file or the
+// new one, never a mix).
+func replaceRootFile(root *os.Root, target string, data []byte, perm fs.FileMode) error {
+	tmp, err := writeTemp(root, target, data, perm)
 	if err != nil {
 		return err
 	}
-	if err := replaceFile(root, tmp, journalName); err != nil {
+	if err := replaceFile(root, tmp, target); err != nil {
 		_ = root.Remove(tmp)
-		return fmt.Errorf("journal: replace %s: %w", journalName, err)
+		return fmt.Errorf("journal: replace %s: %w", target, err)
 	}
 	return nil
 }
@@ -129,11 +138,11 @@ func renderLines(lines []Line) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// writeTemp writes data to a fresh file in .local/tmp/ and returns its name
-// relative to the root. Whatever an earlier rewrite left in .local/tmp/ is
-// removed first: it holds only unfinished rewrites, and only one rewrite runs at
-// a time, under the lock.
-func writeTemp(root *os.Root, data []byte, perm fs.FileMode) (string, error) {
+// writeTemp writes data to a fresh file in .local/tmp/, named after target, and
+// returns its name relative to the root. Whatever an earlier rewrite left in
+// .local/tmp/ is removed first: it holds only unfinished rewrites, and only one
+// rewrite runs at a time, under the lock.
+func writeTemp(root *os.Root, target string, data []byte, perm fs.FileMode) (string, error) {
 	dir := filepath.Join(localName, tmpName)
 	if err := root.RemoveAll(dir); err != nil {
 		return "", fmt.Errorf("journal: %w", err)
@@ -141,7 +150,7 @@ func writeTemp(root *os.Root, data []byte, perm fs.FileMode) (string, error) {
 	if err := root.MkdirAll(dir, 0o750); err != nil {
 		return "", fmt.Errorf("journal: %w", err)
 	}
-	name := filepath.Join(dir, journalName+".tmp")
+	name := filepath.Join(dir, target+".tmp")
 	f, err := root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return "", fmt.Errorf("journal: %w", err)

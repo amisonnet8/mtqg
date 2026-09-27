@@ -5,8 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+
+	journalpkg "github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // candidatesFixture is a repository with every kind of record, at times that put
@@ -410,7 +413,8 @@ func TestCandidatesAreQuietWhateverIsWrong(t *testing.T) {
 	})
 	t.Run("a format from the future", func(t *testing.T) {
 		h := candidatesFixture(t)
-		if err := os.WriteFile(filepath.Join(h.root, ".mtqg", "version"), []byte("1\n"), 0o600); err != nil {
+		tooNew := strconv.Itoa(journalpkg.SupportedVersion + 1)
+		if err := os.WriteFile(filepath.Join(h.root, ".mtqg", "version"), []byte(tooNew+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		code, out, errOut := h.run("candidates", "--word=", "--", "t", "done")

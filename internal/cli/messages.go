@@ -576,6 +576,20 @@ func msgFormatVersion(found, supported int, known bool) string {
 	return fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)", found, supported)
 }
 
+// upgrade
+
+func msgUpgraded(from, to int, dryRun bool) string {
+	label := "Upgraded"
+	if dryRun {
+		label += " (dry run)"
+	}
+	return fmt.Sprintf("%s: format %d -> %d", label, from, to)
+}
+
+func msgUpgradeUnchanged(version int) string {
+	return fmt.Sprintf("Unchanged: format %d", version)
+}
+
 // context
 
 // contextGuide tells the agent what it is reading and what to do with it.

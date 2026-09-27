@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // editFixture: a todo that is done, a memo, a question with two answers by two
@@ -40,7 +43,7 @@ func TestEdit(t *testing.T) {
 		// and its status change, both before this edit), and no word, no state, no
 		// from. (The time is the clock of the journal layer, not the one that the
 		// display uses, so it is matched, not compared.)
-		want := regexp.MustCompile(`^\{"id":"` + idA + `","op":"edit","basis":2,"text":"Skip block and line comments","v":0,"ts":"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ","author":\{"kind":"human","name":"tester"\}\}$`)
+		want := regexp.MustCompile(`^\{"id":"` + idA + `","op":"edit","basis":2,"text":"Skip block and line comments","v":` + fmt.Sprint(journal.SupportedVersion) + `,"ts":"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ","author":\{"kind":"human","name":"tester"\}\}$`)
 		if !want.MatchString(last) {
 			t.Errorf("last line\n got %s", last)
 		}

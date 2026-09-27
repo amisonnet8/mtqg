@@ -6,9 +6,9 @@ person or AI can read the records without the mtqg command.
 
 A Japanese translation is in `schema_ja.md` in the mtqg repository.
 
-**Format version: 0 (unstable).** Until mtqg v1, the format may change without
-notice, and existing lines may be rewritten or converted. From format version 1
-on, the compatibility rules in [Versioning](#versioning) apply.
+**Format version: 1.** The compatibility rules in [Versioning](#versioning)
+apply: a field can be added if old readers can ignore it safely, but a field's
+meaning is never changed and existing lines are never rewritten.
 
 ## What mtqg records
 
@@ -52,7 +52,8 @@ corrections and deletions are all expressed as new lines.
   that date range (start and end inclusive, local dates, always written as
   `YYYY-MM-DD`). mtqg commands do not read `archive/`.
 - `.local/` holds things that only matter on this machine: the write lock,
-  temporary files used while rewriting, and similar. It is ignored by git
+  temporary files used while rewriting, an agent hook's session bookkeeping
+  (`sessions/`, see cli.md's "Agent hooks"), and similar. It is ignored by git
   (`.mtqg/.gitignore`), holds nothing that other readers need, and can be
   deleted at any time when mtqg is not running.
 
@@ -66,13 +67,13 @@ corrections and deletions are all expressed as new lines.
 Example:
 
 ```jsonl
-{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"Support C syntax","v":0,"ts":"2026-09-17T00:00:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"Should nested block comments be supported?","v":0,"ts":"2026-09-17T00:10:00Z","author":{"kind":"ai","name":"claude-code"}}
-{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"Not in the first version. Revisit if there is demand","v":0,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}
-{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"Parser crashes on empty input","v":0,"ts":"2026-09-17T00:50:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"token","text":"The smallest unit produced by lexing","v":0,"ts":"2026-09-17T01:00:00Z","author":{"kind":"human","name":"yamada"}}
-{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"Reproduced on macOS too. The empty file has no first token","v":0,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}
-{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":0,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"todo","status":"open","text":"Support C syntax","v":1,"ts":"2026-09-17T00:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"1012f037b64c44228c38fb2918f135d2","op":"create","type":"qa","status":"open","text":"Should nested block comments be supported?","v":1,"ts":"2026-09-17T00:10:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"95e761d177314f10b06bf2efc6f87718","op":"create","type":"qa","re":"1012f037b64c44228c38fb2918f135d2","text":"Not in the first version. Revisit if there is demand","v":1,"ts":"2026-09-17T00:41:00Z","author":{"kind":"human","name":"yamada"},"tty":"3e9a0b12"}
+{"id":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","op":"create","type":"bug","status":"open","text":"Parser crashes on empty input","v":1,"ts":"2026-09-17T00:50:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"f28c105d1fb14c2390c192cfd3ac94af","op":"create","type":"glossary","word":"token","text":"The smallest unit produced by lexing","v":1,"ts":"2026-09-17T01:00:00Z","author":{"kind":"human","name":"yamada"}}
+{"id":"3d8e4a0b12c94f77b6a08d1e5f2c9b34","op":"create","type":"bug","re":"7f3a2b1c09d84e6fa5b17c2d3e4f5a60","text":"Reproduced on macOS too. The empty file has no first token","v":1,"ts":"2026-09-17T01:20:00Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"6b0d549b6f03475a8600a35a099950d8","op":"status","from":"open","status":"done","v":1,"ts":"2026-09-17T01:30:00Z","author":{"kind":"ai","name":"claude-code"}}
 ```
 
 ## Fields
@@ -102,9 +103,19 @@ Fields without a value are **omitted**, never written as `null`.
 "at": {"path": "docs/spec.md", "line": 42, "head": "3f9a1c0"}
 ```
 
+`path` is required whenever `at` is present. `line` is 1 or more, and left out
+when it is not known. `head` is the short commit hash `HEAD` pointed to at
+writing time, and left out when it is not known (no commit yet, or git could
+not be run). `validate` enforces `path` and `line`; `head` is a fact about the
+repository, not something a caller supplies.
+
 `author.kind` is the kind of the party responsible for the content. When an AI
 writes down a human's decision, the author is the human (and the text says an
 AI wrote it on their behalf).
+
+`author.name` comes from wherever the record was written: the CLI takes it
+from an environment variable or from git, and the MCP server (see `cli.md`)
+takes it from the name the connecting client gives at startup.
 
 ## Operations
 
@@ -241,8 +252,11 @@ rm .mtqg/archive/2021-01-01..2024-09-18.jsonl
   line by its own `v`.
 - Adding a field that old readers can ignore without misreading does not change
   the version. Changing the meaning of a field or adding a new `op` does.
-- Format `0` means "not yet stable". It becomes `1` when mtqg v1 is released;
-  records written in format 0 are converted once at that point.
+- Before mtqg v1 the version was `0`, meaning "not yet stable": the format could
+  change freely, and existing lines could be rewritten or discarded. `mtqg
+  upgrade` raised it to `1` without touching any line; a line's own `v` is
+  still read as written (a line with `v:0` means the same thing a line with
+  `v:1` does). `0` will not be reused.
 
 ## Writing rules
 

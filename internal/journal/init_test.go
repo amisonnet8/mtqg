@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -34,7 +35,7 @@ func TestInitMakesTheFiles(t *testing.T) {
 		"journal.jsonl":  "",
 		".gitattributes": "*.jsonl text eol=lf merge=union\n",
 		".gitignore":     ".local/\n",
-		"version":        "0\n",
+		"version":        strconv.Itoa(SupportedVersion) + "\n",
 		"SCHEMA.md":      testSchema,
 	}
 	entries, err := os.ReadDir(dir)

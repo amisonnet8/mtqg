@@ -345,6 +345,13 @@ type jsonFormatVersion struct {
 	Supported  int  `json:"supported"`
 }
 
+type jsonUpgrade struct {
+	Command string `json:"command"`
+	From    int    `json:"from"`
+	To      int    `json:"to"`
+	DryRun  bool   `json:"dry_run"`
+}
+
 type jsonHelp struct {
 	Command  string            `json:"command"`
 	Kinds    []jsonKind        `json:"kinds"`

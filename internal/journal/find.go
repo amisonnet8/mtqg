@@ -13,6 +13,7 @@ const (
 	mtqgDirName = ".mtqg"
 	journalName = "journal.jsonl"
 	versionName = "version"
+	schemaName  = "SCHEMA.md"
 	localName   = ".local"
 	lockName    = "lock"
 )

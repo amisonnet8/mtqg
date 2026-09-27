@@ -47,6 +47,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg hook <agent> <event>` | Run one agent hook event. Called from the agent's own configuration, not typed by hand. See [Agent hooks](#agent-hooks) |
 | `mtqg mcp` | Run an MCP server on standard input and output, for an AI agent. See [MCP server](#mcp-server) |
 | `mtqg version` | Show the mtqg version and the repository's format version |
+| `mtqg upgrade [-n]` | Raise the repository's format version (`-n`: only report). See [upgrade](#upgrade) |
 | `mtqg completion <shell>` | Print the completion script of a shell: `bash`, `zsh`, `fish` or `powershell` |
 | `mtqg candidates [--word=<partial>] -- <word>...` | List what can come next on a command line. The completion scripts call it. See [Shell completion](#shell-completion) |
 | `mtqg help` | List the commands (`-h` and `--help` do the same) |
@@ -88,8 +89,7 @@ Color is only decoration and is used only when the output is a terminal.
 
 `--json` is for programs: an editor extension, a hook, a script. What it prints
 is a promise: it changes only by adding fields, so a reader ignores the fields it
-does not know. (The format is `0` until v1; see [schema.md](schema.md#versioning).
-Until then this promise is not yet frozen either.)
+does not know.
 
 - The output is **one JSON object**, indented with two spaces and ending with a
   line feed. Its first field is `command`, the command as it was typed without
@@ -1371,9 +1371,42 @@ Repository format version: 0 (this mtqg supports up to 0)
 mtqg refuses to read or write a repository whose format
 version is newer than it knows, and asks you to update mtqg.
 
-The format version is `0` (unstable) and there is no command to raise it yet.
-One will be added when a format `1` or later exists (see
-[schema.md](schema.md#versioning)).
+## upgrade
+
+```
+mtqg upgrade
+mtqg upgrade -n
+```
+
+`mtqg upgrade` raises the format version declared in `.mtqg/version` to the one
+this mtqg supports, and rewrites `.mtqg/SCHEMA.md` to match. It touches only
+these two files: `journal.jsonl` is never rewritten, and every line already in
+it keeps meaning what it meant when it was written (see
+[schema.md](schema.md#versioning)). `-n` only reports what would happen.
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg upgrade
+Unchanged: format 1
+```
+
+A repository already at the version this mtqg supports says so and changes
+nothing (exit code 0). One that is behind says what it raised, once with `-n`
+and once for real:
+
+<!-- mtqg:example skip="depends on the repository's format version" -->
+```
+$ mtqg upgrade -n
+Upgraded (dry run): format 0 -> 1
+$ mtqg upgrade
+Upgraded: format 0 -> 1
+```
+
+- Only `.mtqg/version` and `.mtqg/SCHEMA.md` change. No record is touched,
+  reordered or lost.
+- Refused the same way a write is while `journal.jsonl` holds conflict markers
+  (see [schema.md](schema.md#resolving-a-conflict-in-journaljsonl)).
+- Needs no author, the same as `archive`: it writes no event to the journal.
 
 ## Agent hooks
 

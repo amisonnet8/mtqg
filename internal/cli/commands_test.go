@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 func wantExit(t *testing.T, code, want int, stdout, stderr string) {
@@ -651,7 +655,8 @@ func TestVersion(t *testing.T) {
 		code, out, errOut := h.run("version")
 		wantExit(t, code, 0, out, errOut)
 		lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
-		if len(lines) != 2 || !strings.HasPrefix(lines[0], "mtqg ") || lines[1] != "Repository format version: 0 (this mtqg supports up to 0)" {
+		want := fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)", journal.SupportedVersion, journal.SupportedVersion)
+		if len(lines) != 2 || !strings.HasPrefix(lines[0], "mtqg ") || lines[1] != want {
 			t.Errorf("stdout %q", out)
 		}
 	})
@@ -672,16 +677,19 @@ func TestVersion(t *testing.T) {
 
 	t.Run("a format that is too new is shown, and other commands refuse it", func(t *testing.T) {
 		h := initialized(t)
-		if err := os.WriteFile(filepath.Join(h.root, ".mtqg", "version"), []byte("3\n"), 0o600); err != nil {
+		tooNew := journal.SupportedVersion + 2
+		if err := os.WriteFile(filepath.Join(h.root, ".mtqg", "version"), []byte(strconv.Itoa(tooNew)+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		_, out, _ := h.run("version")
-		if !strings.HasSuffix(out, "Repository format version: 3 (this mtqg supports up to 0)\n") {
+		wantVersionLine := fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)\n", tooNew, journal.SupportedVersion)
+		if !strings.HasSuffix(out, wantVersionLine) {
 			t.Errorf("stdout %q", out)
 		}
 		code, out, errOut := h.run("t", "list")
 		wantExit(t, code, 1, out, errOut)
-		if !strings.Contains(errOut, "format version 3, but this mtqg understands up to version 0") {
+		wantErr := fmt.Sprintf("format version %d, but this mtqg understands up to version %d", tooNew, journal.SupportedVersion)
+		if !strings.Contains(errOut, wantErr) {
 			t.Errorf("stderr %q", errOut)
 		}
 		code, out, errOut = h.run("t", "add", "x")

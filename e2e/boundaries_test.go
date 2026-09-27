@@ -4,11 +4,15 @@ package e2e
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // gitResult runs git and returns its output and its error, for a command that is
@@ -110,11 +114,12 @@ func TestAFormatVersionFromTheFutureStops(t *testing.T) {
 	r.mtqg("t", "add", "written by this version")
 	before := r.journal()
 	versionFile := filepath.Join(r.dir, ".mtqg", "version")
-	if err := os.WriteFile(versionFile, []byte("1\n"), 0o600); err != nil {
+	tooNew := journal.SupportedVersion + 1
+	if err := os.WriteFile(versionFile, []byte(strconv.Itoa(tooNew)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	const message = "This repository uses format version 1, but this mtqg understands up to version 0. Update mtqg.\n"
+	message := fmt.Sprintf("This repository uses format version %d, but this mtqg understands up to version %d. Update mtqg.\n", tooNew, journal.SupportedVersion)
 	for _, args := range [][]string{
 		{"t", "list"}, {"status"}, {"context"}, {"log"}, {"t", "add", "x"}, {"undo"}, {"archive", "2020..2020"},
 	} {
@@ -133,7 +138,8 @@ func TestAFormatVersionFromTheFutureStops(t *testing.T) {
 
 	// What does not read the repository still works, and says what is wrong.
 	res = r.run(nil, "", "version")
-	if res.code != 0 || !strings.HasSuffix(res.stdout, "Repository format version: 1 (this mtqg supports up to 0)\n") {
+	wantVersionLine := fmt.Sprintf("Repository format version: %d (this mtqg supports up to %d)\n", tooNew, journal.SupportedVersion)
+	if res.code != 0 || !strings.HasSuffix(res.stdout, wantVersionLine) {
 		t.Errorf("version: %+v", res)
 	}
 	res = r.run(nil, before, "format")
@@ -141,7 +147,7 @@ func TestAFormatVersionFromTheFutureStops(t *testing.T) {
 		t.Errorf("format: %+v", res)
 	}
 
-	if err := os.WriteFile(versionFile, []byte("0\n"), 0o600); err != nil {
+	if err := os.WriteFile(versionFile, []byte(strconv.Itoa(journal.SupportedVersion)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if got := r.mtqg("t", "list"); !strings.Contains(got, "written by this version") {

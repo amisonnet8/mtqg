@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
 // jsonFixture is a journal with most kinds in it (rule is covered by its own,
@@ -527,7 +529,8 @@ func TestJSONStatusInitVersionAndHelp(t *testing.T) {
 
 	t.Run("version", func(t *testing.T) {
 		obj := jsonObject(t, mustRun(h, "--json", "version"))
-		if field(t, obj, "format", "repository") != float64(0) || field(t, obj, "format", "supported") != float64(0) || obj["mtqg"] == "" {
+		want := float64(journal.SupportedVersion)
+		if field(t, obj, "format", "repository") != want || field(t, obj, "format", "supported") != want || obj["mtqg"] == "" {
 			t.Errorf("%v", obj)
 		}
 		// Where there is no .mtqg/, the format of the repository is null.

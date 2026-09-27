@@ -44,6 +44,16 @@ func msgBadAt(value string) string {
 	return fmt.Sprintf("Option --at needs <path> or <path>:<line> with a line of 1 or more, not %q.", value)
 }
 
+// msgAtLineNeedsPath and msgBadAtLine are atFromFields' errors (mcp_tools.go):
+// unlike --at, an MCP tool's path and line arrive as two separate fields.
+func msgAtLineNeedsPath() string {
+	return "line was given without path; a line needs a path to go with it."
+}
+
+func msgBadAtLine(line int) string {
+	return fmt.Sprintf("line must be 1 or more, not %d.", line)
+}
+
 func msgEventsNeedsJSON() string { return "Option --events only works with --json." }
 
 func msgMissingArgument(usage string) string { return "Missing argument. Usage: " + usage }

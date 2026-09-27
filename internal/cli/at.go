@@ -52,6 +52,24 @@ func (c *ctx) atOption() (*journal.At, error) {
 	return parseAt(v)
 }
 
+// atFromFields is atOption's MCP counterpart (mcp_tools.go): a tool call's
+// arguments are already structured, so path and line arrive as two separate
+// fields instead of one string to split. path == "" and line == 0 means --at
+// was not given at all: nil, nil. A line without a path, or a line below 1,
+// is the caller's mistake (docs/design/cli.md §11.2).
+func atFromFields(path string, line int) (*journal.At, error) {
+	if path == "" {
+		if line != 0 {
+			return nil, &failure{kindBadAt, msgAtLineNeedsPath()}
+		}
+		return nil, nil
+	}
+	if line < 0 {
+		return nil, &failure{kindBadAt, msgBadAtLine(line)}
+	}
+	return &journal.At{Path: path, Line: line}, nil
+}
+
 // withHead fills in at.Head from the commit HEAD points to in root, if at is
 // not nil. Git being unavailable, or there being no commit yet, is not an
 // error here: the record is written either way, just without head (§5.5).

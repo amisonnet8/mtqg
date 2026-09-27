@@ -42,6 +42,46 @@ func TestParseAt(t *testing.T) {
 	}
 }
 
+func TestAtFromFields(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		line     int
+		wantNil  bool
+		wantErr  bool
+		wantLine int
+	}{
+		{name: "path and line", path: "a.go", line: 12, wantLine: 12},
+		{name: "path only", path: "a.go"},
+		{name: "neither", wantNil: true},
+		{name: "line without path", line: 12, wantErr: true},
+		{name: "negative line", path: "a.go", line: -1, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			at, err := atFromFields(tt.path, tt.line)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("atFromFields(%q, %d) = %+v, want an error", tt.path, tt.line, at)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("atFromFields(%q, %d): %v", tt.path, tt.line, err)
+			}
+			if tt.wantNil {
+				if at != nil {
+					t.Errorf("atFromFields(%q, %d) = %+v, want nil", tt.path, tt.line, at)
+				}
+				return
+			}
+			if at.Path != tt.path || at.Line != tt.wantLine {
+				t.Errorf("atFromFields(%q, %d) = {Path: %q, Line: %d}, want {%q, %d}", tt.path, tt.line, at.Path, at.Line, tt.path, tt.wantLine)
+			}
+		})
+	}
+}
+
 // atOfLastLine is the "at" of the last line of the journal, or nil if it has
 // none.
 func atOfLastLine(t *testing.T, h *harness) *struct {

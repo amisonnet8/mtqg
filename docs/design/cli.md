@@ -623,3 +623,13 @@ mtqg-vscode側から追加の依頼（Memo画面を「消しても跡が残る�
 - **`deleted:true`は、削除された記録自身だけでなく、削除された質問・バグに属する回答・返信（それ自身は削除されていない）にも付ける。** 「表示から隠れている」という利用者から見た事実を伝えるフィールドなので、隠れている理由（自分が消えたか、親が消えたか）では分けない。ただしその場合、`events`は親の削除イベントを含まない（その記録自体には何も起きていないので、`events`の中身と`deleted`の意味は独立している）
 - **`--before`も、`--events`のときだけ削除された記録のIDを受け付ける（`ResolveAny`・`EveryBefore`。モデル層に`Resolve`・`Before`と並べて追加）。** ページの末尾（`--limit`で切られた最後の要素）が削除された記録になりうるので、そのIDをそのまま次のページの`--before`に渡せないと、カーソル型ページングが削除の直後で壊れる。`--events`が無いときの`--before`は今まで通り`Resolve`・`Before`（可視な記録だけ）のまま
 - **他のコマンドの`jsonRecord`に`deleted`が漏れないよう、設定するのは`internal/cli/log.go`の`runLog`の`--events`分岐だけにした。** `internal/cli/json.go`の`recordJSON`では設定しない（`Events`と同じ扱い）。mutation-checkで、`recordJSON`に`Deleted: r.Deleted`を足す変異が実際に生き残った（真の等価変異。`.claude/rules/testing.md`参照）：`recordJSON`は他のどのコマンドでも可視な記録にしか呼ばれないため、`r.Deleted`は常に`false`で、`omitzero`によりJSONに出ない。それでも「設定する場所を1つに保つ」という設計は、将来`recordJSON`の呼び出し元が増えたときに漏れを防ぐための予防線として残した
+
+### 11.2 MCPのadd系ツールに`--at`相当を対応させる（2026-09-28）
+
+§11で見送っていたtodo`e07645f91a`への対応。v1確定（設計§12.4）の前に片付けたいという人間の要望で着手した。詳細は質問`0c690d9b67`・回答`21f530ff5b`。
+
+- **MCPの入力は、CLIの`<path>[:<line>]`という1つの文字列ではなく、`path`・`line`を別々のフィールドにした。** CLIの`--at`が1文字列に詰め込むのは、コマンドライン引数がただの文字列だという制約からくるもので（`parseAt`が最後の`:`で区切り、末尾が数字かどうかで`path`と`line`を見分ける）、JSON-RPCの引数は元から構造化されているので、この回避策をMCPにまで持ち込む理由がない。呼び出す側（AIエージェント）にとっても、コロンの位置を気にせず`path`と`line`を別々に渡すほうが組み立てやすく、間違えにくい
+- **`edit`ツールには足さなかった。** `at`は「記録を書いた時点の事実」（設計§5.5）であり、以後の`edit`で更新されるものではない。`edit`の入力型`idTextInput`はそのまま流用し、返信系（`qa_answer`・`bug_reply`）だけ新しい`replyInput`型（`id`・`text`・`path`・`line`）に切り替えて、`idTextInput`を使う`edit`に`path`・`line`が生えないようにした
+- **`line`だけ渡して`path`を渡さないのは、黙って無視せずエラー（`bad_at`）にした。** `line`は`path`と組みでなければ意味を持たない情報で、黙って捨てると、呼び出し側（AIエージェント）は`path`を渡し忘れたことに気づけない。「正直に伝える」（`journal-format.md`）の考え方をここにも適用した
+- **`atFromFields(path string, line int) (*journal.At, error)`（`internal/cli/at.go`）を、CLI用の`parseAt`とは別に新設した。** 文字列を分割する`parseAt`と、既に分かれた2つの値を検証するだけの`atFromFields`は、扱う入力の形が違うので関数を分けた。`head`の自動補完（`withHead`）はCLIと共有する（`at`が事実であることに変わりはなく、`head`の決め方も変わらないため）
+- **新しいエラー種別`bad_at`は、CLIの`--at`の誤り（`usageError`、exit code 2、`kind: "usage"`）とは別物。** CLIの`--at`はコマンドラインの構文の誤りだが、MCPの`path`・`line`はスキーマで型が決まった引数なので「構文の誤り」という概念がなく、これは値の意味としての誤り（`journal.At`の必要条件を満たさない）。`*failure{kindBadAt, ...}`という既存の仕組み（`empty_text`・`empty_word`と同じ形）にそのまま乗せた

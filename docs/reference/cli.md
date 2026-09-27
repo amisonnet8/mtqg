@@ -193,6 +193,7 @@ $ mtqg show zzzz --json
 | `not_available` (a command that is not built yet) | 1 | |
 | `not_in_repository`, `not_initialized`, `already_initialized`, `format_too_new`, `conflict_markers`, `lock_timeout` | 1 | |
 | `no_author`, `bad_author_kind`, `empty_text`, `empty_word`, `invalid_text`, `input`, `editor`, `git_unavailable` | 1 | |
+| `bad_at` (an MCP tool's `line` without `path`, or a `line` below 1 — see [MCP server](#mcp-server)) | 1 | |
 | `not_found` | 1 | `prefix` |
 | `id_too_short` | 1 | `prefix` |
 | `ambiguous` | 1 | `prefix`, `candidates`: the records the ID could mean |
@@ -1441,15 +1442,15 @@ keeps running.
 
 | Tool | Input | Same as | Result |
 |---|---|---|---|
-| `memo_add`, `rule_add`, `todo_add` | `text` | `memo add`, `rule add`, `todo add` | the record |
+| `memo_add`, `rule_add`, `todo_add` | `text`, `path`, `line` | `memo add`, `rule add`, `todo add` | the record |
 | `todo_done`, `todo_reopen` | `id` | `todo done`, `todo reopen` | the record, and whether it changed |
-| `qa_ask` | `text` | `qa add <question>` | the record |
-| `qa_answer` | `id`, `text` | `qa add <id> <answer>` | the record |
+| `qa_ask` | `text`, `path`, `line` | `qa add <question>` | the record |
+| `qa_answer` | `id`, `text`, `path`, `line` | `qa add <id> <answer>` | the record |
 | `qa_done`, `qa_reopen` | `id` | `qa done`, `qa reopen` | the record, and whether it changed |
-| `bug_report` | `text` | `bug add <bug>` | the record |
-| `bug_reply` | `id`, `text` | `bug add <id> <reply>` | the record |
+| `bug_report` | `text`, `path`, `line` | `bug add <bug>` | the record |
+| `bug_reply` | `id`, `text`, `path`, `line` | `bug add <id> <reply>` | the record |
 | `bug_done`, `bug_reopen` | `id` | `bug done`, `bug reopen` | the record, and whether it changed |
-| `glossary_define` | `word`, `definition` | `glossary add` | the record |
+| `glossary_define` | `word`, `definition`, `path`, `line` | `glossary add` | the record |
 | `edit` | `id`, `text` | `edit <id> <text>` | the record, and whether it changed |
 | `context` | `max_tokens` (default 2000) | `mtqg context` | the same text |
 | `show` | `id` | `show` | the record with its full text and history |
@@ -1462,6 +1463,14 @@ Notes:
   the first word looks like an ID.
 - `edit` always takes the new text as an argument; it never opens `$EDITOR`.
   As with the CLI, giving the same text as before changes nothing.
+- **`path` and `line` are the CLI's `--at` for the tools that create a
+  record** (every tool above except `edit`, whose text change is not a new
+  fact about where in the project something was written): where the record
+  is about, as separate fields instead of the CLI's single `<path>[:<line>]`
+  (a tool call's arguments are already structured, so there is no string to
+  split). `line` needs `path`; either a `line` without a `path`, or a `line`
+  below 1, is `bad_at`. `head` is filled in automatically, the same as the
+  CLI's `--at` — there is no field for it.
 - Not exposed as tools: `delete`, `undo`, `archive`, `review`, `format`. These
   either remove or move records, or need a person to read a diff or a
   concurrent-change report before deciding what to do; they stay commands

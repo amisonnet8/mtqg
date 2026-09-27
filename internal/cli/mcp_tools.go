@@ -23,6 +23,8 @@ import (
 
 type textInput struct {
 	Text string `json:"text" jsonschema:"the text of the record"`
+	Path string `json:"path,omitempty" jsonschema:"the file this is about, if any"`
+	Line int    `json:"line,omitempty" jsonschema:"the line in path, 1 or more, if any (needs path)"`
 }
 
 type idInput struct {
@@ -34,9 +36,23 @@ type idTextInput struct {
 	Text string `json:"text" jsonschema:"the new text"`
 }
 
+// replyInput is idTextInput plus path/line: qa_answer and bug_reply create a
+// new record (an answer or a reply), so --at applies to them the way it does
+// to any other creating tool. edit keeps using idTextInput instead: it only
+// changes text, never a fact about where in the project something was
+// written (docs/design/cli.md §11.2).
+type replyInput struct {
+	ID   string `json:"id" jsonschema:"the record's ID (a prefix of at least 4 hex digits is enough)"`
+	Text string `json:"text" jsonschema:"the new text"`
+	Path string `json:"path,omitempty" jsonschema:"the file this is about, if any"`
+	Line int    `json:"line,omitempty" jsonschema:"the line in path, 1 or more, if any (needs path)"`
+}
+
 type glossaryInput struct {
 	Word       string `json:"word" jsonschema:"the term being defined"`
 	Definition string `json:"definition" jsonschema:"the definition"`
+	Path       string `json:"path,omitempty" jsonschema:"the file this is about, if any"`
+	Line       int    `json:"line,omitempty" jsonschema:"the line in path, 1 or more, if any (needs path)"`
 }
 
 type contextInput struct {
@@ -63,7 +79,7 @@ func addTools(server *mcp.Server, env Env, dir string) {
 			if errResult != nil {
 				return errResult, nil, nil
 			}
-			return mcpAdd(c, create, in.Text)
+			return mcpAdd(c, create, in.Text, in.Path, in.Line)
 		})
 	}
 	add("memo_add", "memo", "add", "Record a memo: an observation or something worth remembering. Not for a defect (something that should have worked but did not) — use bug_report for that, even if already fixed.", model.MemoCreate)
@@ -92,19 +108,19 @@ func addTools(server *mcp.Server, env Env, dir string) {
 	changeStatus("bug_done", "bug", "done", "Close a bug.", journal.TypeBug, journal.StatusDone)
 	changeStatus("bug_reopen", "bug", "reopen", "Open a bug again.", journal.TypeBug, journal.StatusOpen)
 
-	mcp.AddTool(server, &mcp.Tool{Name: "qa_answer", Description: "Answer an existing question."}, func(_ context.Context, req *mcp.CallToolRequest, in idTextInput) (*mcp.CallToolResult, any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "qa_answer", Description: "Answer an existing question."}, func(_ context.Context, req *mcp.CallToolRequest, in replyInput) (*mcp.CallToolResult, any, error) {
 		c, errResult := ctxFor(req, "qa", "add")
 		if errResult != nil {
 			return errResult, nil, nil
 		}
-		return mcpReplyAdd(c, journal.TypeQA, in.ID, in.Text)
+		return mcpReplyAdd(c, journal.TypeQA, in.ID, in.Text, in.Path, in.Line)
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "bug_reply", Description: "Reply to an existing bug."}, func(_ context.Context, req *mcp.CallToolRequest, in idTextInput) (*mcp.CallToolResult, any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "bug_reply", Description: "Reply to an existing bug."}, func(_ context.Context, req *mcp.CallToolRequest, in replyInput) (*mcp.CallToolResult, any, error) {
 		c, errResult := ctxFor(req, "bug", "add")
 		if errResult != nil {
 			return errResult, nil, nil
 		}
-		return mcpReplyAdd(c, journal.TypeBug, in.ID, in.Text)
+		return mcpReplyAdd(c, journal.TypeBug, in.ID, in.Text, in.Path, in.Line)
 	})
 
 	mcp.AddTool(server, &mcp.Tool{Name: "glossary_define", Description: "Define a term."}, func(_ context.Context, req *mcp.CallToolRequest, in glossaryInput) (*mcp.CallToolResult, any, error) {
@@ -112,7 +128,7 @@ func addTools(server *mcp.Server, env Env, dir string) {
 		if errResult != nil {
 			return errResult, nil, nil
 		}
-		return mcpGlossaryDefine(c, in.Word, in.Definition)
+		return mcpGlossaryDefine(c, in.Word, in.Definition, in.Path, in.Line)
 	})
 
 	mcp.AddTool(server, &mcp.Tool{Name: "edit", Description: "Replace the text of a record with new text given directly (never opens an editor)."}, func(_ context.Context, req *mcp.CallToolRequest, in idTextInput) (*mcp.CallToolResult, any, error) {
@@ -150,8 +166,15 @@ func addTools(server *mcp.Server, env Env, dir string) {
 
 // mcpAdd is the MCP equivalent of ctx.add: it writes a new record from text
 // given directly (never $EDITOR, never standard input), and returns the
-// result as a tool result instead of printing it.
-func mcpAdd(c *ctx, create func(text string) (journal.Event, error), rawText string) (*mcp.CallToolResult, any, error) {
+// result as a tool result instead of printing it. path and line are --at's
+// two fields (atFromFields, at.go); both empty means --at was not given.
+func mcpAdd(c *ctx, create func(text string) (journal.Event, error), rawText, path string, line int) (*mcp.CallToolResult, any, error) {
+	// Checked first, like ctx.add's --at: a bad path/line is reported before
+	// anything else is even attempted.
+	at, err := atFromFields(path, line)
+	if err != nil {
+		return mcpError(c, err)
+	}
 	text, err := cleanText(rawText)
 	if err != nil {
 		return mcpError(c, err)
@@ -164,6 +187,7 @@ func mcpAdd(c *ctx, create func(text string) (journal.Event, error), rawText str
 	if err != nil {
 		return mcpError(c, err)
 	}
+	ev.At = withHead(at, w.Location().Root)
 	written, err := w.Append(ev)
 	if err != nil {
 		return mcpError(c, err)
@@ -174,8 +198,9 @@ func mcpAdd(c *ctx, create func(text string) (journal.Event, error), rawText str
 
 // mcpReplyAdd is the MCP equivalent of runAddThread's reply path: an answer to
 // a question, or a reply to a bug, found by ID rather than guessed from the
-// shape of the first word (docs/reference/cli.md "MCP server").
-func mcpReplyAdd(c *ctx, typ, id, rawText string) (*mcp.CallToolResult, any, error) {
+// shape of the first word (docs/reference/cli.md "MCP server"). path and line
+// are --at's two fields (atFromFields, at.go).
+func mcpReplyAdd(c *ctx, typ, id, rawText, path string, line int) (*mcp.CallToolResult, any, error) {
 	j, _, _, err := c.writerAs()
 	if err != nil {
 		return mcpError(c, err)
@@ -188,6 +213,10 @@ func mcpReplyAdd(c *ctx, typ, id, rawText string) (*mcp.CallToolResult, any, err
 	if err != nil {
 		return mcpError(c, err)
 	}
+	at, err := atFromFields(path, line)
+	if err != nil {
+		return mcpError(c, err)
+	}
 	text, err := cleanText(rawText)
 	if err != nil {
 		return mcpError(c, err)
@@ -196,6 +225,7 @@ func mcpReplyAdd(c *ctx, typ, id, rawText string) (*mcp.CallToolResult, any, err
 	if err != nil {
 		return mcpError(c, err)
 	}
+	ev.At = withHead(at, j.Location().Root)
 	written, err := j.Append(ev)
 	if err != nil {
 		return mcpError(c, err)
@@ -241,8 +271,13 @@ func mcpChangeStatus(c *ctx, typ, id, status string) (*mcp.CallToolResult, any, 
 	return mcpResult(jsonChangeResult{Command: c.inv.cmd.label(), Record: recordJSON(current), Changed: true})
 }
 
-// mcpGlossaryDefine is the MCP equivalent of runAddGlossary.
-func mcpGlossaryDefine(c *ctx, word, rawText string) (*mcp.CallToolResult, any, error) {
+// mcpGlossaryDefine is the MCP equivalent of runAddGlossary. path and line
+// are --at's two fields (atFromFields, at.go).
+func mcpGlossaryDefine(c *ctx, word, rawText, path string, line int) (*mcp.CallToolResult, any, error) {
+	at, err := atFromFields(path, line)
+	if err != nil {
+		return mcpError(c, err)
+	}
 	text, err := cleanText(rawText)
 	if err != nil {
 		return mcpError(c, err)
@@ -255,6 +290,7 @@ func mcpGlossaryDefine(c *ctx, word, rawText string) (*mcp.CallToolResult, any, 
 	if err != nil {
 		return mcpError(c, err)
 	}
+	ev.At = withHead(at, w.Location().Root)
 	written, err := w.Append(ev)
 	if err != nil {
 		return mcpError(c, err)

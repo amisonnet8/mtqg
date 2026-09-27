@@ -148,7 +148,9 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
-**mtqg-vscode側から追加の依頼で、`log --json --events`が削除された記録も見せるようにした（2026-09-27）。** Memo画面を「消しても跡が残る」タイムライン（Slack・Discord風）にしたいが、`delete`は今まで`show`・`search`・すべての`list`・`--events`無しの`log`から完全に見えなくなっていた（`journal.jsonl`には残っているのに、読み取り側のどこからも辿れない）。人間に2点確認（質問`0f4644a1b4`・回答`e947630ab7`）：有効化は別フラグでなく`--events`に含める、削除された記録自身だけでなく親が削除されて隠れた回答・返信も`deleted:true`で含める。モデル層に`Every`・`Hidden`・`EveryBefore`・`ResolveAny`（可視性で絞らない`All`・`Before`・`Resolve`の対）を追加、`log --json --events`だけがそれらを使う（`--events`が無い、または`--json`が無い`log`は今まで通り）。`--before`も`--events`のときだけ削除された記録のIDを受け付ける（ページの末尾がそれになりうるため）。実装・テスト・mutation-check・docs更新（英日）まで完了（設計判断の詳細は`docs/design/cli.md`§11.1、mutation-checkの詳細は`.claude/rules/testing.md`）。mtqg-vscode側への回答は`/home/vscode/mtqg-cli-response-deleted.md`に書き出す予定。
+**mtqg-vscode側から追加の依頼で、`log --json --events`が削除された記録も見せるようにした（2026-09-27）。** Memo画面を「消しても跡が残る」タイムライン（Slack・Discord風）にしたいが、`delete`は今まで`show`・`search`・すべての`list`・`--events`無しの`log`から完全に見えなくなっていた（`journal.jsonl`には残っているのに、読み取り側のどこからも辿れない）。人間に2点確認（質問`0f4644a1b4`・回答`e947630ab7`）：有効化は別フラグでなく`--events`に含める、削除された記録自身だけでなく親が削除されて隠れた回答・返信も`deleted:true`で含める。モデル層に`Every`・`Hidden`・`EveryBefore`・`ResolveAny`（可視性で絞らない`All`・`Before`・`Resolve`の対）を追加、`log --json --events`だけがそれらを使う（`--events`が無い、または`--json`が無い`log`は今まで通り）。`--before`も`--events`のときだけ削除された記録のIDを受け付ける（ページの末尾がそれになりうるため）。実装・テスト・mutation-check・docs更新（英日）まで完了（設計判断の詳細は`docs/design/cli.md`§11.1、mutation-checkの詳細は`.claude/rules/testing.md`）。mtqg-vscode側への回答は`/home/vscode/mtqg-cli-response-deleted.md`に書き出した。コミット`684c87d`。
+
+**`v0.4.0`のタグを作成した（2026-09-27、コミット`684c87d`、人間の判断・指示）。** `v0.3.0`以降の変更（上記、下位互換）をまとめた区切り。**pushはまだしていない**（人間が行う）。
 
 **`v0.3.0`のタグを作成し、push済み（2026-09-26、コミット`134142e`、人間の判断・指示。push自体は人間が行った）。** `v0.2.0`以降の変更（`$EDITOR`未設定時のnanoフォールバック、CIフレーク3件の修正、`--at`・`log --before`・`log --json --events`の3新機能。すべて下位互換）をまとめた区切り。タグの内容は`git tag -n999 v0.3.0`で見られる（release note風のannotated tag）。`go install .../mtqg@v0.3.0`が使える。
 

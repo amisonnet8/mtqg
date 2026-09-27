@@ -46,6 +46,10 @@ Type "mtqg q list"
 Enter
 Sleep 1500ms
 
+Type "mtqg log"
+Enter
+Sleep 1500ms
+
 Type "mtqg context"
 Enter
 Sleep 3s

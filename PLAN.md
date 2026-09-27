@@ -148,6 +148,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
+**段階4のVSCode拡張と段階5が完了した（2026-09-27、人間の報告）。** 段階5（「VSCode拡張対応→mtqgを使ってqsoku側で改修を行って出た問題を修正」、上の質問`08b09858fc`の回答）は、qsokuのWindows/PowerShell対応の作業中に出た問題を修正するもので、**修正はすべてVSCode拡張側（`/home/vscode/mtqg-vscode`）で完結し、mtqg本体への変更は無かった**。詳細（何が問題で、どう直したか）はmtqg-vscode側の`.mtqg/`にある（このリポジトリの`PLAN.md`・`.mtqg/`には残らない、上の「以降の進捗はmtqg-vscode側の`.mtqg/`で記録され」を参照）。ロードマップ上の残りは**v1確定**（設計§12.4）だけで、**方針としてはv1に進むが、今すぐではない（人間の回答、質問`c866d1c576`・回答`4af7d33896`）。タイミングは追って人間が指示する。着手の指示があるまで、v1確定の作業には入らない。**
+
 **mtqg-vscode側から追加の依頼で、`log --json --events`が削除された記録も見せるようにした（2026-09-27）。** Memo画面を「消しても跡が残る」タイムライン（Slack・Discord風）にしたいが、`delete`は今まで`show`・`search`・すべての`list`・`--events`無しの`log`から完全に見えなくなっていた（`journal.jsonl`には残っているのに、読み取り側のどこからも辿れない）。人間に2点確認（質問`0f4644a1b4`・回答`e947630ab7`）：有効化は別フラグでなく`--events`に含める、削除された記録自身だけでなく親が削除されて隠れた回答・返信も`deleted:true`で含める。モデル層に`Every`・`Hidden`・`EveryBefore`・`ResolveAny`（可視性で絞らない`All`・`Before`・`Resolve`の対）を追加、`log --json --events`だけがそれらを使う（`--events`が無い、または`--json`が無い`log`は今まで通り）。`--before`も`--events`のときだけ削除された記録のIDを受け付ける（ページの末尾がそれになりうるため）。実装・テスト・mutation-check・docs更新（英日）まで完了（設計判断の詳細は`docs/design/cli.md`§11.1、mutation-checkの詳細は`.claude/rules/testing.md`）。mtqg-vscode側への回答は`/home/vscode/mtqg-cli-response-deleted.md`に書き出した。コミット`684c87d`。
 
 **`v0.4.0`のタグを作成した（2026-09-27、コミット`684c87d`、人間の判断・指示）。** `v0.3.0`以降の変更（上記、下位互換）をまとめた区切り。**pushはまだしていない**（人間が行う）。

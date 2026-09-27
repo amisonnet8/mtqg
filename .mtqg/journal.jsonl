@@ -141,3 +141,7 @@
 {"id":"8977c93e1c2f4bb9a893b819ae372204","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:14Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"0f4644a1b44c4ccaa93abce5830f3309","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:18Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"b0b04aad1f9948ee9011f16591d21bba","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:18Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"e6eb6eb158dd491d8f3f406f3ea92411","op":"create","type":"memo","text":"段階4のVSCode拡張と段階5が完了した(人間の報告)。段階5(qsokuのWindows/PowerShell対応で出た問題の修正)はVSCode拡張側のみで完結し、mtqg本体への変更は無かった。詳細はmtqg-vscode側の.mtqgにある。","v":0,"ts":"2026-09-27T15:01:44Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"c866d1c576094467a273c6213808f100","op":"create","type":"qa","status":"open","text":"ロードマップの残りはv1確定(設計§12.4)。今、v1確定に進みますか？それとも様子見ですか？","v":0,"ts":"2026-09-27T15:01:44Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"4af7d338969e4fd5bdea9d23807a0d50","op":"create","type":"qa","re":"c866d1c576094467a273c6213808f100","text":"v1にする方針だが、今すぐではなく少し待つ(タイミングは追って人間が指示)","v":0,"ts":"2026-09-27T15:03:10Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"f8188fa8b35f47c9aad1a89af030d200","op":"create","type":"todo","status":"open","text":"v1確定(設計§12.4)に着手する。人間の指示待ち(質問c866d1c576参照)","v":0,"ts":"2026-09-27T15:03:21Z","author":{"kind":"ai","name":"claude-code"}}

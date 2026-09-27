@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 200" width="560" height="200" role="img" aria-label="mtqg: memo &amp; rules, todo, qa &amp; bugs, glossary">
+  <title>mtqg</title>
+  <style>
+    /* Middle gray as the fallback for renderers that ignore prefers-color-scheme
+       (e.g. librsvg): legible on both a white page and GitHub's dark background. */
+    .heading { font-family: "SFMono-Regular","Consolas","Liberation Mono",Menlo,monospace; font-weight: 800; fill: #6e7681; }
+    .letter  { font-family: "SFMono-Regular","Consolas","Liberation Mono",Menlo,monospace; font-weight: 700; fill: #ffffff; }
+    .caption { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; fill: #6e7681; }
+    @media (prefers-color-scheme: light) {
+      .heading { fill: #24292f; }
+      .caption { fill: #57606a; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .heading { fill: #e6edf3; }
+      .caption { fill: #9198a1; }
+    }
+  </style>
+
+  <text class="heading" x="40" y="34" font-size="28">mtqg</text>
+
+  <rect x="40"  y="55" width="90" height="90" rx="20" fill="#1F6FEB"/>
+  <rect x="170" y="55" width="90" height="90" rx="20" fill="#1F883D"/>
+  <rect x="300" y="55" width="90" height="90" rx="20" fill="#8250DF"/>
+  <rect x="430" y="55" width="90" height="90" rx="20" fill="#BC4C00"/>
+
+  <text class="letter" x="85"  y="118" font-size="52" text-anchor="middle">m</text>
+  <text class="letter" x="215" y="118" font-size="52" text-anchor="middle">t</text>
+  <text class="letter" x="345" y="118" font-size="52" text-anchor="middle">q</text>
+  <text class="letter" x="475" y="118" font-size="52" text-anchor="middle">g</text>
+
+  <text class="caption" x="85"  y="172" font-size="15" text-anchor="middle"><tspan font-weight="700">(m)</tspan>emo &amp; rules</text>
+  <text class="caption" x="215" y="172" font-size="15" text-anchor="middle"><tspan font-weight="700">(t)</tspan>odo</text>
+  <text class="caption" x="345" y="172" font-size="15" text-anchor="middle"><tspan font-weight="700">(q)</tspan>a &amp; bugs</text>
+  <text class="caption" x="475" y="172" font-size="15" text-anchor="middle"><tspan font-weight="700">(g)</tspan>lossary</text>
+</svg>

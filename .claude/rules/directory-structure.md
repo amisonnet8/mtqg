@@ -23,8 +23,7 @@ mtqg/
 ├── docs/
 │   ├── reference/          ← 仕様。英語版 schema.md・cli.md と日本語版 *_ja.md
 │   ├── design/             ← 設計判断と理由の記録（日本語）
-│   ├── tour/               ← 歩いて回る入門（英語 tour.md・日本語 tour_ja.md。2026-09-28作成）
-│   └── examples/           ← 実例（英語 examples.md・日本語 examples_ja.md。2026-09-28作成）
+│   └── examples/           ← 入門から実例まで（英語 examples.md・日本語 examples_ja.md。2026-09-28作成）
 ├── .devcontainer/
 ├── .claude/                ← rules/（ルール）、skills/（繰り返す手順。mutation-check）、hooks/、settings.json（人間が管理）
 └── .github/workflows/
@@ -63,7 +62,7 @@ mtqg/
 - **`.gitattributes`**: `* text=auto eol=lf`。Windowsランナーでの改行コード変換による誤検知を防ぐ（testing.md）。mtqgが`init`で`.mtqg/`の中に置く`.gitattributes`（`*.jsonl text eol=lf merge=union`）とは別物で、両者はぶつからない
 - **`docs/reference/`**: 仕様。**実装しながら育てる文書**であり、実装と仕様がずれたらここを更新する。設計判断を変えるときは、まずここを更新してから着手する。英語版（正）と日本語版（`*_ja.md`）を同じ変更の中で両方直す。埋め込むのは英語版の`schema.md`だけ
 - **`docs/design/`**: 設計時点の判断と理由の記録。仕様と食い違う場合は`docs/reference/`が正。ここは経緯として残し、書き換えて過去の理由を消さない
-- **`docs/tour/`・`docs/examples/`**: 実装完了後に、英語版（`*.md`）と日本語版（`*_ja.md`）を最初から両方作った（2026-09-28、`PLAN.md`「公開前にやること」）。例の実行・確認は`e2e/examples_test.go`が`docs/reference/`と同じしくみで担う
+- **`docs/examples/`**: 実装完了後に、英語版（`examples.md`）と日本語版（`examples_ja.md`）を最初から両方作った（2026-09-28、`PLAN.md`「公開前にやること」）。当初は歩いて回る入門を`docs/tour/`に分けていたが、単体の文書としては小さすぎたため、`docs/examples/`の冒頭の節に統合し`docs/tour/`は廃止した（同日、人間の指摘）。例の実行・確認は`e2e/examples_test.go`が`docs/reference/`と同じしくみで担う
 - **README**: **看板としてのREADMEは最後に作る**（`PLAN.md`「READMEとGitHubの看板」）。先に作ってはいけない。ただしリポジトリはpublicなので、未完成の間は**注意書きだけの`README.md`・`README_ja.md`**をルートに置く（Step 1）。注意書きに売り文句・機能の説明・使い方を足さない
 - **配布物（ビルド済みバイナリ）**: リポジトリにコミットしない（distribution.md）。`.gitignore`には**ルート直下に限定して**`/mtqg`・`/mtqg.exe`・`/dist/`と書く。`mtqg`とだけ書くと、ソースの`cmd/mtqg/`まで無視されて`main.go`がコミットされない（コマンド名とディレクトリ名が同じため）
 

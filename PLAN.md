@@ -148,6 +148,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
+**`docs/tour/`を廃止し、`docs/examples/`に統合した（2026-09-28、人間の指摘：単体の文書としては小さすぎた）。** 直後の下の段落で新設した`tour.md`・`tour_ja.md`の内容（`init`から6種類すべて・`--at`・`log`まで）を、`examples.md`・`examples_ja.md`の冒頭の節（mtqgとは・始める・起きたことを書き留める・どこについて書いたかを示す・見て回る・ブランチ/マージ/AIエージェント）として統合し、そのあとに元からあった「小さなプロジェクト」「mtqg自身の開発」を続けた。見出しを9+2=11から8つに減らし、内容が薄い節を統合して読みやすくした。フィクスチャ`tour-at`・`tour-at_ja`は`at-demo`・`at-demo_ja`に改名（「tour」の呼び名が無くなったため）。`e2e/examples_test.go`の`documents`から`tour/tour.md`・`tour/tour_ja.md`のペアを外すだけで、(英語,日本語)ペアを一般化した実装はそのまま使えた。`docs/tour/`ディレクトリ自体を削除。
+
 **`docs/tour/`・`docs/examples/`を新設した（2026-09-28、v1確定・公開に向けた作業のStep 3）。** `tour.md`・`tour_ja.md`は、何もないところから`mtqg init`し、6つの種類すべてと`--at`・`log`・`context`・ブランチ/マージ・AIエージェント連携に触れる歩いて回る入門。`examples.md`・`examples_ja.md`は、既存の`parser`・`parser_ja`フィクスチャを「実際に何日か使われたリポジトリ」として通しで読む例（`context`→`archive`→復元）と、mtqg自身の`.mtqg/`を実例として案内するプロース。実装面では、`e2e/examples_test.go`の`documents`を(英語,日本語)ペアのリストに一般化し、`docs/reference/`だけでなく`docs/`配下の任意のペアを対象にできるようにした（既存の`cli.md`/`cli_ja.md`は無変更で動作確認済み）。**教訓（`.claude/rules/testing.md`に記録済み）：** `repo=empty ids=any`で作った直後の記録を`t list`・`log`・`context`でそのまま見せると、日付が実行時の本物の時計由来で再現できない（`Journal.now`は本物の時計、`Env.Now`は表示の「今日」判定だけに効く）。避けるため、`add`はID出力止まりにするか、日付が固定されたフィクスチャ側の読み取りだけに絞った。`--at`の実演も同じ理由で、`at`付きの記録1件だけを持つ最小フィクスチャ（`tour-at`・`tour-at_ja`）を新設し、`show --json`で読むだけにした。
 
 **v1確定（設計§12.4）に着手した（2026-09-28、人間の指示、todo`f8188fa8b3`）。第1段階：形式のバージョンを0から1に上げ、`mtqg upgrade`を実装した。** `.mtqg/version`・各行の`v`ともに、番号だけを0から1に上げる方式にした（当初案の「AIが記録を一括変換する」は、段階4〜5でフィールド・構造を一度も変えていなかったため不要と判断。質問`5e8500e6dc`・回答`1bc7ab51ff`）。すでに形式0で使っているリポジトリ（このリポジトリ・qsoku・mtqg-vscode）の移行手段として、新しく`mtqg upgrade [-n]`コマンドを実装した：`.mtqg/version`と`.mtqg/SCHEMA.md`の2ファイルだけを、`journal.jsonl`の書き直しと同じ一時ファイル経由の置き換えで書き、**`journal.jsonl`の行には一切触れない**（質問`424c090620`・回答`cf58edef78`）。既存の`v:0`の行は、そのまま`v:1`の行と同じ意味で読み続けられる。`docs/reference/schema.md`・`cli.md`（英日とも）、`docs/design/08-development.md`§12.4追記を更新し、実装・テスト・mutation-check（5個、すべて検出）まで完了。**このリポジトリ自身も`mtqg upgrade`で形式1に移行済み。** qsoku・mtqg-vscode側の移行は、`v1.0.0`のタグを機に行う（下記の「MCPのpath/line対応は……」の判断と足並みを揃える）。次にやること：`docs/reference/`・`.claude/rules/`・`CLAUDE.md`・`PLAN.md`の文書見直し（Step 2）、`docs/tour/`・`docs/examples/`の新設（Step 3）、GoReleaser（Step 4）、README（Step 5〜6）、公開前点検（Step 7）、タグ付け（Step 8）と続く。
@@ -427,7 +429,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
   - `README.md` / `README_ja.md`（看板としてのREADMEは最後に作る。下記。注意書きだけのREADMEは、Step 1で先に置く）
   - `docs/reference/`（`schema.md`・`cli.md`は英語版・日本語版とも作成済み。以後も同じ変更で両方を直す）
-  - `docs/tour/`、`docs/examples/`（英語版・日本語版とも作成済み。2026-09-28）
+  - `docs/examples/`（英語版・日本語版とも作成済み。2026-09-28。入門から実例まで1つの文書にまとめている）
   - `docs/design/`は日本語のみで、英語版は作らない（設計の経緯の記録であり、利用者向けではないため）
   - 英語版の例は記録の中身も英語、日本語版は日本語（`CLAUDE.md`「ドキュメントの言語」）
 - 名前の同名チェック（GitHub、Goのパッケージ等で`mtqg`が使われていないか）と、種別が変わった場合の名前の扱い（設計§3）

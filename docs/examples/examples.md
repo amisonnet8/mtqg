@@ -2,11 +2,160 @@
 
 *[日本語](examples_ja.md) | **English***
 
-For the full command list, see the [command reference](../reference/cli.md); if this is your first look at mtqg, start with the [tour](../tour/tour.md). Here are two somewhat larger examples.
+For the full command list, see the [command reference](../reference/cli.md); for the data format, see [journal format](../reference/schema.md). This starts from nothing and works through every kind of record, then looks at two larger, real repositories.
+
+## What mtqg is for
+
+Working on something produces things that never make it into the code or a commit: things noticed along the way, things to do, questions and their answers, bugs and the back-and-forth about them, terms the team agreed on. Until now these scattered across chat history and note apps, and got lost. mtqg appends them to one file, `.mtqg/journal.jsonl`, in the same git repository as the code, committed and shared the same way.
+
+## Getting started
+
+Install with `go install github.com/amisonnet8/mtqg/cmd/mtqg@latest`. In a project's repository, run `mtqg init` once.
+
+<!-- mtqg:example repo=none path=/home/me/sample-parser -->
+```
+$ mtqg init
+Created .mtqg/ in /home/me/sample-parser
+Commit it to share the records.
+```
+
+`.mtqg/` is created. Commit it, as the message says (`mtqg init` itself does not commit).
+
+## Recording what happens
+
+Things noticed while working, or worth looking back on, go in a `memo`. No verb, just `add`; the output is only the ID of the record that was made, so nothing gets in the way of writing:
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg m add Tokens carry their line and column
+b6868dd1af
+```
+
+A `todo` is the same, recorded before you start it and closed with `done`; `t list` shows the open ones (`--all` for every one, see [list](../reference/cli.md#list) for what that looks like on a project with a few already in it):
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg t add Support C syntax
+f7443f148b
+```
+
+Something you are unsure about goes in a `qa`; a bug you found, and the exchange about it, goes in a `bug`. Both have the same shape (a body, and replies to it): following the body's ID with more text makes that text an answer or a reply. From here on, this looks in on the same parser project a while later (the fixture that ships with this repository):
+
+<!-- mtqg:example repo=parser ids=any -->
+```
+$ mtqg show 2217beaddb
+question  2217beaddb  open
+by claude-code (ai), 2026-09-21 11:05
+
+  Should error positions show both line and column?
+
+Events
+  2026-09-21 11:05  create  claude-code (ai)
+$ mtqg q add 2217beaddb Yes, callers usually want both
+dfb354fcde
+$ mtqg q done 2217beaddb
+Done: 2217beaddb  Should error positions show both line and column?
+```
+
+`done` is what closes a question. Answering and closing are separate: a question with an answer still shows as "awaiting confirmation" until it is closed. `bug` works the same way:
+
+<!-- mtqg:example repo=parser ids=any -->
+```
+$ mtqg b add 7f3a2b1c09 Fixed by returning an error instead of panicking
+4b57df5ebc
+$ mtqg b done 7f3a2b1c09
+Done: 7f3a2b1c09  Parser crashes on empty input
+```
+
+An agreed term goes in the `glossary`, so the same word does not get used with two different meanings:
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg g add token The smallest unit produced by lexing
+f40d750976
+```
+
+A convention that can be followed just by reading it goes in a `rule`. It has the same shape as a memo, but it is never moved by `archive`, and `context` never drops or truncates it, whatever the budget:
+
+<!-- mtqg:example repo=empty ids=any -->
+```
+$ mtqg r add Use English for all error messages
+ad8c4f3cb3
+```
+
+## Saying what a record is about
+
+`--at <path>[:<line>]` records where in the project a record was written about, as a fact at the time of writing: it is never updated when the code changes (`line` is optional; `path` alone is fine). It was recorded on a memo written earlier this way, and shows up under `at` in `--json` (plain `show` does not print it):
+
+<!-- mtqg:example repo=at-demo -->
+```
+$ mtqg show --json e5a1b2c3d4
+{
+  "command": "show",
+  "record": {
+    "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
+    "kind": "memo",
+    "text": "Tokens carry their line and column",
+    "author": {
+      "kind": "human",
+      "name": "yamada"
+    },
+    "created": "2026-09-21T09:05:00Z",
+    "updated": "2026-09-21T09:05:00Z",
+    "at": {
+      "path": "internal/lexer/token.go",
+      "line": 42,
+      "head": "3f9a1c0"
+    }
+  },
+  "events": [
+    {
+      "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
+      "op": "create",
+      "type": "memo",
+      "text": "Tokens carry their line and column",
+      "at": {
+        "path": "internal/lexer/token.go",
+        "line": 42,
+        "head": "3f9a1c0"
+      },
+      "v": 0,
+      "ts": "2026-09-21T09:05:00Z",
+      "author": {
+        "kind": "human",
+        "name": "yamada"
+      }
+    }
+  ]
+}
+```
+
+## Reading it back
+
+Once a few records have piled up, here is how to read them: `log` lists every kind, newest first, back in the same parser project:
+
+<!-- mtqg:example repo=parser ids=any -->
+```
+$ mtqg log --limit 5
+11:32  todo      2e44158bae  Add test cases for comment handling                              claude-code
+11:30  todo      1818e81189  List the supported syntax in the README                          yamada
+11:24  glossary  f28c105d1f  lexing: Reading source and turning it into a sequence of tokens  claude-code
+11:06  todo      1e27a1c08a  Show error positions as line and column                          claude-code
+11:05  question  2217beaddb  Should error positions show both line and column?                claude-code
+5 of 22 records (--limit 0 for all)
+```
+
+`search <text>` finds the records whose text matches, in the same order, and `context` summarizes the open items and the most recent records for an AI agent (or a person) about to start work; see [search](../reference/cli.md#search) and [context](../reference/cli.md#context) for worked examples on this same project.
+
+## Branches, merges, and AI agents
+
+mtqg only sits on top of git, and asks nothing of how git itself is run. `journal.jsonl` is append-only, so when two branches each write records, merging keeps both (a union merge; see [merging](../reference/schema.md#merging) in the journal format).
+
+To use mtqg with an agent such as Claude Code, `mtqg init --agent claude-code` wires up both its hooks and the MCP server in one step. The agent reads `mtqg context` at the start of a session, and writes `memo`, `todo`, `qa` and `bug` records at each turning point along the way. See [agent hooks](../reference/cli.md#agent-hooks) and the [MCP server](../reference/cli.md#mcp-server) for details.
 
 ## A small project
 
-This looks at the `.mtqg/` of the fictional parser project used throughout the [command reference](../reference/cli.md) (`e2e/testdata/examples/parser/`). The reference explains each command on its own; here the same repository is read straight through, as something that was actually used over a few days.
+This looks at the `.mtqg/` of the same fictional parser project, used throughout this document and the [command reference](../reference/cli.md) (`e2e/testdata/examples/parser/`). Individual commands are covered above and in the reference; here the same repository is read straight through, as something that was actually used over a few days.
 
 Start with `context` for the lay of the land:
 

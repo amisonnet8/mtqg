@@ -2,10 +2,10 @@
 
 package e2e
 
-// The examples in docs/ (docs/reference/cli.md, docs/tour/ and docs/examples/, each
-// with its _ja.md Japanese twin) are run against mtqg, and what they show has to be
-// what mtqg prints. Every example is a code block that starts with "$ ", and the
-// line before it says where to run it:
+// The examples in docs/ (docs/reference/cli.md and docs/examples/, each with its
+// _ja.md Japanese twin) are run against mtqg, and what they show has to be what
+// mtqg prints. Every example is a code block that starts with "$ ", and the line
+// before it says where to run it:
 //
 //	<!-- mtqg:example repo=parser -->
 //
@@ -44,7 +44,6 @@ var update = flag.Bool("update", false, "write what mtqg prints into the example
 // examples. Paths are relative to docs/.
 var documents = [][2]string{
 	{"reference/cli.md", "reference/cli_ja.md"},
-	{"tour/tour.md", "tour/tour_ja.md"},
 	{"examples/examples.md", "examples/examples_ja.md"},
 }
 

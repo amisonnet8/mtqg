@@ -148,6 +148,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
+**Step 8（正式公開）を完了した（2026-09-28）。`v1.0.0`の注釈付きタグを打ち、人間が`main`とタグをpush。CI・Releaseワークフローとも green、GitHub Releasesにバイナリが並び、pkg.go.devへの反映も確認済み。GitHubのDescription・Topicsも最終案どおり設定済み。** todo`f8188fa8b3`（v1確定、設計§12.4）を`t done`にした。**これでmtqg本体は「完成として公開」の段階に入った。** 残る作業はqsoku・mtqg-vscode側の対応（`go install github.com/amisonnet8/mtqg/cmd/mtqg@v1.0.0`で入れ替え→各リポジトリで`mtqg upgrade`を実行し`.mtqg/version`・`.mtqg/SCHEMA.md`をv1へ→変更をコミット）で、これは各リポジトリ自身の作業として案内する（このリポジトリの`.mtqg/`・`PLAN.md`には残らない）。人間から、mtqg-vscode拡張の公開はこの完了を待っていたと聞いている（上の段落「Step 4〜7」の続き）。
+
 **Step 4〜7（GoReleaser・README用素材・看板のREADME・公開前の点検）を完了した（2026-09-28）。** Step 4：`.goreleaser.yaml`と`.github/workflows/release.yml`を追加（`cmd/mtqg`をlinux/darwin/windows×amd64/arm64向けにビルド、`v*`タグのpushでGitHub Releasesへ。`goreleaser check`・`release --snapshot --clean`で手元確認済み）。Step 5：`docs/assets/logo.svg`（`mtqg`の由来を4色チップで表現、`prefers-color-scheme`対応）と`docs/assets/demo.tape`/`demo.gif`（vhs v0.11.0で録画。`init`→`t add`→`q add`→回答→`q list`→`log`→`context`。`mtqg log`は人間の指摘で追加）。Step 6：看板の`README_ja.md`→`README.md`を作成（ロゴ・バッジ・Features・Demo・Install・Quick start・Learn more。出力例は`docs/examples/`の検証済みブロックと完全一致することをスクリプトで確認。対話形式ガイド（Gemini Notebook製、人間が用意したURL）へのリンクも追加）。`docs/design/README.md`の章立て表のファイル名リンク化も同時期に実施（人間の指摘）。Step 7：名前の同名チェックを再確認（下記「名前の同名チェックの再確認」）、`qsoku check`・`test`・`race`・`shellcheck`・`trivy`すべてgreen。GitHubのTopicsも最終確定（`mcp`・`claude-code`を追加、`vscode-extension`は見送り。下記「GitHubのTopics」）。**次はStep 8（`v1.0.0`タグ、push・CI確認は人間、pkg.go.devへの反映）。人間から、mtqg-vscode拡張の公開はこのv1作業待ちで、完了後すぐに公開予定と聞いている（2026-09-28）。Step 8を急ぐ理由がある。**
 
 **`docs/tour/`を廃止し、`docs/examples/`に統合した（2026-09-28、人間の指摘：単体の文書としては小さすぎた）。** 直後の下の段落で新設した`tour.md`・`tour_ja.md`の内容（`init`から6種類すべて・`--at`・`log`まで）を、`examples.md`・`examples_ja.md`の冒頭の節（mtqgとは・始める・起きたことを書き留める・どこについて書いたかを示す・見て回る・ブランチ/マージ/AIエージェント）として統合し、そのあとに元からあった「小さなプロジェクト」「mtqg自身の開発」を続けた。見出しを9+2=11から8つに減らし、内容が薄い節を統合して読みやすくした。フィクスチャ`tour-at`・`tour-at_ja`は`at-demo`・`at-demo_ja`に改名（「tour」の呼び名が無くなったため）。`e2e/examples_test.go`の`documents`から`tour/tour.md`・`tour/tour_ja.md`のペアを外すだけで、(英語,日本語)ペアを一般化した実装はそのまま使えた。`docs/tour/`ディレクトリ自体を削除。
@@ -413,7 +415,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 | **公開中・未完成**（Step 1〜v0.1の前まで） | リポジトリはpublic。使ってほしくない | 注意書きだけの`README.md`・`README_ja.md`。`docs/tour/`・`docs/examples/`は無くてよい |
 | **完成として公開**（v0.1以降、看板を掲げるとき） | 使ってよい | 下記「公開前にやること」をすべて満たす。看板としてのREADMEを最後に作る |
 
-**「完成として公開」の条件をすべて満たした（2026-09-28、Step 7）。** 下記「公開前にやること」の文書（英日）・名前の同名チェックは済み、看板の`README.md`・`README_ja.md`も作成済み（Step 6）。**残るのはStep 8（`v1.0.0`タグ・push・pkg.go.devへの反映）だけ。** タグを打ってpushするまでは、実際のGitHub上の見た目（Description・Releases・pkg.go.dev）はまだ「公開中・未完成」のまま。
+**「完成として公開」の条件をすべて満たし、正式に公開した（2026-09-28、Step 8完了）。** `v1.0.0`の注釈付きタグを打ち、人間が`main`とタグをpush。CI・Releaseワークフローとも green、GitHub Releasesにlinux/darwin/windows×amd64/arm64のバイナリとchecksumsが並び、pkg.go.dev（`https://pkg.go.dev/github.com/amisonnet8/mtqg@v1.0.0`）への反映も確認済み。GitHubのDescriptionから`(work in progress)`を外し、Topics（`mcp`・`claude-code`を追加した最終案。上の「GitHubのTopics」）も設定済み。**リポジトリは「公開中・未完成」から「完成として公開」に移行した。** todo`f8188fa8b3`（v1確定）を`t done`。
 
 公開中・未完成の間の決まり：
 

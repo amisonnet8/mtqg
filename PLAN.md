@@ -487,3 +487,5 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 - 今付ける：`cli`、`go`、`git`、`jsonl`、`append-only`、`developer-tools`、`ai-agents`、`llm`、`decision-log`、`todo`、`glossary`、`knowledge-management`
 - 段階4でできてから足す：`mcp`、`claude-code`、`vscode-extension`（まだない機能のTopicsを先に付けない）
+
+**完成として公開する時点（Step 7、2026-09-28）での判断：**`mcp`・`claude-code`は段階4a・4bが完了し、`mtqg mcp`・`mtqg init --agent claude-code`として実在するので今回付ける。**`vscode-extension`は付けない。** 拡張本体は別リポジトリ`mtqg-vscode`であり、マーケットプレイスへの公開状況もこのリポジトリからは確認できないため、このリポジトリのTopicsに含めるのは時期尚早と判断した（拡張自身が公開されたら`mtqg-vscode`側のTopicsに付けるべき事柄）。**最終的なTopics一覧：**`cli`・`go`・`git`・`jsonl`・`append-only`・`developer-tools`・`ai-agents`・`llm`・`decision-log`・`todo`・`glossary`・`knowledge-management`・`mcp`・`claude-code`（設定は人間が行う）

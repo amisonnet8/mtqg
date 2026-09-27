@@ -200,6 +200,7 @@ $ mtqg show --json e5a1b2c3d4
 - [コマンドリファレンス](docs/reference/cli_ja.md) — 全コマンドの仕様
 - [ジャーナルの形式](docs/reference/schema_ja.md) — データ形式の仕様（`.mtqg/SCHEMA.md`として各プロジェクトに書き出される）
 - [設計文書](docs/design/README.md) — 設計判断とその理由の記録（日本語のみ）
+- [対話形式のガイド](https://notebook.google.com/notebook/de72731c-6070-491c-95ec-fe2f2006cfb5) — 質問しながらmtqgを調べられる（Gemini Notebook製）
 
 ---
 

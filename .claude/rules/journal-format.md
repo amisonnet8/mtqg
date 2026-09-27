@@ -74,10 +74,11 @@
 
 ## 形式のバージョン
 
-- 今は**形式0（未確定）**。`.mtqg/version`も各行の`v`も`0`で書く。v1確定まで、形式の変更で`version`を上げない
-- 形式0の間は形式を自由に変えてよい。ただし**変えるときは、先に`docs/reference/schema.md`（と`schema_ja.md`）を更新してから**実装する
+- **形式1が確定している（2026-09-28）。** `internal/journal/version.go`の`SupportedVersion`と、`.mtqg/version`・各行の`v`の値。上げるのは`mtqg upgrade`だけで、`version`と`SCHEMA.md`を同時に書き換える（ジャーナル層の`Upgrade`。`journal.jsonl`の行には触れない）
+- **形式を変える前に、先に`docs/reference/schema.md`（と`schema_ja.md`）を更新してから**実装する（v1確定前と変わらない原則）
 - 読むときに`version`が自分の知る番号より新しければ、読み書きとも断る
-- v1以降のルール（知らないフィールドは無視してよい変更では番号を上げない、意味が変わる変更は上げる、`mtqg upgrade`でだけ上げる）は`schema.md`の「Versioning」にある。v1確定前でも、この区別を意識してフィールドを足すこと
+- v1以降のルール（知らないフィールドは無視してよい変更では番号を上げない、意味が変わる変更は上げる）は`schema.md`の「Versioning」にある。フィールドを足すときはこの区別を意識すること
+- **v1確定前（形式0、〜2026-09-27）は、番号を`version`に固定せず、形式を自由に変えられた。** その間の記録（このリポジトリの段階4〜5の`.mtqg/`など）は`v:0`のまま残っており、`v:1`の行と同じ意味で読まれる。詳しい経緯は`docs/design/08-development.md`§12.4
 
 ## SCHEMA.md
 

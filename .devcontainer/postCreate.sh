@@ -11,9 +11,9 @@ set -euo pipefail
 #                 or ShellCheck parses them as directives (SC1072/SC1073).
 # zsh, fish:      Two of the four shells that mtqg completion has a script for (the scripts
 #                 are run by the real shells in e2e/completion_test.go; bash is there already,
-#                 and PowerShell is installed below), and two of the three shells qsoku's own
-#                 shell integration supports (bash, zsh, fish -- not PowerShell, since qsokufile
-#                 commands always run under sh).
+#                 and PowerShell is installed below), and two of the four shells qsoku's own
+#                 shell integration supports (bash, zsh, fish, pwsh -- qsoku v0.2.0 added pwsh;
+#                 qsokufile commands themselves still always run under sh regardless).
 sudo apt-get update
 sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck zsh fish
 
@@ -64,15 +64,22 @@ go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
 go install ./cmd/mtqg
 
 # Wire up qsoku's shell integration (working-directory carry-back and
-# completion) for bash, zsh and fish. Idempotent: skipped if already present,
-# so re-running postCreate.sh does not duplicate the line. The single quotes
-# are intentional -- the line is meant to land in the rc file unexpanded.
+# completion) for bash, zsh, fish and pwsh. Idempotent: skipped if already
+# present, so re-running postCreate.sh does not duplicate the line. The single
+# quotes are intentional -- the line is meant to land in the rc file unexpanded.
 # shellcheck disable=SC2016
 grep -qF 'qsoku .shell bash' ~/.bashrc 2>/dev/null || echo 'eval "$(qsoku .shell bash)"' >>~/.bashrc
 # shellcheck disable=SC2016
 grep -qF 'qsoku .shell zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(qsoku .shell zsh)"' >>~/.zshrc
 mkdir -p ~/.config/fish
 grep -qF 'qsoku .shell fish' ~/.config/fish/config.fish 2>/dev/null || echo 'qsoku .shell fish | source' >>~/.config/fish/config.fish
+# pwsh has no $PROFILE of its own until asked; query it rather than hardcode
+# the path (qsoku v0.2.0, cli.md "Shell integration"). The single quotes below
+# are intentional too -- $PROFILE is pwsh's variable, not bash's.
+# shellcheck disable=SC2016
+pwsh_profile=$(pwsh -NoLogo -NoProfile -Command '$PROFILE')
+mkdir -p "$(dirname "$pwsh_profile")"
+grep -qF 'qsoku .shell pwsh' "$pwsh_profile" 2>/dev/null || echo 'Invoke-Expression (& qsoku .shell pwsh | Out-String)' >>"$pwsh_profile"
 
 # mtqg's own bash completion, for interactive use in this container (mtqg
 # completion <shell>, docs/reference/cli.md).

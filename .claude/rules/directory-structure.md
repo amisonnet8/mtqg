@@ -13,6 +13,7 @@ mtqg/
 ├── .gitattributes          （`* text=auto eol=lf`）
 ├── .golangci.yaml           ← lintの設定（層の依存の向き、文言をCLIの層に限ることも機械的に検査）
 ├── trivy.yaml              ← 脆弱性・ライセンス検査の設定（testing.md）
+├── .goreleaser.yaml         ← 各OS向けバイナリのビルド設定（distribution.md。`v*`タグのpushで.github/workflows/release.ymlが実行）
 ├── schema.go               ← docs/reference/schema.md を embed するだけのパッケージ
 ├── cmd/mtqg/main.go        ← 引数を internal/cli に渡すだけ（数行）
 ├── internal/
@@ -83,4 +84,3 @@ mtqg/
 ## 後の段階で増えるもの（今は作らない）
 
 - VSCode拡張（設計§11.4）は、**別リポジトリにする方向**（最終判断は段階4b以降・`PLAN.md`）。TypeScriptで、本体とは`--json`でつながるだけなので、本体のリポジトリをGoのツールチェーンだけで完結させる。このリポジトリにTypeScriptのコードやNode.jsの設定を持ち込まないこと
-- `.goreleaser.yaml`：公開の段階（distribution.md）

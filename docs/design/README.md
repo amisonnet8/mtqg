@@ -24,15 +24,15 @@ mtqg（memo / todo / qa / bug / glossary / rule）の設計判断と、その理
 
 | ファイル | 章 |
 |---|---|
-| `01-purpose.md` | §1 何のためのツールか、§2 役割と原則、§3 名前 |
-| `02-storage-and-git.md` | §4 配置とgit（`.mtqg/`の探し方と作り方を含む） |
-| `03-data-model.md` | §5 データモデル（記録者、形式の契約、形式のバージョン）、§6 ID設計（ローカルの状態を含む） |
-| `04-append-and-merge.md` | §7 追記とマージ（書き出し規則、unionマージ、表示の順序）、§8 削除と機密情報 |
-| `05-reading.md` | §9 表示と振り返り（アーカイブを含む） |
-| `06-implementation.md` | §10 実装方針（言語、コアの構成、表示の言語、文書とリポジトリの構成、テスト、配布） |
-| `07-integrations.md` | §11 外部ツール連携（MCP、フック、VSCode拡張） |
-| `08-development.md` | §12 開発の進め方、§13 先行事例 |
-| `cli.md` | CLI設計（旧「CLI検討案」、CLI設計§1〜§10） |
-| `history.md` | 改訂履歴（決めたことの時系列） |
+| [`01-purpose.md`](01-purpose.md) | §1 何のためのツールか、§2 役割と原則、§3 名前 |
+| [`02-storage-and-git.md`](02-storage-and-git.md) | §4 配置とgit（`.mtqg/`の探し方と作り方を含む） |
+| [`03-data-model.md`](03-data-model.md) | §5 データモデル（記録者、形式の契約、形式のバージョン）、§6 ID設計（ローカルの状態を含む） |
+| [`04-append-and-merge.md`](04-append-and-merge.md) | §7 追記とマージ（書き出し規則、unionマージ、表示の順序）、§8 削除と機密情報 |
+| [`05-reading.md`](05-reading.md) | §9 表示と振り返り（アーカイブを含む） |
+| [`06-implementation.md`](06-implementation.md) | §10 実装方針（言語、コアの構成、表示の言語、文書とリポジトリの構成、テスト、配布） |
+| [`07-integrations.md`](07-integrations.md) | §11 外部ツール連携（MCP、フック、VSCode拡張） |
+| [`08-development.md`](08-development.md) | §12 開発の進め方、§13 先行事例 |
+| [`cli.md`](cli.md) | CLI設計（旧「CLI検討案」、CLI設計§1〜§10） |
+| [`history.md`](history.md) | 改訂履歴（決めたことの時系列） |
 
 旧「構想メモ」§14（未検討・今後詰める事項）は `PLAN.md` に移した。

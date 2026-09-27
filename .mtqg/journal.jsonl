@@ -194,3 +194,4 @@
 {"id":"e344330a0cc04246881909d944a314af","op":"create","type":"memo","text":"README_ja.mdのLearn moreに対話形式ガイド(Gemini Notebook製、人間が用意したURL)へのリンクを追加","v":1,"ts":"2026-09-27T23:11:43Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"9043a30809f84323b1369446fc734528","op":"create","type":"memo","text":"Step6完了: README.md(英語版)を作成。README_ja.mdと同じ構成(ロゴ・バッジ・Features・Demo・Install・Quick start・Learn more・ライセンス)。出力例はdocs/examples/examples.mdの検証済みブロックと完全一致することをスクリプトで確認。対話形式ガイド(Gemini Notebook)へのリンクも追加","v":1,"ts":"2026-09-27T23:14:35Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"c436a53dacd14a92bb406706b9eb0f85","op":"status","from":"open","status":"done","basis":1,"v":1,"ts":"2026-09-27T23:14:38Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"08f127669df34e1babfbe77c3232475f","op":"create","type":"memo","text":"docs/design/README.mdの節番号表: ファイル名をリンクに(人間の指摘)","v":1,"ts":"2026-09-27T23:19:38Z","author":{"kind":"ai","name":"claude-code"}}

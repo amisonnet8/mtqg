@@ -138,3 +138,6 @@
 {"id":"b0b04aad1f9948ee9011f16591d21bba","op":"create","type":"qa","status":"open","text":"次のタグのバージョンは？(v0.3.0以降の変更: log --json --events が削除された記録もdeleted:true付きで返すようになった。下位互換の追加)","v":0,"ts":"2026-09-27T00:06:50Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"d467ffceb84442c5b5a37d79172ab38d","op":"create","type":"qa","re":"b0b04aad1f9948ee9011f16591d21bba","text":"v0.4.0にする(マイナーバージョンを上げる。下位互換の新機能追加のため)","v":0,"ts":"2026-09-27T00:06:53Z","author":{"kind":"ai","name":"claude-code"}}
 {"id":"9bce37a06b714c9e87dc705a7aadc5c5","op":"create","type":"memo","text":"v0.4.0タグを作成した(コミット684c87d、v0.3.0以降の変更: log --json --events が削除された記録もdeleted:true付きで返すようになった。下位互換の追加)。pushは人間が行う。","v":0,"ts":"2026-09-27T00:07:02Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"8977c93e1c2f4bb9a893b819ae372204","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:14Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"0f4644a1b44c4ccaa93abce5830f3309","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:18Z","author":{"kind":"ai","name":"claude-code"}}
+{"id":"b0b04aad1f9948ee9011f16591d21bba","op":"status","from":"open","status":"done","basis":1,"v":0,"ts":"2026-09-27T14:55:18Z","author":{"kind":"ai","name":"claude-code"}}

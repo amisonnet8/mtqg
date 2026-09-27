@@ -22,7 +22,7 @@ check: qsoku vet && qsoku lint && qsoku unit
 # built with the tag e2e, so check does not run them).
 test: (cd //; go test -tags e2e -count=1 ./e2e/...)
 
-# Write what mtqg prints into the examples of docs/reference/ (e2e/examples_test.go).
+# Write what mtqg prints into the examples of docs/ (e2e/examples_test.go).
 # Read the diff: an example that changed is a document that went stale, or a bug.
 docs-examples: (cd //; go test -tags e2e -count=1 -run '^TestDocExamples$' ./e2e/... -update)
 

@@ -2,9 +2,10 @@
 
 package e2e
 
-// The examples in docs/reference/cli.md and cli_ja.md are run against mtqg, and what
-// they show has to be what mtqg prints. Every example is a code block that starts
-// with "$ ", and the line before it says where to run it:
+// The examples in docs/ (docs/reference/cli.md, docs/tour/ and docs/examples/, each
+// with its _ja.md Japanese twin) are run against mtqg, and what they show has to be
+// what mtqg prints. Every example is a code block that starts with "$ ", and the
+// line before it says where to run it:
 //
 //	<!-- mtqg:example repo=parser -->
 //
@@ -37,10 +38,25 @@ import (
 	"github.com/amisonnet8/mtqg/internal/cli"
 )
 
-var update = flag.Bool("update", false, "write what mtqg prints into the examples of docs/reference/ (make docs-examples)")
+var update = flag.Bool("update", false, "write what mtqg prints into the examples of docs/ (make docs-examples)")
 
-// documents are the files of docs/reference/ that hold examples, English first.
-var documents = []string{"cli.md", "cli_ja.md"}
+// documents are the (English, Japanese) pairs of files under docs/ that hold
+// examples. Paths are relative to docs/.
+var documents = [][2]string{
+	{"reference/cli.md", "reference/cli_ja.md"},
+	{"tour/tour.md", "tour/tour_ja.md"},
+	{"examples/examples.md", "examples/examples_ja.md"},
+}
+
+// allDocuments flattens documents into one list, in the order TestDocExamples
+// runs them.
+func allDocuments() []string {
+	var names []string
+	for _, pair := range documents {
+		names = append(names, pair[0], pair[1])
+	}
+	return names
+}
 
 // examplesNow is what "today" is in the examples: records of this day show as HH:MM.
 var examplesNow = time.Date(2026, 9, 21, 12, 0, 0, 0, time.UTC)
@@ -93,7 +109,7 @@ type document struct {
 
 func loadDocument(t *testing.T, name string) *document {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "docs", "reference", name))
+	data, err := os.ReadFile(filepath.Join("..", "docs", name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,40 +298,40 @@ func parseInvocation(text string) (invocation, error) {
 }
 
 // TestDocExamplesAreMarkedAndMatch checks the documents without running anything: that no
-// example is left without a mark, and that the two languages have the same examples.
+// example is left without a mark, and that each (English, Japanese) pair has the same
+// examples.
 func TestDocExamplesAreMarkedAndMatch(t *testing.T) {
-	var docs []*document
-	for _, name := range documents {
-		d := loadDocument(t, name)
-		for _, p := range d.problems {
-			t.Error(p)
-		}
-		docs = append(docs, d)
-	}
-
-	for _, d := range docs {
-		ja := strings.HasSuffix(d.name, "_ja.md")
-		for _, ex := range d.examples {
-			if ex.opts.repo == "" || slices.Contains(neutralFixtures, ex.opts.repo) {
-				continue
-			}
-			if strings.HasSuffix(ex.opts.repo, "_ja") != ja {
-				t.Errorf("%s:%d: the fixture %q is of the other language (the English document has English records, the Japanese one Japanese)", d.name, ex.line, ex.opts.repo)
+	for _, pair := range documents {
+		en, ja := loadDocument(t, pair[0]), loadDocument(t, pair[1])
+		for _, d := range []*document{en, ja} {
+			for _, p := range d.problems {
+				t.Error(p)
 			}
 		}
-	}
 
-	en, ja := docs[0], docs[1]
-	if len(en.examples) != len(ja.examples) {
-		t.Fatalf("%s has %d examples and %s has %d: a change to one has to be made to the other", en.name, len(en.examples), ja.name, len(ja.examples))
-	}
-	for i := range en.examples {
-		a, b := strings.ReplaceAll(en.examples[i].mark, "_ja", ""), strings.ReplaceAll(ja.examples[i].mark, "_ja", "")
-		if a != b {
-			t.Errorf("example %d differs in its mark: %s:%d has %q, %s:%d has %q", i+1, en.name, en.examples[i].line, a, ja.name, ja.examples[i].line, b)
+		for _, d := range []*document{en, ja} {
+			isJa := strings.HasSuffix(d.name, "_ja.md")
+			for _, ex := range d.examples {
+				if ex.opts.repo == "" || slices.Contains(neutralFixtures, ex.opts.repo) {
+					continue
+				}
+				if strings.HasSuffix(ex.opts.repo, "_ja") != isJa {
+					t.Errorf("%s:%d: the fixture %q is of the other language (the English document has English records, the Japanese one Japanese)", d.name, ex.line, ex.opts.repo)
+				}
+			}
 		}
-		if len(en.examples[i].cmds) != len(ja.examples[i].cmds) {
-			t.Errorf("example %d has %d commands in %s (line %d) and %d in %s (line %d)", i+1, len(en.examples[i].cmds), en.name, en.examples[i].line, len(ja.examples[i].cmds), ja.name, ja.examples[i].line)
+
+		if len(en.examples) != len(ja.examples) {
+			t.Fatalf("%s has %d examples and %s has %d: a change to one has to be made to the other", en.name, len(en.examples), ja.name, len(ja.examples))
+		}
+		for i := range en.examples {
+			a, b := strings.ReplaceAll(en.examples[i].mark, "_ja", ""), strings.ReplaceAll(ja.examples[i].mark, "_ja", "")
+			if a != b {
+				t.Errorf("example %d differs in its mark: %s:%d has %q, %s:%d has %q", i+1, en.name, en.examples[i].line, a, ja.name, ja.examples[i].line, b)
+			}
+			if len(en.examples[i].cmds) != len(ja.examples[i].cmds) {
+				t.Errorf("example %d has %d commands in %s (line %d) and %d in %s (line %d)", i+1, len(en.examples[i].cmds), en.name, en.examples[i].line, len(ja.examples[i].cmds), ja.name, ja.examples[i].line)
+			}
 		}
 	}
 }
@@ -336,7 +352,7 @@ func TestDocExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := &exampleRunner{root: root, templates: map[string]string{}}
-	for _, name := range documents {
+	for _, name := range allDocuments() {
 		d := loadDocument(t, name)
 		if len(d.problems) > 0 {
 			t.Fatalf("%s has %d problems; TestDocExamplesAreMarkedAndMatch lists them", name, len(d.problems))
@@ -403,7 +419,7 @@ func (d *document) apply(t *testing.T, edits []edit) {
 	for _, e := range edits {
 		out = slices.Concat(out[:e.start], e.with, out[e.end:])
 	}
-	path := filepath.Join("..", "docs", "reference", d.name)
+	path := filepath.Join("..", "docs", d.name)
 	if err := os.WriteFile(path, []byte(strings.Join(out, "\n")), 0o600); err != nil {
 		t.Fatal(err)
 	}

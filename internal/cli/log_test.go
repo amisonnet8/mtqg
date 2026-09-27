@@ -216,6 +216,71 @@ func TestLog(t *testing.T) {
 		}
 	})
 
+	t.Run("--events also brings back deleted records, marked deleted: true", func(t *testing.T) {
+		h := initialized(t)
+		h.setJournal(
+			record(idM, "memo", "a memo", "yamada", "2026-09-17T09:00:00Z"),
+			record(idA, "todo", "gone", "yamada", "2026-09-17T09:05:00Z"),
+			deleteLine(idA, "yamada", "2026-09-17T09:10:00Z"),
+			question(idQ2, "Nested?", nameC, "2026-09-17T09:15:00Z"),
+			answerLine(idA1, idQ2, "hidden along with its question", "yamada", "human", "2026-09-17T09:20:00Z"),
+			deleteLine(idQ2, "yamada", "2026-09-17T09:25:00Z"),
+		)
+
+		// Without --events, the deleted todo, the deleted question and the
+		// answer hidden with it are all left out, as everywhere else.
+		obj := jsonObject(t, mustRun(h, "--json", "log"))
+		if obj["total"] != float64(1) {
+			t.Errorf("total = %v, want 1", obj["total"])
+		}
+
+		// With --events, all four come back, and only the two that were
+		// actually deleted end their events with a delete.
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--events"))
+		if obj["total"] != float64(4) {
+			t.Errorf("total = %v, want 4", obj["total"])
+		}
+		byID := map[string]map[string]any{}
+		for _, rec := range records(t, obj, "records") {
+			byID[rec["id"].(string)] = rec
+		}
+		for _, tt := range []struct {
+			id          string
+			wantDeleted bool
+			lastOp      string
+		}{
+			{idM, false, "create"},
+			{idA, true, "delete"},
+			{idQ2, true, "delete"},
+			{idA1, true, "create"}, // hidden with its question, not deleted itself
+		} {
+			rec, ok := byID[tt.id]
+			if !ok {
+				t.Fatalf("%s: not in records", tt.id)
+			}
+			// deleted:omitzero, so false is left out of the JSON entirely.
+			deleted, _ := rec["deleted"].(bool)
+			if deleted != tt.wantDeleted {
+				t.Errorf("%s: deleted = %v, want %v", tt.id, rec["deleted"], tt.wantDeleted)
+			}
+			evs := records(t, rec, "events")
+			if got := evs[len(evs)-1]["op"]; got != tt.lastOp {
+				t.Errorf("%s: last event op = %v, want %q", tt.id, got, tt.lastOp)
+			}
+		}
+
+		// --before also accepts a hidden record's ID, but only with --events.
+		obj = jsonObject(t, mustRun(h, "--json", "log", "--events", "--before", idA1))
+		if obj["before"] != idA1 || obj["total"] != float64(3) {
+			t.Errorf("--events --before %s: %v", idA1, obj)
+		}
+		code, out, errOut := h.run("--json", "log", "--before", idA1)
+		wantExit(t, code, 1, out, errOut)
+		if kind := field(t, oneLineOfJSON(t, errOut), "error", "kind"); kind != "not_found" {
+			t.Errorf("--before %s without --events: kind = %v, want not_found", idA1, kind)
+		}
+	})
+
 	t.Run("--events without --json is a mistake in the command line", func(t *testing.T) {
 		h := initialized(t)
 		logFixture(h)

@@ -165,7 +165,7 @@ What each command prints, after `command`:
 | `todo list` | `records` (`--all`: including done), `open`, `done` (counts of all in view, whatever `--all` says) |
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
-| `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`); with `--events`, each record has `events` (its own, not a reply's) |
+| `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`); with `--events`, each record has `events` (its own, not a reply's) and deleted records are included too, marked `deleted: true` |
 | `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply; `log --events` gives only a record's own) |
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
@@ -547,7 +547,9 @@ Both append an event. Nothing is removed from the file or from git history.
   replies too, and the output says how many and who wrote them. Deleting an answer
   or a reply hides that one only; the state of the question or the bug does not
   change. The last line always says that the lines remain in the journal and in
-  git history.
+  git history. The one exception is [`log --json --events`](#log), which shows
+  a deleted record too, marked `deleted: true`, so that a caller that wants to
+  keep showing a trace of it (a "this message was deleted" line) can.
 
 ## undo
 
@@ -845,6 +847,15 @@ $ mtqg log --before 1e27a1c08a --limit 3
   [schema.md](schema.md). Unlike `show`, a question or a bug does not include
   its replies' `create`: a reply is already its own entry of `log`. Without
   `--json`, `--events` is a mistake in the command line.
+- **`--events` also brings back deleted records**, each marked `deleted:
+  true`: a deleted record itself, and an answer or a reply whose question or
+  bug was deleted (it is not deleted itself, but is hidden along with its
+  parent everywhere else). Its `events` ends with the `delete` event (or, for
+  an answer or a reply hidden only because its parent was deleted, does not:
+  nothing was done to it). Without `--events`, deleted records stay out of
+  `log` as everywhere else. `--before` also accepts the ID of a deleted record
+  when `--events` is given (a page may end on one); without `--events` it does
+  not.
 
 <!-- mtqg:example repo=parser -->
 ```

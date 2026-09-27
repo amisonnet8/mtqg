@@ -43,14 +43,30 @@ func runLog(c *ctx) int {
 		return c.fail(err)
 	}
 
+	// --events also brings back deleted records (docs/reference/cli.md "log"),
+	// so it pages through Every/EveryBefore/ResolveAny instead of the usual
+	// All/Before/Resolve, which only ever see what is in view.
 	source := state.All()
+	if c.inv.events {
+		source = state.Every()
+	}
 	before := "" // the full ID --before resolved to, if given
 	if v, ok := c.inv.values["--before"]; ok {
-		rec, err := state.Resolve(v)
+		var rec *model.Record
+		var err error
+		if c.inv.events {
+			rec, err = state.ResolveAny(v)
+		} else {
+			rec, err = state.Resolve(v)
+		}
 		if err != nil {
 			return c.fail(err)
 		}
-		source = state.Before(rec)
+		if c.inv.events {
+			source = state.EveryBefore(rec)
+		} else {
+			source = state.Before(rec)
+		}
 		before = rec.ID
 	}
 
@@ -71,6 +87,7 @@ func runLog(c *ctx) int {
 		if c.inv.events {
 			for i, r := range records {
 				recs[i].Events = r.Events
+				recs[i].Deleted = state.Hidden(r)
 			}
 		}
 		return c.emit(jsonLog{Command: c.inv.cmd.label(), Records: recs, Shown: len(records), Total: total, Before: before})

@@ -155,6 +155,57 @@ func TestAllIsEveryRecordInViewOldestFirst(t *testing.T) {
 	sameIDs(t, "All", state.All(), idTodoA, idMemo, idQ, idAns, idWord)
 }
 
+// Every, Hidden, EveryBefore and ResolveAny are the log --json --events escape
+// hatch that brings deleted records back into view (docs/reference/cli.md "log").
+func TestEveryBringsBackDeletedRecords(t *testing.T) {
+	state := Build([]journal.Event{
+		create(idTodoA, journal.TypeTodo, "t", 0),
+		create(idMemo, journal.TypeMemo, "gone", 1),
+		del(idMemo, 2),
+		create(idQ, journal.TypeQA, "q, deleted", 3),
+		answer(idAns, idQ, "hidden along with its question", 4, human),
+		del(idQ, 5),
+	})
+
+	// All still hides everything deleted, or hidden with its parent.
+	sameIDs(t, "All", state.All(), idTodoA)
+
+	// Every keeps them all, oldest first.
+	sameIDs(t, "Every", state.Every(), idTodoA, idMemo, idQ, idAns)
+
+	for _, tt := range []struct {
+		id     string
+		hidden bool
+	}{
+		{idTodoA, false},
+		{idMemo, true}, // deleted itself
+		{idQ, true},    // deleted itself
+		{idAns, true},  // not deleted itself, hidden with its question
+	} {
+		if got := state.Hidden(state.Record(tt.id)); got != tt.hidden {
+			t.Errorf("Hidden(%s) = %v, want %v", tt.id, got, tt.hidden)
+		}
+	}
+
+	// ResolveAny finds a deleted record; Resolve still does not.
+	rec, err := state.ResolveAny(idMemo[:8])
+	if err != nil || rec.ID != idMemo {
+		t.Errorf("ResolveAny(deleted memo) = %v, %v", rec, err)
+	}
+	if _, err := state.Resolve(idMemo[:8]); err == nil {
+		t.Error("Resolve found a deleted record")
+	}
+	rec, err = state.ResolveAny(idAns[:8])
+	if err != nil || rec.ID != idAns {
+		t.Errorf("ResolveAny(answer hidden with its question) = %v, %v", rec, err)
+	}
+
+	// EveryBefore takes a deleted record as the position, unlike Before.
+	every := state.Every()
+	got := state.EveryBefore(every[len(every)-1]) // before idAns, the last one created
+	sameIDs(t, "EveryBefore", got, idTodoA, idMemo, idQ)
+}
+
 func TestGlossaryAndDuplicateWords(t *testing.T) {
 	state := Build([]journal.Event{
 		entry(idWord, "token", "The smallest unit produced by lexing", 0, human),

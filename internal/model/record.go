@@ -246,16 +246,45 @@ func (s *State) All() []*Record {
 	return s.pick(func(*Record) bool { return true })
 }
 
+// Every returns every record, deleted or not, of every kind, oldest first
+// (unlike All, it is not filtered by visible). log --json --events is the only
+// caller: it is the one place a deleted record, or an answer or a reply hidden
+// only because its question or bug was deleted, is shown again (journal-format.md
+// says delete only hides; it does not say every reader must).
+func (s *State) Every() []*Record {
+	return s.records
+}
+
+// Hidden reports whether a record is out of view for the usual reasons: it is
+// deleted itself, or it is an answer or a reply whose question or bug is
+// deleted. It is the negation of visible, exported for log --json --events to
+// mark such a record deleted: true.
+func (s *State) Hidden(r *Record) bool {
+	return !s.visible(r)
+}
+
 // Before returns the records in view that were created earlier than rec, oldest
 // first: a prefix of All(). rec itself is not included. A rec that came from a
 // different State, or that is no longer in view, gives nil.
 func (s *State) Before(rec *Record) []*Record {
-	all := s.All()
-	i := slices.Index(all, rec)
+	return prefixBefore(s.All(), rec)
+}
+
+// EveryBefore is Before over Every instead of All: it also accepts rec being a
+// deleted record, or an answer or a reply hidden only because its parent was
+// deleted (log --json --events pages through Every, so a page may end on one).
+func (s *State) EveryBefore(rec *Record) []*Record {
+	return prefixBefore(s.Every(), rec)
+}
+
+// prefixBefore returns the prefix of list up to (not including) rec, or nil if
+// rec is not in list.
+func prefixBefore(list []*Record, rec *Record) []*Record {
+	i := slices.Index(list, rec)
 	if i < 0 {
 		return nil
 	}
-	return all[:i]
+	return list[:i]
 }
 
 // Todos returns the todos that are in view, oldest first. Done ones are included

@@ -68,6 +68,11 @@ type jsonRecord struct {
 	// Events is set only by log --events (its own lines of journal.jsonl, oldest
 	// first): every other command that produces a jsonRecord leaves it unset.
 	Events []journal.Event `json:"events,omitzero"`
+	// Deleted is set only by log --events, alongside Events: it marks a record
+	// that is out of view everywhere else (deleted itself, or an answer or a
+	// reply whose question or bug was deleted). Every other command leaves it
+	// unset, since every other jsonRecord is already filtered to what is visible.
+	Deleted bool `json:"deleted,omitzero"`
 }
 
 type jsonAuthor struct {

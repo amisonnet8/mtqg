@@ -29,6 +29,18 @@ func isHex(s string) bool { return s != "" && strings.Trim(s, "0123456789abcdef"
 // It returns a *NotFoundError, a *TooShortError, or an *AmbiguousError that lists
 // the candidates.
 func (s *State) Resolve(prefix string) (*Record, error) {
+	return s.resolve(prefix, s.visible)
+}
+
+// ResolveAny is Resolve without the visibility filter: a deleted record, or an
+// answer or a reply hidden only because its question or bug was deleted, can be
+// found too. log --json --events is the only caller (it pages through Every, so
+// --before must be able to name one of those records).
+func (s *State) ResolveAny(prefix string) (*Record, error) {
+	return s.resolve(prefix, func(*Record) bool { return true })
+}
+
+func (s *State) resolve(prefix string, keep func(*Record) bool) (*Record, error) {
 	p := strings.ToLower(strings.TrimSpace(prefix))
 	if !isHex(p) {
 		return nil, &NotFoundError{Prefix: prefix}
@@ -38,7 +50,7 @@ func (s *State) Resolve(prefix string) (*Record, error) {
 	}
 	var matches []*Record
 	for _, rec := range s.records {
-		if s.visible(rec) && strings.HasPrefix(rec.ID, p) {
+		if keep(rec) && strings.HasPrefix(rec.ID, p) {
 			matches = append(matches, rec)
 		}
 	}

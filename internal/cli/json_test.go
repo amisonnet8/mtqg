@@ -433,10 +433,15 @@ func TestJSONEventsOnlyOnLog(t *testing.T) {
 	h := initialized(t)
 	jsonFixture(h)
 
+	// events and deleted are set only by log --events (log.go): every other
+	// jsonRecord is already filtered to what is in view, so neither belongs.
 	noEvents := func(t *testing.T, label string, rec map[string]any) {
 		t.Helper()
 		if _, ok := rec["events"]; ok {
 			t.Errorf("%s: record has events: %v", label, rec)
+		}
+		if _, ok := rec["deleted"]; ok {
+			t.Errorf("%s: record has deleted: %v", label, rec)
 		}
 	}
 

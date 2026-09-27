@@ -142,7 +142,7 @@ $ mtqg memo list --json
 | `todo list` | `records`（`--all`で終わったものも含む）、`open`、`done`（`--all`にかかわらず、見える記録すべての件数） |
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
-| `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ）、`--events`指定時は各記録に`events` |
+| `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ）、`--events`指定時は各記録に`events`、削除された記録も`deleted: true`として含まれる |
 | `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む。`log --events`はその記録自身のものだけ） |
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
@@ -456,7 +456,8 @@ The lines remain in the journal and in git history
   エラーで、何も書かない
 - `delete`はどの記録でも隠す：どの一覧、`show`、`search`にも出ず、そのIDは何にも当てはまらなくなる。質問やバグを消すと、
   その回答や返信も隠れ、出力は何件が誰のものかを言う。回答や返信を消すと、その1件だけが隠れ、質問やバグの状態は変わらない。
-  最後の行は、行がジャーナルにもgitの履歴にも残ることを、必ず言う
+  最後の行は、行がジャーナルにもgitの履歴にも残ることを、必ず言う。ただし[`log --json --events`](#log)だけは例外で、
+  削除された記録も`deleted: true`として出す（「このメッセージは削除されました」のような跡を残したい呼び出し側のため）
 
 ## undo
 
@@ -708,6 +709,11 @@ $ mtqg log --before 1e27a1c08a --limit 3
 - **`--events`（`--json`のときだけ有効）は各記録に`events`を足す**：その記録自身の`journal.jsonl`の行を、作成順に、
   [schema_ja.md](schema_ja.md)の形で。`show`と違い、質問・バグでも返信の`create`は含まない（返信は`log`の
   別の項目として既に出るため）。`--json`が無いのに`--events`を付けるのはコマンドラインの誤り
+- **`--events`は削除された記録も連れ戻す**：`deleted: true`が付く。削除された記録自身と、質問やバグが削除されて
+  一緒に隠れた回答・返信（それ自身は削除されていない）の両方が対象。`events`は、削除されたものなら最後が`delete`
+  イベントで終わる（親が消えて隠れただけの回答・返信は、その記録自体には何も起きていないので終わらない）。
+  `--events`が無ければ、削除された記録は他と同じく`log`に出ない。`--before`も、`--events`があるときだけ削除された
+  記録のIDを受け付ける（ページの末尾がそれになりうるため）。無ければ今まで通り
 
 <!-- mtqg:example repo=parser_ja -->
 ```

@@ -81,7 +81,22 @@ pwsh_profile=$(pwsh -NoLogo -NoProfile -Command '$PROFILE')
 mkdir -p "$(dirname "$pwsh_profile")"
 grep -qF 'qsoku .shell pwsh' "$pwsh_profile" 2>/dev/null || echo 'Invoke-Expression (& qsoku .shell pwsh | Out-String)' >>"$pwsh_profile"
 
-# mtqg's own bash completion, for interactive use in this container (mtqg
-# completion <shell>, docs/reference/cli.md).
+# mtqg's own completion, for interactive use in this container, for all four
+# shells it has a script for (mtqg completion <shell>, docs/reference/cli.md
+# "Shell completion"). Each install path is the one that section names.
 mkdir -p ~/.local/share/bash-completion/completions
 mtqg completion bash >~/.local/share/bash-completion/completions/mtqg
+
+# zsh's fpath[1] in this image is a root-owned system directory, unlike
+# bash's and fish's user-local completion directories above and below.
+zsh_fpath=$(zsh -c 'echo $fpath[1]')
+sudo mkdir -p "$zsh_fpath"
+mtqg completion zsh | sudo tee "$zsh_fpath/_mtqg" >/dev/null
+
+mkdir -p ~/.config/fish/completions
+mtqg completion fish >~/.config/fish/completions/mtqg.fish
+
+# pwsh has no separate completions directory: the script is meant to be
+# appended to $PROFILE (docs/reference/cli.md), so re-running this idempotently
+# needs the same marker-line check as the qsoku pwsh integration above.
+grep -qF 'Register-ArgumentCompleter -Native -CommandName mtqg' "$pwsh_profile" 2>/dev/null || mtqg completion powershell >>"$pwsh_profile"

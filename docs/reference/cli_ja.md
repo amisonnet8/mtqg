@@ -67,8 +67,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 ### オプションの位置
 
 - オプションは記録の本文の**前**に置く。本文の最初の語からは、`-`で始まる語も含めてすべて本文になる：
-  `mtqg t add fix the -x flag`は`fix the -x flag`を記録する。`--at`も同じ（[記録を足す](#記録を足す)）：
-  回答・返信の場合はIDの前に置き、IDと本文の間には置かない
+  `mtqg t add fix the -x flag`は`fix the -x flag`を記録する
 - `-`で始まる本文は、先に`--`を置く：`mtqg t add -- -1 is not allowed`。`-`だけの語は標準入力を意味する
   （[記録を足す](#記録を足す)）
 - IDを取るコマンド（`done`、`reopen`など）と、本文のないコマンド（`list`、`status`など）は、
@@ -100,7 +99,6 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `author` | `{"kind": "human"または"ai", "name": "..."}` |
 | `created` | 最初のイベントの時刻 |
 | `updated` | 最後のイベントの時刻 |
-| `at` | `{"path", "line", "head"}`。`--at`で書いたときだけ |
 
 <!-- mtqg:example repo=parser_ja -->
 ```
@@ -169,7 +167,6 @@ $ mtqg show zzzz --json
 | `not_available`（まだ作っていないコマンド） | 1 | |
 | `not_in_repository`、`not_initialized`、`already_initialized`、`format_too_new`、`conflict_markers`、`lock_timeout` | 1 | |
 | `no_author`、`bad_author_kind`、`empty_text`、`empty_word`、`invalid_text`、`input`、`editor`、`git_unavailable` | 1 | |
-| `bad_at`（MCPツールの、`path`の無い`line`、または1未満の`line`。[MCPサーバー](#mcpサーバー)参照） | 1 | |
 | `not_found` | 1 | `prefix` |
 | `id_too_short` | 1 | `prefix` |
 | `ambiguous` | 1 | `prefix`、`candidates`：IDが指しうる記録 |
@@ -308,11 +305,6 @@ mtqg r add mtqgの記録は英語で書く
 - `mtqg q add <質問id> <本文>`は、質問ではなく回答を足し、`mtqg b add <バグid> <本文>`は、バグではなく返信を足す
   （[質問、回答、バグ、返信](#質問回答バグ返信)）
 - 本文の代わりに`-`を渡すと、標準入力を最後まで読む。末尾の改行は落とす：`git log -1 --format=%s | mtqg m add -`
-- **`--at <path>[:<line>]`は、プロジェクトのどこについて書いた記録かを残す**（回答・返信を含む全ての種類）：
-  `mtqg t add --at src/lex.go:42 ブロックコメントの読み飛ばし`。最後の`:`で区切り、行番号は省いてよい
-  （`--at src/lex.go`だけでもよい）。その時点で`HEAD`が指していたコミットは、mtqgが自動で埋める。
-  指定するオプションは無い。まだコミットが無い、またはgitが動かせないときも、記録はそのまま書かれる
-  （その部分だけ無くなる。[schema_ja.md](schema_ja.md)の`at`を参照）
 - **書く本文がないときは、`$EDITOR`が開く**。空のファイルが開き、保存した内容が本文になる（末尾の改行は落とす）：
   引数がまったくないとき（`mtqg m add`、`mtqg t add`、`mtqg q add`、`mtqg b add`、`mtqg r add`）、IDのあとの回答・返信がないとき
   （`mtqg q add <質問id>`、`mtqg b add <バグid>`）、用語のあとの定義がないとき（`mtqg g add <用語>`）。
@@ -1184,15 +1176,15 @@ mtqg mcp
 
 | ツール | 入力 | 対応するコマンド | 結果 |
 |---|---|---|---|
-| `memo_add`、`rule_add`、`todo_add` | `text`、`path`、`line` | `memo add`、`rule add`、`todo add` | 記録 |
+| `memo_add`、`rule_add`、`todo_add` | `text` | `memo add`、`rule add`、`todo add` | 記録 |
 | `todo_done`、`todo_reopen` | `id` | `todo done`、`todo reopen` | 記録と、変化したかどうか |
-| `qa_ask` | `text`、`path`、`line` | `qa add <質問>` | 記録 |
-| `qa_answer` | `id`、`text`、`path`、`line` | `qa add <id> <回答>` | 記録 |
+| `qa_ask` | `text` | `qa add <質問>` | 記録 |
+| `qa_answer` | `id`、`text` | `qa add <id> <回答>` | 記録 |
 | `qa_done`、`qa_reopen` | `id` | `qa done`、`qa reopen` | 記録と、変化したかどうか |
-| `bug_report` | `text`、`path`、`line` | `bug add <バグ>` | 記録 |
-| `bug_reply` | `id`、`text`、`path`、`line` | `bug add <id> <返信>` | 記録 |
+| `bug_report` | `text` | `bug add <バグ>` | 記録 |
+| `bug_reply` | `id`、`text` | `bug add <id> <返信>` | 記録 |
 | `bug_done`、`bug_reopen` | `id` | `bug done`、`bug reopen` | 記録と、変化したかどうか |
-| `glossary_define` | `word`、`definition`、`path`、`line` | `glossary add` | 記録 |
+| `glossary_define` | `word`、`definition` | `glossary add` | 記録 |
 | `edit` | `id`、`text` | `edit <id> <text>` | 記録と、変化したかどうか |
 | `context` | `max_tokens`（省略時2000） | `mtqg context` | 同じ文章 |
 | `show` | `id` | `show` | 全文と履歴を持つ記録 |
@@ -1202,7 +1194,6 @@ mtqg mcp
 
 - `qa_ask`と`qa_answer`は別のツール（`bug_report`と`bug_reply`も同様）。CLIの`qa add`のように、最初の語がIDらしいかで見分けることはしない
 - `edit`は常に新しい本文を引数として受け取り、`$EDITOR`は開かない。CLIと同じく、今と同じ本文を渡すと何も変わらない
-- **`path`・`line`は、記録を作るツール（`edit`を除く上記すべて）に対するCLIの`--at`に当たる**（`edit`は本文の変更であり、プロジェクトのどこについて書かれたかという新しい事実ではないので対象外）：記録がプロジェクトのどこについてのものかを、CLIの1つの`<path>[:<line>]`ではなく別々のフィールドで渡す（ツール呼び出しの引数は元から構造化されているので、分割する文字列が要らない）。`line`には`path`が要り、`path`の無い`line`、または1未満の`line`は`bad_at`になる。`head`はCLIの`--at`と同じく自動で埋まり、渡すフィールドは無い
 - ツールとして公開しないもの：`delete`・`undo`・`archive`・`review`・`format`。記録を隠す・移すか、実行する前に人間がdiffや並行変更の報告を読んで判断する必要があるもので、人が打つコマンドのままにする
 - ツールが書くものの`author`は、常に`kind: "ai"`。`author.name`は、接続時にそのエージェントが名乗った名前から取り、`MTQG_AUTHOR_NAME`やgitからは取らない（[記録者](#記録者)参照）
 - `-C <path>`は`mtqg mcp`にも効き、すべてのツール呼び出しの対象リポジトリを固定する
@@ -1235,7 +1226,7 @@ mtqg completion powershell >> $PROFILE
 | `qa add`、`bug add`の1語目 | 質問（バグ）。完了したものも含む。回答（返信）する相手のIDかもしれないため |
 | `completion`の次 | 4つのシェル |
 
-これ以外は補完しない。記録の本文、`search`の語、`archive`の期間、`--limit`の値、`--at`のパスなど。パスが要るところ（`-C`、`format`、`--at`）は、シェルのファイル補完に任せる。等号の形（`--kind=todo`）は補完しない。`--kind <TAB>`と書く。
+これ以外は補完しない。記録の本文、`search`の語、`archive`の期間、`--limit`の値など。パスが要るところ（`-C`、`format`）は、シェルのファイル補完に任せる。等号の形（`--kind=todo`）は補完しない。`--kind <TAB>`と書く。
 
 ### candidates
 

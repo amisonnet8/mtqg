@@ -89,25 +89,12 @@ Example:
 | `basis` | integer | `status`, `edit` (optional) | how many events the record had (including its `create`), as the writer saw it before writing this one. Used to tell a change made without knowing of another change to the same record (see below) |
 | `word` | string | `create` of glossary | the term |
 | `text` | string | `create`, `edit` | body text. For glossary, the definition |
-| `at` | object | optional | where in the project the record was written about (see below) |
 | `v` | integer | all | format version the line was written in |
 | `ts` | string | all | time of the event, UTC, RFC 3339 with `Z` (`2026-09-17T01:32:00Z`) |
 | `author` | object | all | who is responsible for the content: `{"kind": "human" \| "ai", "name": string}` |
 | `tty` | string | optional | short hash identifying the terminal that wrote the line |
 
 Fields without a value are **omitted**, never written as `null`.
-
-`at` records a fact at writing time and is not updated when the code changes:
-
-```json
-"at": {"path": "docs/spec.md", "line": 42, "head": "3f9a1c0"}
-```
-
-`path` is required whenever `at` is present. `line` is 1 or more, and left out
-when it is not known. `head` is the short commit hash `HEAD` pointed to at
-writing time, and left out when it is not known (no commit yet, or git could
-not be run). `validate` enforces `path` and `line`; `head` is a fact about the
-repository, not something a caller supplies.
 
 `author.kind` is the kind of the party responsible for the content. When an AI
 writes down a human's decision, the author is the human (and the text says an
@@ -265,7 +252,7 @@ diffs stay readable and identical events stay identical:
 
 - Compact JSON, no spaces between tokens.
 - Keys in this order, omitting absent ones:
-  `id, op, type, re, from, status, basis, word, text, at, v, ts, author, tty`.
+  `id, op, type, re, from, status, basis, word, text, v, ts, author, tty`.
   Inside `author`: `kind, name`.
 - Do not escape non-ASCII characters, and do not escape `<`, `>`, `&`.
 - End every line with LF.

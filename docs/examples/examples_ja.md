@@ -83,53 +83,6 @@ $ mtqg r add エラーメッセージはすべて英語で書く
 23da3c03be
 ```
 
-## どこについて書いたかを示す
-
-記録がコードのどこについてのものかを、`--at <path>[:<line>]`で書いた時点の事実として残せる。以後コードが変わっても更新されない（`line`は省略できる。`path`だけでも構わない）。以前書かれたこのメモにも付けてあり、`--json`で見ると`at`が付いているのが分かる（普通の`show`は表示しない）：
-
-<!-- mtqg:example repo=at-demo_ja -->
-```
-$ mtqg show --json e5a1b2c3d4
-{
-  "command": "show",
-  "record": {
-    "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
-    "kind": "memo",
-    "text": "トークンは行番号と列番号を持つ",
-    "author": {
-      "kind": "human",
-      "name": "yamada"
-    },
-    "created": "2026-09-21T09:05:00Z",
-    "updated": "2026-09-21T09:05:00Z",
-    "at": {
-      "path": "internal/lexer/token.go",
-      "line": 42,
-      "head": "3f9a1c0"
-    }
-  },
-  "events": [
-    {
-      "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
-      "op": "create",
-      "type": "memo",
-      "text": "トークンは行番号と列番号を持つ",
-      "at": {
-        "path": "internal/lexer/token.go",
-        "line": 42,
-        "head": "3f9a1c0"
-      },
-      "v": 0,
-      "ts": "2026-09-21T09:05:00Z",
-      "author": {
-        "kind": "human",
-        "name": "yamada"
-      }
-    }
-  ]
-}
-```
-
 ## 見て回る
 
 いくつか記録が溜まってきたところで、それを読み返す方法。`log`は、同じパーサープロジェクトで、新しい順にすべての種類を並べる：
@@ -235,7 +188,7 @@ rm .mtqg/archive/2026-09-19..2026-09-19.jsonl
 
 ## mtqg自身の開発
 
-mtqgは、段階4（外部ツール連携）以降の自分自身の開発過程を、他ならぬmtqgで記録している（[`.claude/rules/mtqg-usage.md`](https://github.com/amisonnet8/mtqg/blob/main/.claude/rules/mtqg-usage.md)）。作られたフィクスチャではなく実際に積み重なった記録なので、`qa`・`bug`・`rule`・`--at`が実務でどう使われるかを見るには、これが一番の実例になる。
+mtqgは、段階4（外部ツール連携）以降の自分自身の開発過程を、他ならぬmtqgで記録している（[`.claude/rules/mtqg-usage.md`](https://github.com/amisonnet8/mtqg/blob/main/.claude/rules/mtqg-usage.md)）。作られたフィクスチャではなく実際に積み重なった記録なので、`qa`・`bug`・`rule`が実務でどう使われるかを見るには、これが一番の実例になる。
 
 ```
 git clone https://github.com/amisonnet8/mtqg

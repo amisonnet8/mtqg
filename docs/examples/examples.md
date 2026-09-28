@@ -83,53 +83,6 @@ $ mtqg r add Use English for all error messages
 ad8c4f3cb3
 ```
 
-## Saying what a record is about
-
-`--at <path>[:<line>]` records where in the project a record was written about, as a fact at the time of writing: it is never updated when the code changes (`line` is optional; `path` alone is fine). It was recorded on a memo written earlier this way, and shows up under `at` in `--json` (plain `show` does not print it):
-
-<!-- mtqg:example repo=at-demo -->
-```
-$ mtqg show --json e5a1b2c3d4
-{
-  "command": "show",
-  "record": {
-    "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
-    "kind": "memo",
-    "text": "Tokens carry their line and column",
-    "author": {
-      "kind": "human",
-      "name": "yamada"
-    },
-    "created": "2026-09-21T09:05:00Z",
-    "updated": "2026-09-21T09:05:00Z",
-    "at": {
-      "path": "internal/lexer/token.go",
-      "line": 42,
-      "head": "3f9a1c0"
-    }
-  },
-  "events": [
-    {
-      "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
-      "op": "create",
-      "type": "memo",
-      "text": "Tokens carry their line and column",
-      "at": {
-        "path": "internal/lexer/token.go",
-        "line": 42,
-        "head": "3f9a1c0"
-      },
-      "v": 0,
-      "ts": "2026-09-21T09:05:00Z",
-      "author": {
-        "kind": "human",
-        "name": "yamada"
-      }
-    }
-  ]
-}
-```
-
 ## Reading it back
 
 Once a few records have piled up, here is how to read them: `log` lists every kind, newest first, back in the same parser project:
@@ -235,7 +188,7 @@ rm .mtqg/archive/2026-09-19..2026-09-19.jsonl
 
 ## mtqg's own development
 
-From stage 4 (external tool integration) on, mtqg has recorded its own development process with itself (see [`.claude/rules/mtqg-usage.md`](https://github.com/amisonnet8/mtqg/blob/main/.claude/rules/mtqg-usage.md)). It is not a fixture built for a document; it is records that actually piled up, which makes it the best example of what `qa`, `bug`, `rule` and `--at` look like in real use:
+From stage 4 (external tool integration) on, mtqg has recorded its own development process with itself (see [`.claude/rules/mtqg-usage.md`](https://github.com/amisonnet8/mtqg/blob/main/.claude/rules/mtqg-usage.md)). It is not a fixture built for a document; it is records that actually piled up, which makes it the best example of what `qa`, `bug` and `rule` look like in real use:
 
 ```
 git clone https://github.com/amisonnet8/mtqg

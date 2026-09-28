@@ -151,38 +151,28 @@ Read full entries with mtqg show <id>.
 <summary><code>--json</code>の例を見る</summary>
 
 ```
-$ mtqg show --json e5a1b2c3d4
+$ mtqg show --json 81e74ef5e8
 {
   "command": "show",
   "record": {
-    "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
+    "id": "81e74ef5e8e24d949ed904759531985d",
     "kind": "memo",
-    "text": "トークンは行番号と列番号を持つ",
+    "text": "エラーメッセージは英語で統一する方針",
     "author": {
       "kind": "human",
       "name": "yamada"
     },
-    "created": "2026-09-21T09:05:00Z",
-    "updated": "2026-09-21T09:05:00Z",
-    "at": {
-      "path": "internal/lexer/token.go",
-      "line": 42,
-      "head": "3f9a1c0"
-    }
+    "created": "2026-09-21T10:32:00Z",
+    "updated": "2026-09-21T10:32:00Z"
   },
   "events": [
     {
-      "id": "e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c",
+      "id": "81e74ef5e8e24d949ed904759531985d",
       "op": "create",
       "type": "memo",
-      "text": "トークンは行番号と列番号を持つ",
-      "at": {
-        "path": "internal/lexer/token.go",
-        "line": 42,
-        "head": "3f9a1c0"
-      },
+      "text": "エラーメッセージは英語で統一する方針",
       "v": 0,
-      "ts": "2026-09-21T09:05:00Z",
+      "ts": "2026-09-21T10:32:00Z",
       "author": {
         "kind": "human",
         "name": "yamada"

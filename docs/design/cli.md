@@ -633,3 +633,12 @@ mtqg-vscode側から追加の依頼（Memo画面を「消しても跡が残る�
 - **`line`だけ渡して`path`を渡さないのは、黙って無視せずエラー（`bad_at`）にした。** `line`は`path`と組みでなければ意味を持たない情報で、黙って捨てると、呼び出し側（AIエージェント）は`path`を渡し忘れたことに気づけない。「正直に伝える」（`journal-format.md`）の考え方をここにも適用した
 - **`atFromFields(path string, line int) (*journal.At, error)`（`internal/cli/at.go`）を、CLI用の`parseAt`とは別に新設した。** 文字列を分割する`parseAt`と、既に分かれた2つの値を検証するだけの`atFromFields`は、扱う入力の形が違うので関数を分けた。`head`の自動補完（`withHead`）はCLIと共有する（`at`が事実であることに変わりはなく、`head`の決め方も変わらないため）
 - **新しいエラー種別`bad_at`は、CLIの`--at`の誤り（`usageError`、exit code 2、`kind: "usage"`）とは別物。** CLIの`--at`はコマンドラインの構文の誤りだが、MCPの`path`・`line`はスキーマで型が決まった引数なので「構文の誤り」という概念がなく、これは値の意味としての誤り（`journal.At`の必要条件を満たさない）。`*failure{kindBadAt, ...}`という既存の仕組み（`empty_text`・`empty_word`と同じ形）にそのまま乗せた
+
+### 11.3 `--at`の廃止（v1.1.0、2026-09-28）
+
+§11.2でMCPまで対応させたばかりだが、mtqg-vscode（VSCode拡張）がこれを使うUI（"mtqg: New Record Here"）を実装し、人間が実際にそれを使う様子を見たところ、「位置に紐付ける」という発想自体がわかりにくく、コードが変わっていく以上あまり価値が無いと判断した（人間の判断、2026-09-28。設計§5.5に追記済み）。CLI（`--at`）・MCP（`path`/`line`）の両方を、関連する型・関数ごと削除した。
+
+- **`internal/cli/at.go`はファイルごと削除**（`parseAt`・`atOption`・`atFromFields`・`withHead`）。`journal.Event.At`・`journal.At`型・`model.Record.At`も削除。`head`の自動補完に使っていた`internal/journal/git.go`の`GitShortHead`（`--at`専用）も削除した（フックが使う`GitHead`とは別物で、そちらは残る）
+- **MCPの`replyInput`型（`id`・`text`・`path`・`line`）を削除し、`qa_answer`・`bug_reply`は`edit`と同じ`idTextInput`（`id`・`text`）に統合した。** `path`・`line`を除くと2つの型は完全に同じ形になっていたため
+- **既存の`journal.jsonl`にすでに書かれた`at`は書き換えない**（4章、追記するだけ・既存行は書き換えない）。ただし`journal.Event`から`At`フィールドを消したため、パース自体は変わらず成功する一方、`show --json`等mtqgの出力からは`at`が見えなくなる（過去の記録も含めて）。生ファイルの`"at":{...}`はそのまま残る。フィールド廃止に伴う一般的な振る舞いとして許容する（人間に確認済み）
+- 形式のバージョンは上げなかった。`at`は元々`omitempty`の任意フィールドで、書かなくなっても既存の読み手が誤読することはなく、schema.md「Versioning」の「知らないフィールドを無視できる変更では番号を上げない」規則がそのまま当てはまるため（詳細は§5.5）

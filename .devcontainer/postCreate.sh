@@ -48,6 +48,12 @@ wget -qO - https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install
 go install golang.org/x/tools/gopls@latest
 go install golang.org/x/tools/cmd/goimports@latest
 
+# goreleaser: builds each OS's binary from .goreleaser.yaml for a release
+# (.claude/rules/distribution.md). @latest, not pinned, to match the CI
+# workflow's own loose "~> v2" version constraint (.github/workflows/release.yml)
+# rather than risking `goreleaser check` behaving differently here than there.
+go install github.com/goreleaser/goreleaser/v2@latest
+
 # qsoku: build/check/test entry points (qsokufile, replaces the former Makefile;
 # see docs/design/history.md 2026-09-23). @latest, not pinned, while qsoku
 # itself is still moving fast (decision, 2026-09-26): a regression is caught

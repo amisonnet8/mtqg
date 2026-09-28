@@ -56,7 +56,6 @@ type Event struct {
 	Basis  int    `json:"basis,omitzero"`
 	Word   string `json:"word,omitempty"`
 	Text   string `json:"text,omitempty"`
-	At     *At    `json:"at,omitempty"`
 	V      int    `json:"v"`
 	TS     string `json:"ts"`
 	Author Author `json:"author"`
@@ -67,14 +66,6 @@ type Event struct {
 type Author struct {
 	Kind string `json:"kind"`
 	Name string `json:"name"`
-}
-
-// At records where in the project a record was written about. It is a fact at
-// writing time and is never updated.
-type At struct {
-	Path string `json:"path,omitempty"`
-	Line int    `json:"line,omitzero"`
-	Head string `json:"head,omitempty"`
 }
 
 // This file is the only place that touches JSON, so that the written bytes are
@@ -142,12 +133,6 @@ func (ev Event) checkUTF8() error {
 		{"from", ev.From}, {"status", ev.Status}, {"word", ev.Word}, {"text", ev.Text},
 		{"ts", ev.TS}, {"author.kind", ev.Author.Kind}, {"author.name", ev.Author.Name},
 		{"tty", ev.TTY},
-	}
-	if ev.At != nil {
-		fields = append(fields,
-			struct{ name, value string }{"at.path", ev.At.Path},
-			struct{ name, value string }{"at.head", ev.At.Head},
-		)
 	}
 	for _, f := range fields {
 		if !utf8.ValidString(f.value) {

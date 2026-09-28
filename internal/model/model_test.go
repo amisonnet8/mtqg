@@ -85,31 +85,6 @@ func TestBuildCreatesRecords(t *testing.T) {
 	}
 }
 
-func TestBuildSetsAt(t *testing.T) {
-	ev := create(idMemo, journal.TypeMemo, "See the spec", 0)
-	ev.At = &journal.At{Path: "docs/spec.md", Line: 42, Head: "3f9a1c0"}
-
-	state := Build([]journal.Event{ev})
-	rec := state.Record(idMemo)
-	if rec.At == nil || *rec.At != *ev.At {
-		t.Fatalf("At = %+v, want %+v", rec.At, ev.At)
-	}
-
-	// A later edit does not change At: it comes only from the create event.
-	edited := journal.Event{ID: idMemo, Op: journal.OpEdit, Text: "changed", TS: at(1), Author: human}
-	state = Build([]journal.Event{ev, edited})
-	rec = state.Record(idMemo)
-	if rec.At == nil || *rec.At != *ev.At {
-		t.Fatalf("after an edit: At = %+v, want unchanged %+v", rec.At, ev.At)
-	}
-
-	// A create with no --at leaves At nil.
-	state = Build([]journal.Event{create(idTodoA, journal.TypeTodo, "Skip block comments", 2)})
-	if rec := state.Record(idTodoA); rec.At != nil {
-		t.Fatalf("At = %+v, want nil", rec.At)
-	}
-}
-
 func TestBefore(t *testing.T) {
 	events := []journal.Event{
 		create(idTodoA, journal.TypeTodo, "Skip block comments", 0),

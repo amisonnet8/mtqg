@@ -55,11 +55,6 @@ type Record struct {
 	Created time.Time
 	Updated time.Time
 
-	// At is where in the project the record was written about, from its create
-	// event, or nil if it was not given. It is a fact at writing time and is never
-	// updated (journal-format.md, schema.md §5.5).
-	At *journal.At
-
 	// Events are the events of the record in order.
 	Events []journal.Event
 }
@@ -160,7 +155,7 @@ func Build(events []journal.Event) *State {
 		}
 		rec := &Record{
 			ID: ev.ID, Type: ev.Type, Text: ev.Text, Word: ev.Word, Re: ev.Re,
-			Author: ev.Author, Created: parseTime(ev.TS), At: ev.At,
+			Author: ev.Author, Created: parseTime(ev.TS),
 		}
 		if rec.HasState() {
 			rec.Status = ev.Status

@@ -1,1 +1,0 @@
-{"id":"e5a1b2c3d4e54f6a8b9c0d1e2f3a4b5c","op":"create","type":"memo","text":"Tokens carry their line and column","at":{"path":"internal/lexer/token.go","line":42,"head":"3f9a1c0"},"v":0,"ts":"2026-09-21T09:05:00Z","author":{"kind":"human","name":"yamada"}}

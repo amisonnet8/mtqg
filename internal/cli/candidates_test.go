@@ -515,7 +515,7 @@ func TestCompletionScripts(t *testing.T) {
 // keeps the two from drifting apart.
 
 func TestCandidateOptionsAreTheOnesParseArgsTakes(t *testing.T) {
-	spellings := append(slices.Clone(globalOptions), "--all", "--mark", "-n", "--dry-run", "--limit", "--kind", "--max-tokens", "--word", "--at", "--before", "--events")
+	spellings := append(slices.Clone(globalOptions), "--all", "--mark", "-n", "--dry-run", "--limit", "--kind", "--max-tokens", "--word", "--before", "--events")
 	for _, cmd := range commands {
 		offered := map[string]bool{}
 		for _, cand := range optionsAt(position{cmd: cmd, seen: map[string]bool{}}) {
@@ -531,7 +531,7 @@ func TestCandidateOptionsAreTheOnesParseArgsTakes(t *testing.T) {
 			switch {
 			case opt == "-C":
 				arg = "-Cx"
-			case strings.HasPrefix(opt, "--") && slices.Contains([]string{"--limit", "--kind", "--max-tokens", "--word", "--at", "--before"}, opt):
+			case strings.HasPrefix(opt, "--") && slices.Contains([]string{"--limit", "--kind", "--max-tokens", "--word", "--before"}, opt):
 				arg = opt + "=1"
 			}
 			// A word at the end keeps the arity of the command from being what fails.

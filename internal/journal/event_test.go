@@ -94,27 +94,9 @@ func TestEncodeLineGolden(t *testing.T) {
 			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"edit","text":"line1\nline2\t\"q\" \\ \u0001","v":0,"ts":"2026-09-17T03:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
 		},
 		{
-			name: "at comes after text and before v",
-			ev: Event{
-				ID: idA, Op: OpCreate, Type: "memo", Text: "See the spec",
-				At: &At{Path: "docs/spec.md", Line: 42, Head: "3f9a1c0"},
-				V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada,
-			},
-			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"memo","text":"See the spec","at":{"path":"docs/spec.md","line":42,"head":"3f9a1c0"},"v":0,"ts":"2026-09-17T04:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
-		},
-		{
 			name: "v is written even when it is 0, and as itself otherwise",
 			ev:   Event{ID: idA, Op: OpDelete, V: 1, TS: "2026-09-17T02:00:00Z", Author: yamada},
 			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"delete","v":1,"ts":"2026-09-17T02:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
-		},
-		{
-			name: "at with no line does not write line:0",
-			ev: Event{
-				ID: idA, Op: OpCreate, Type: "memo", Text: "See the spec",
-				At: &At{Path: "docs/spec.md"},
-				V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada,
-			},
-			want: `{"id":"6b0d549b6f03475a8600a35a099950d8","op":"create","type":"memo","text":"See the spec","at":{"path":"docs/spec.md"},"v":0,"ts":"2026-09-17T04:00:00Z","author":{"kind":"human","name":"yamada"}}` + "\n",
 		},
 	}
 	for _, tt := range tests {
@@ -152,8 +134,7 @@ func TestParseEvent(t *testing.T) {
 	t.Run("a line written by encodeLine reads back", func(t *testing.T) {
 		want := Event{
 			ID: idA, Op: OpCreate, Type: "memo", Text: "a<b>&c\xe2\x80\xa8 日本語\n2行目", Basis: 3,
-			At: &At{Path: "a.go", Line: 3, Head: "abc"},
-			V:  0, TS: "2026-09-17T04:00:00Z", Author: yamada, TTY: "3e9a0b12",
+			V: 0, TS: "2026-09-17T04:00:00Z", Author: yamada, TTY: "3e9a0b12",
 		}
 		line, err := encodeLine(want)
 		if err != nil {
@@ -163,12 +144,28 @@ func TestParseEvent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseEvent: %v", err)
 		}
-		if got.At == nil || *got.At != *want.At {
-			t.Fatalf("at: got %+v, want %+v", got.At, want.At)
-		}
-		got.At, want.At = nil, nil
 		if got != want {
 			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	// Format 1 had an "at" field (a record's location, written by --at) until
+	// mtqg removed the feature; existing lines that still carry it must keep
+	// reading fine, with every other field intact (append-only: old lines are
+	// never rewritten, and readers must not misread a field they no longer
+	// know - schema.md "Versioning").
+	t.Run("a stray at field from before the feature was removed is ignored", func(t *testing.T) {
+		line := `{"id":"` + idA + `","op":"create","type":"memo","text":"See the spec","at":{"path":"docs/spec.md","line":42,"head":"3f9a1c0"},"v":1,"ts":"2026-09-17T04:00:00Z","author":{"kind":"human","name":"yamada"}}`
+		got, err := parseEvent([]byte(line))
+		if err != nil {
+			t.Fatalf("parseEvent: %v", err)
+		}
+		want := Event{
+			ID: idA, Op: OpCreate, Type: "memo", Text: "See the spec",
+			V: 1, TS: "2026-09-17T04:00:00Z", Author: yamada,
+		}
+		if got != want {
+			t.Errorf("got %+v, want %+v (the at field should be silently dropped)", got, want)
 		}
 	})
 

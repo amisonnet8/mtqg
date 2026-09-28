@@ -27,7 +27,6 @@ const (
 	kindEmptyText         = "empty_text"
 	kindEmptyWord         = "empty_word"
 	kindInvalidText       = "invalid_text"
-	kindBadAt             = "bad_at"
 	kindInput             = "input"
 	kindEditor            = "editor"
 	kindGitUnavailable    = "git_unavailable"

@@ -63,7 +63,6 @@ type jsonRecord struct {
 	Author  jsonAuthor   `json:"author"`
 	Created string       `json:"created,omitempty"`
 	Updated string       `json:"updated,omitempty"`
-	At      *journal.At  `json:"at,omitempty"`
 	Replies []jsonRecord `json:"replies,omitzero"`
 	// Events is set only by log --events (its own lines of journal.jsonl, oldest
 	// first): every other command that produces a jsonRecord leaves it unset.
@@ -100,7 +99,6 @@ func recordJSON(r *model.Record) jsonRecord {
 		Author:  jsonAuthor{Kind: r.Author.Kind, Name: r.Author.Name},
 		Created: jsonTime(r.Created),
 		Updated: jsonTime(r.Updated),
-		At:      r.At,
 	}
 }
 

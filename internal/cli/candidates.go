@@ -165,7 +165,7 @@ func (c *ctx) candidatesAt(p position, partial string) []candidate {
 			list = idCandidates(state, idsAll, "", partial)
 		}
 	case p.pending != "":
-		// The value of another option: a number, or a path (--at), which the
+		// The value of another option: a number, or a path (-C), which the
 		// shell knows about.
 	case strings.HasPrefix(partial, "-") && !p.optsDone:
 		list = optionsAt(p)

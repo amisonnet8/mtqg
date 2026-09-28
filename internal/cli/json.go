@@ -344,10 +344,11 @@ type jsonFormatVersion struct {
 }
 
 type jsonUpgrade struct {
-	Command string `json:"command"`
-	From    int    `json:"from"`
-	To      int    `json:"to"`
-	DryRun  bool   `json:"dry_run"`
+	Command       string `json:"command"`
+	From          int    `json:"from"`
+	To            int    `json:"to"`
+	SchemaUpdated bool   `json:"schema_updated"`
+	DryRun        bool   `json:"dry_run"`
 }
 
 type jsonHelp struct {

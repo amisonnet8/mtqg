@@ -74,7 +74,8 @@
 
 ## 形式のバージョン
 
-- **形式1が確定している（2026-09-28）。** `internal/journal/version.go`の`SupportedVersion`と、`.mtqg/version`・各行の`v`の値。上げるのは`mtqg upgrade`だけで、`version`と`SCHEMA.md`を同時に書き換える（ジャーナル層の`Upgrade`。`journal.jsonl`の行には触れない）
+- **形式1が確定している（2026-09-28）。** `internal/journal/version.go`の`SupportedVersion`と、`.mtqg/version`・各行の`v`の値。上げるのは`mtqg upgrade`だけ（ジャーナル層の`Upgrade`。`journal.jsonl`の行には触れない）
+- **`.mtqg/version`は形式の互換性だけを表す。値も形式（1つの非負整数）も、形式そのものを上げるとき以外は絶対に変えない。** `internal/journal/version.go`の`readVersion`は、中身が全桁数字でなければ`VersionFileError`で**ハードエラー**にする（「形式が新しすぎる」という優雅な拒否ではない）。`X.Y.Z`のようなsemverにする案を検討したことがあるが、これが理由で退けた（2026-09-28、経緯は`docs/design/cli.md`§11.4）。**SCHEMA.mdの鮮度（下記）は、別の仕組みで扱い、`.mtqg/version`を絶対に使わない**
 - **形式を変える前に、先に`docs/reference/schema.md`（と`schema_ja.md`）を更新してから**実装する（v1確定前と変わらない原則）
 - 読むときに`version`が自分の知る番号より新しければ、読み書きとも断る
 - v1以降のルール（知らないフィールドは無視してよい変更では番号を上げない、意味が変わる変更は上げる）は`schema.md`の「Versioning」にある。フィールドを足すときはこの区別を意識すること
@@ -84,6 +85,9 @@
 
 - `.mtqg/SCHEMA.md`は、`docs/reference/schema.md`をルートの`schema.go`で埋め込み、`mtqg init`が書き出したもの。**`schema.md`が唯一の元**
 - `schema.md`は、mtqgを使うプロジェクトで初見の人やAIが読む文書でもある。mtqg本体の開発事情（層の名前、段階など）を書かない
+- **`mtqg upgrade`は、形式のバージョンを上げるときに加えて、既存の`.mtqg/SCHEMA.md`が古いときにもSCHEMA.mdだけを書き直す（2026-09-28）。** `schema.md`は形式そのものを変えずに中身が変わることがある（説明の追記・訂正など）ため、形式バージョンの上昇だけにSCHEMA.mdの書き換えを連動させると、そのまま古い内容が残り続ける（実際にこのリポジトリ自身で、`at`廃止後もしばらく`.mtqg/SCHEMA.md`が古いままになっていた）
+- **鮮度の判定は、`schema.md`のソースに静的に書いたマーカー`<!-- schema as of mtqg X.Y.Z -->`（Versioning節末尾）と、`internal/journal/version.go`の`journal.SchemaVersion`定数（手動管理、`SupportedVersion`と同じ運用）を突き合わせて行う。** `.mtqg/SCHEMA.md`のマーカーが無いか`SchemaVersion`より古ければ書き直す。新しい（新しいmtqgが書いた後、古いmtqgで`upgrade`を呼んだ）場合は触らない
+- **`schema.md`の中身を変えたら、`SchemaVersion`定数とマーカーの両方を同じ変更の中で上げること。** 2つは別々の場所にある手書きの値で、他に同期させる仕組みは無い。ズレると`TestSchemaMarkerMatchesSchemaVersion`（ルートの`schema_test.go`）が落ちる——`qsoku check`に含まれるので、コミット前に気づける
 
 ## 端末識別子（`tty`）
 

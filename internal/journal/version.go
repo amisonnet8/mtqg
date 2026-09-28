@@ -15,6 +15,14 @@ import (
 // (docs/reference/schema.md "Versioning").
 const SupportedVersion = 1
 
+// SchemaVersion is the mtqg release docs/reference/schema.md's content
+// matches, as a marker comment near the end of that file also says
+// (<!-- schema as of mtqg X.Y.Z -->). It is independent of SupportedVersion:
+// schema.md's wording can change without the format itself changing. Raise
+// this whenever schema.md's content changes, and update the marker to match
+// in the same change; a test checks the two agree.
+const SchemaVersion = "1.1.0"
+
 // maxVersionDigits keeps the number far from overflowing an int.
 const maxVersionDigits = 9
 

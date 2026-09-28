@@ -642,3 +642,19 @@ mtqg-vscode側から追加の依頼（Memo画面を「消しても跡が残る�
 - **MCPの`replyInput`型（`id`・`text`・`path`・`line`）を削除し、`qa_answer`・`bug_reply`は`edit`と同じ`idTextInput`（`id`・`text`）に統合した。** `path`・`line`を除くと2つの型は完全に同じ形になっていたため
 - **既存の`journal.jsonl`にすでに書かれた`at`は書き換えない**（4章、追記するだけ・既存行は書き換えない）。ただし`journal.Event`から`At`フィールドを消したため、パース自体は変わらず成功する一方、`show --json`等mtqgの出力からは`at`が見えなくなる（過去の記録も含めて）。生ファイルの`"at":{...}`はそのまま残る。フィールド廃止に伴う一般的な振る舞いとして許容する（人間に確認済み）
 - 形式のバージョンは上げなかった。`at`は元々`omitempty`の任意フィールドで、書かなくなっても既存の読み手が誤読することはなく、schema.md「Versioning」の「知らないフィールドを無視できる変更では番号を上げない」規則がそのまま当てはまるため（詳細は§5.5）
+
+### 11.4 SCHEMA.mdの鮮度マーカー（2026-09-28）
+
+§11.3で`docs/reference/schema.md`（`at`の記述）を変えたが、形式のバージョン（`SupportedVersion`）は上げなかったため、既存リポジトリ（このリポジトリ自身も含む）の`.mtqg/SCHEMA.md`が古いまま取り残されると人間から指摘があった。`mtqg upgrade`（`internal/journal/upgrade.go`の`Upgrade`）は`from >= to`なら何もしない実装で、SCHEMA.mdの書き換えが形式バージョンの上昇だけに連動していたのが原因。
+
+最初に検討したのは`.mtqg/version`自体を`X.Y.Z`のようなsemverにし、`X`を形式の互換性（従来の役割）、`Y.Z`をSCHEMA.mdの鮮度に使う案だった。しかし`internal/journal/version.go`の`readVersion`を読むと、`.mtqg/version`の中身が全桁数字でなければ`VersionFileError`で**ハードエラー**になる（「形式が新しすぎる」という優雅な拒否ではない）ことが分かり、この形式を変えるだけで既存の全バイナリを壊しかねないため退けた。**`.mtqg/version`はファイルの形式・値とも一切変えない**という判断はここから来ている。
+
+代わりに、`.mtqg/SCHEMA.md`の書き換えを形式バージョンから切り離し、SCHEMA.md自体に「どのmtqgの版の内容か」を示すマーカー`<!-- schema as of mtqg X.Y.Z -->`を持たせる設計にした：
+
+- マーカーは`docs/reference/schema.md`のソースに**静的に**書く（Versioning節末尾）。`mtqg upgrade`が書き込み時に動的生成するのではなく、`.mtqg/SCHEMA.md`は今まで通り埋め込んだ中身をそのまま書くだけで、マーカーも自然に付いてくる（人間の提案、2026-09-28：「末尾にマーカー行を付ける、ではなくschema.mdそのままでもいいような」）
+- コード側に`journal.SchemaVersion`（手動管理の定数、`SupportedVersion`と同じ運用）を置き、**テスト（`TestSchemaMarkerMatchesSchemaVersion`）でマーカーと定数の一致を機械的に確認する**（人間の提案：「ビルドする時にschema.mdとコードの定数が一致しているかチェックする」。実質は`qsoku check`に含まれるテスト）。`schema_ja.md`は`.mtqg/SCHEMA.md`として埋め込まれないため、この定数と自動で同期させる対象には含めなかった（対応する説明文だけ追記した）
+- `mtqg upgrade`は、既存`.mtqg/SCHEMA.md`のマーカーが無いか`SchemaVersion`より古ければSCHEMA.mdだけ書き直す（形式は変えない）。マーカーが新しい場合（新しいmtqgが書いた後、古いmtqgでupgradeを呼んだ場合）は触らない——古いバイナリが新しい文書を巻き戻さないため
+- 比較は`X.Y.Z`を3整数として数値比較する（`"1.9.0" < "1.10.0"`のような桁跨ぎで文字列比較が誤る問題を避ける）。`.mtqg/version`とは異なるフィールドなので、依存を増やさず自前で書いた
+- 何も書き込む必要が無いとき（形式もSCHEMA.mdの鮮度も変わらない）は、`journal.jsonl`の衝突マーカーチェックを行わない。既存の「upgradeは書き込みがあるときだけ衝突マーカーを拒否理由にする」という契約を保つため
+
+mutation-check（Skill）を実施：9個の変異中7個killed、2個SURVIVED。生き残った2個はどちらも「本当に同じ意味で区別できない」と判断してそのまま残した——詳細は`.claude/rules/testing.md`「mtqg固有の検証項目」に記録

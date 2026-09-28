@@ -145,6 +145,7 @@ $ mtqg memo list --json
 | `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む。`log --events`はその記録自身のものだけ） |
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
+| `upgrade` | `from`、`to`：形式のバージョン、前後（変わらなければ同じ）、`schema_updated`：`SCHEMA.md`を書き直した（`-n`なら書き直すはずだった）か、`dry_run` |
 | `version` | `mtqg`：バージョン、`format`：`{"repository": Nまたはnull, "supported": N}`（`.mtqg/`がなければ`null`） |
 | `completion` | `shell`：頼まれたシェル、`script`：スクリプト |
 | `candidates` | `candidates`：それぞれ`{"value", "description"}`（テキストの形と同じ順。`description`は、なければ省く）、`count` |
@@ -1127,7 +1128,7 @@ $ mtqg upgrade
 Unchanged: format 1
 ```
 
-すでにこのmtqgが対応する番号のリポジトリは、そう言って何も変えない（終了コード0）。遅れているリポジトリは、上げた内容を`-n`と実際の実行の両方で言う：
+すでにこのmtqgが対応する番号のリポジトリで、`SCHEMA.md`もこのmtqgの版に合っていれば、そう言って何も変えない（終了コード0）。形式が遅れているリポジトリは、上げた内容を`-n`と実際の実行の両方で言う：
 
 <!-- mtqg:example skip="depends on the repository's format version" -->
 ```
@@ -1137,7 +1138,17 @@ $ mtqg upgrade
 Upgraded: format 0 -> 1
 ```
 
-- 変わるのは`.mtqg/version`と`.mtqg/SCHEMA.md`だけ。記録は1件も触らず、順序も変わらず、失われない
+`SCHEMA.md`は、それ自身のマーカーも持つ（[schema_ja.md](schema_ja.md#バージョン)を参照）。形式のバージョンとは別物。形式はすでに最新でも、`SCHEMA.md`がこのmtqgの版より古ければ（このmtqgの版になってから一度も`upgrade`していないリポジトリなど）、`SCHEMA.md`だけ書き直す：
+
+<!-- mtqg:example skip="depends on the repository's SCHEMA.md marker" -->
+```
+$ mtqg upgrade -n
+Updated (dry run): SCHEMA.md (format 1 unchanged)
+$ mtqg upgrade
+Updated: SCHEMA.md (format 1 unchanged)
+```
+
+- 変わるのは`.mtqg/version`と`.mtqg/SCHEMA.md`だけで、`.mtqg/version`が変わるのは形式そのものを上げるときだけ。記録は1件も触らず、順序も変わらず、失われない
 - `journal.jsonl`に衝突マーカーが残っている間は、書き込みと同じ理由で断る（[schema_ja.md](schema_ja.md#journaljsonlの衝突を解決する)を参照）
 - `archive`と同じく記録者を要らない：イベントを1つも書かないため
 

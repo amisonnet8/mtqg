@@ -576,6 +576,14 @@ func msgUpgradeUnchanged(version int) string {
 	return fmt.Sprintf("Unchanged: format %d", version)
 }
 
+func msgSchemaUpdated(version int, dryRun bool) string {
+	label := "Updated"
+	if dryRun {
+		label += " (dry run)"
+	}
+	return fmt.Sprintf("%s: SCHEMA.md (format %d unchanged)", label, version)
+}
+
 // context
 
 // contextGuide tells the agent what it is reading and what to do with it.

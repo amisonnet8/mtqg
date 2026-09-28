@@ -244,6 +244,14 @@ rm .mtqg/archive/2021-01-01..2024-09-18.jsonl
   upgrade` raised it to `1` without touching any line; a line's own `v` is
   still read as written (a line with `v:0` means the same thing a line with
   `v:1` does). `0` will not be reused.
+- `SCHEMA.md` also carries a marker comment naming the mtqg release its content
+  matches (below). This is separate from the format version: `SCHEMA.md` can
+  change (a field's description gets clearer, a section is added) without the
+  format itself changing. `mtqg upgrade` rewrites `SCHEMA.md` from this
+  document whenever that marker is missing or older than the release this
+  mtqg was built from, even if the format version does not change.
+
+<!-- schema as of mtqg 1.1.0 -->
 
 ## Writing rules
 

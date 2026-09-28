@@ -166,6 +166,7 @@ What each command prints, after `command`:
 | `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply; `log --events` gives only a record's own) |
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
+| `upgrade` | `from`, `to`: the format version before and after (equal if unchanged); `schema_updated`: whether `SCHEMA.md` was (or, with `-n`, would be) rewritten; `dry_run` |
 | `version` | `mtqg`: the version; `format`: `{"repository": N or null, "supported": N}` (`null` where there is no `.mtqg/`) |
 | `completion` | `shell`: the shell that was asked for; `script`: the script |
 | `candidates` | `candidates`: `{"value", "description"}` for each, in the order of the text form (`description` is left out if there is none), `count` |
@@ -1379,9 +1380,10 @@ $ mtqg upgrade
 Unchanged: format 1
 ```
 
-A repository already at the version this mtqg supports says so and changes
-nothing (exit code 0). One that is behind says what it raised, once with `-n`
-and once for real:
+A repository already at the version this mtqg supports, with `SCHEMA.md`
+already matching this mtqg's release, says so and changes nothing (exit code
+0). One whose format is behind says what it raised, once with `-n` and once
+for real:
 
 <!-- mtqg:example skip="depends on the repository's format version" -->
 ```
@@ -1391,8 +1393,22 @@ $ mtqg upgrade
 Upgraded: format 0 -> 1
 ```
 
-- Only `.mtqg/version` and `.mtqg/SCHEMA.md` change. No record is touched,
-  reordered or lost.
+`SCHEMA.md` also carries its own marker (see
+[schema.md](schema.md#versioning)), independent of the format version. A
+repository whose format is already current, but whose `SCHEMA.md` predates
+this mtqg's release (for example, a repository that has not run `upgrade`
+since before this mtqg's version), gets `SCHEMA.md` rewritten on its own:
+
+<!-- mtqg:example skip="depends on the repository's SCHEMA.md marker" -->
+```
+$ mtqg upgrade -n
+Updated (dry run): SCHEMA.md (format 1 unchanged)
+$ mtqg upgrade
+Updated: SCHEMA.md (format 1 unchanged)
+```
+
+- Only `.mtqg/version` and `.mtqg/SCHEMA.md` change, and `.mtqg/version` only
+  when the format itself is raised. No record is touched, reordered or lost.
 - Refused the same way a write is while `journal.jsonl` holds conflict markers
   (see [schema.md](schema.md#resolving-a-conflict-in-journaljsonl)).
 - Needs no author, the same as `archive`: it writes no event to the journal.

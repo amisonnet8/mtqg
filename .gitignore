@@ -5,3 +5,24 @@
 
 # Personal Claude Code settings
 /.claude/settings.local.json
+
+# Dummy /dev/null devices that the Bash sandbox's write protection (denyWithinAllow)
+# leaves in the working directory (.claude/rules/testing.md). Root only.
+/.bash_profile
+/.bashrc
+/.gitconfig
+/.gitmodules
+/.idea
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc
+/.claude/agents
+/.claude/commands
+/.claude/launch.json
+/.claude/loop.md
+/.claude/output-styles
+/.claude/routines
+/.claude/scheduled_tasks.json
+/.claude/workflows

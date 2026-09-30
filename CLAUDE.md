@@ -84,10 +84,11 @@
 
 ## 権限・自動化について
 
-`.claude/settings.json`（人間が管理する）により、次の設定になっている。
+`.claude/settings.json`（人間が管理する）により、次の設定になっている（2026-09-30、Bashサンドボックス導入に伴い改定）。
 
-- 拒否（deny）：`git push`
-- 実行前に確認（ask）：`git reset --hard`、`git clean`、`curl`・`wget`、`go get`、`sudo`
+- 拒否（deny）：`git push`、`gh pr merge`、`gh release create`
+- 実行前に確認（ask）：`git reset --hard`、`git clean`、`sudo`、`gh pr create`
+- **Bashコマンドは既定でOSレベルのサンドボックス（Linux bubblewrap）内で実行される。** ファイルシステムの書き込み先（`~/.cache/go-build`・`~/go`・`~/.cache/trivy`）とネットワーク接続先（`proxy.golang.org`・`sum.golang.org`・`mirror.gcr.io`・`github.com`・`api.github.com`）は許可リストで絞られている。この範囲内なら`curl`・`wget`・`go get`などは確認なしに実行できる（askの対象から外れた理由はこれ）。リストに無い宛先は`sandbox_violations`として拒否されるので、必要な宛先を伝えて指示を仰ぐこと（許可を広げるかはこちらが判断しない）。落とし穴は`.claude/rules/testing.md`「Bashサンドボックスの落とし穴」参照
 
 確認を求められた場合、無理に実行しようとせず、指示を仰ぐこと。`.claude/settings.json`を変更したいときは、変更案を提案するにとどめること。
 

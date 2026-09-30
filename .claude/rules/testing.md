@@ -133,6 +133,16 @@
 - CIでは`race`を別ジョブにし、`ubuntu-latest`・`macos-latest`に限る（`windows-latest`には標準でCコンパイラがない）
 > **出所:** 別プロジェクト SanDBox の運用を引き継いだもの。
 
+## Bashサンドボックスの落とし穴
+
+> devcontainer内でClaude Codeが実行するBashコマンドは、既定でOSレベルのサンドボックス（Linux bubblewrap）にかかる。`.claude/settings.json`の`sandbox`でファイルシステムの書き込み先とネットワーク接続先を許可リストで絞っている（2026-09-30導入）。**設定の経緯・判断は人間が持つ**（CLAUDE.md「権限・自動化について」）。ここは、その設定の下で`qsoku check`・`qsoku test`・`qsoku race`・`qsoku shellcheck`・`qsoku trivy`を実際に動かして見つかった、mtqg固有の落とし穴の記録。
+
+- **Trivyの脆弱性DBの取得先は`ghcr.io`ではなく`mirror.gcr.io`（`mirror.gcr.io/aquasec/trivy-db:2`）。** 名前から`ghcr.io`（GitHub Container Registry）を許可すればよいと思い込むと、`qsoku trivy`が`sandbox_violations`で失敗する。実際に動かして初めて分かった（サンドボックスが拒否したホスト名がそのままエラーに出る）
+- **Trivyの脆弱性DBは`~/.cache/trivy`に書き込む。** サンドボックスの`filesystem.allowWrite`にこれが無いと、ネットワークを許可してもダウンロード後の書き込みで`read-only file system`になる
+- **`check.trivy.dev`への接続はTrivyのバージョン確認機能で、許可リストに無くても`qsoku trivy`の結果・終了コードには影響しない。** `sandbox_violations`として警告は出るが、スキャン自体（脆弱性・ライセンスのレポート）は正常に完了し終了コード0になる。実害のない拒否なので、許可リストに足すかは任意
+- **`git fetch`・`git pull`（リモートのgithub.comへの読み取り）と`gh pr create`には`github.com`・`api.github.com`への許可が要る。** mtqgの運用ルールで禁止しているのは`git push`だけなので、fetch/pullはask・denyどちらにも入らず素通りする想定だが、サンドボックスのネットワーク許可が無いと接続自体がブロックされる
+- **サンドボックスの書き込み保護（`filesystem.write.denyWithinAllow`）が、作業ディレクトリ直下に`.bashrc`・`.gitconfig`・`.claude/agents`などのダミーファイルを出現させることがある。** `git status`に大量の未追跡ファイルとして見えて驚くが、`ls -la`で見ると`crw-rw-rw-`のキャラクタデバイス（`/dev/null`相当）で、`mount`で見ると`devtmpfs`由来。本来ホームディレクトリ側のパスを指す保護対象が、作業ディレクトリ基準で解決されてしまったものと見られる。中身は空で、未追跡のままなのでコミットには影響しない（`git add`しない限り無害）。mtqgの実装やこのリポジトリの状態には起因しない、サンドボックス機構側の挙動
+
 ## GitHub Actions CIの落とし穴
 
 > **出所:** 別プロジェクト（ExecDB・SanDBox）で、初回push後にCI上でのみ顕在化した事象。mtqgも同じ構成（3OSのホステッドランナー）を採るため、あらかじめ対処しておく。

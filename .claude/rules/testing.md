@@ -12,7 +12,7 @@
 | クロスプラットフォーム（Windows・macOS） | 開発初期からGitHub Actionsの3OSマトリクスで回す。**ロックの実装がOSで分かれる**（`flock`と`LockFileEx`）ため、後回しにしない |
 | 依存の脆弱性・ライセンス | `trivy`（下記） |
 | シェルスクリプト | `shellcheck`（下記） |
-| シェル補完（bash・zsh・fish・PowerShell） | 4つとも**devcontainerに入れてある**（`postCreate.sh`。pwshはLinux版）。補完スクリプトは本物のシェルで動かして確かめる（下記「シェル補完」） |
+| シェル補完（bash・zsh・fish・PowerShell） | 4つとも**devcontainerに入れてある**（bashとzshはベースイメージ、fishは`postCreate.sh`のapt、pwshは`devcontainer.json`のfeature `powershell`。pwshはLinux版）。補完スクリプトは本物のシェルで動かして確かめる（下記「シェル補完」） |
 
 ## 実装後の動作確認
 

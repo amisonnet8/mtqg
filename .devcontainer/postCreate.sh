@@ -2,20 +2,25 @@
 set -euo pipefail
 
 # wget, gnupg,
-# lsb-release:    Adding the Trivy and GitHub CLI apt repositories below.
+# lsb-release:    Adding the Trivy apt repository below.
 # gcc:            qsoku race (CGO_ENABLED=1 go test -race) needs a C compiler.
 #                 The container itself runs with CGO_ENABLED=0 (.claude/rules/distribution.md).
 # jq:             Inspecting journal.jsonl and --json output while debugging.
 # ShellCheck:     Static analysis of tracked *.sh and *.bash files (qsoku shellcheck, .claude/rules/testing.md).
 #                 Comment lines must not start with the lowercase directive word,
 #                 or ShellCheck parses them as directives (SC1072/SC1073).
-# zsh, fish:      Two of the four shells that mtqg completion has a script for (the scripts
-#                 are run by the real shells in e2e/completion_test.go; bash is there already,
-#                 and PowerShell is installed below), and two of the four shells qsoku's own
-#                 shell integration supports (bash, zsh, fish, pwsh -- qsoku v0.2.0 added pwsh;
-#                 qsokufile commands themselves still always run under sh regardless).
+# fish:           One of the four shells that mtqg completion has a script for (the scripts
+#                 are run by the real shells in e2e/completion_test.go), and one of the four
+#                 shells qsoku's own shell integration supports (bash, zsh, fish, pwsh -- qsoku
+#                 v0.2.0 added pwsh; qsokufile commands themselves still always run under sh
+#                 regardless). The other three come from elsewhere: bash and zsh are in the
+#                 base image, and PowerShell is the "powershell" feature in devcontainer.json.
+# gh:             GitHub CLI (issues, pull requests, Actions runs) is the "github-cli" feature
+#                 in devcontainer.json, not installed here. Both features are left unpinned
+#                 (no "version" option): each rebuild installs the latest release, as the
+#                 apt installs did before (decision, 2026-10-01).
 sudo apt-get update
-sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck zsh fish
+sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck fish
 
 # Trivy: known vulnerabilities (CVE) and license compatibility of dependencies
 # (qsoku trivy, .claude/rules/testing.md). Installed from the official apt repository.
@@ -23,22 +28,6 @@ wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dear
 echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list >/dev/null
 sudo apt-get update
 sudo apt-get install -y trivy
-
-# PowerShell (pwsh): the fourth shell of the completion scripts (e2e/completion_test.go).
-# Installed from the Microsoft apt repository (same pattern as Trivy).
-wget -qO - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/microsoft-prod.gpg >/dev/null
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/$(lsb_release -rs)/prod $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/microsoft-prod.list >/dev/null
-sudo apt-get update
-sudo apt-get install -y powershell
-
-# gh: GitHub CLI, for checking issues, pull requests and Actions runs.
-# Installed from the official apt repository (same pattern as Trivy).
-sudo mkdir -p -m 755 /etc/apt/keyrings
-wget -qO - https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
-sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-sudo apt-get update
-sudo apt-get install -y gh
 
 # golangci-lint: lint (qsoku check, .golangci.yaml). The official install script
 # puts the binary into GOPATH/bin. The version is pinned so that lint results

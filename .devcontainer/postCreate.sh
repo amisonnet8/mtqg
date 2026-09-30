@@ -30,11 +30,27 @@ sudo apt-get update
 sudo apt-get install -y trivy
 
 # The Bash sandbox (.claude/settings.json) only honours an allowWrite path that
-# already exists, and ~/.cache itself is read-only there. Create the cache
-# directories of golangci-lint and Trivy up front, or the first qsoku lint /
-# qsoku trivy in a fresh container fails with "read-only file system"
-# (.claude/rules/testing.md).
-mkdir -p ~/.cache/golangci-lint ~/.cache/trivy
+# already exists, and ~/.cache itself is read-only there. Create every
+# filesystem.allowWrite path up front, or the first qsoku lint / qsoku trivy in
+# a fresh container fails with "read-only file system" (.claude/rules/testing.md).
+# The list is read from settings.json, so this block needs no change when
+# allowWrite does, and it is project-independent. "~/x" and "$HOME/x" are created
+# under the home directory; other absolute paths (e.g. /go) are created if they do
+# not exist yet, and a failure only warns (no sudo is used). Relative paths, "."
+# and $TMPDIR, and the special paths /dev, /proc and /sys are left alone.
+sandbox_settings="$(dirname "$0")/../.claude/settings.json"
+tilde='~'
+if [ -f "$sandbox_settings" ]; then
+  while IFS= read -r allow_path; do
+    case "$allow_path" in
+      "$tilde/"*) allow_path="$HOME/${allow_path#"$tilde/"}" ;;
+      /dev/* | /proc/* | /sys/*) continue ;;
+      /*) ;;
+      *) continue ;;
+    esac
+    mkdir -p "$allow_path" || echo "warning: cannot create allowWrite path $allow_path" >&2
+  done < <(jq -r '.sandbox.filesystem.allowWrite[]?' "$sandbox_settings")
+fi
 
 # golangci-lint: lint (qsoku check, .golangci.yaml). The official install script
 # puts the binary into GOPATH/bin. The version is pinned so that lint results

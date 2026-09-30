@@ -29,6 +29,13 @@ echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.
 sudo apt-get update
 sudo apt-get install -y trivy
 
+# The Bash sandbox (.claude/settings.json) only honours an allowWrite path that
+# already exists, and ~/.cache itself is read-only there. Create the cache
+# directories of golangci-lint and Trivy up front, or the first qsoku lint /
+# qsoku trivy in a fresh container fails with "read-only file system"
+# (.claude/rules/testing.md).
+mkdir -p ~/.cache/golangci-lint ~/.cache/trivy
+
 # golangci-lint: lint (qsoku check, .golangci.yaml). The official install script
 # puts the binary into GOPATH/bin. The version is pinned so that lint results
 # do not change when the container is rebuilt; .golangci.yaml was verified with it.

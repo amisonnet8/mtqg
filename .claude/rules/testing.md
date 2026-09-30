@@ -139,9 +139,11 @@
 
 - **Trivyの脆弱性DBの取得先は`ghcr.io`ではなく`mirror.gcr.io`（`mirror.gcr.io/aquasec/trivy-db:2`）。** 名前から`ghcr.io`（GitHub Container Registry）を許可すればよいと思い込むと、`qsoku trivy`が`sandbox_violations`で失敗する。実際に動かして初めて分かった（サンドボックスが拒否したホスト名がそのままエラーに出る）
 - **Trivyの脆弱性DBは`~/.cache/trivy`に書き込む。** サンドボックスの`filesystem.allowWrite`にこれが無いと、ネットワークを許可してもダウンロード後の書き込みで`read-only file system`になる
+- **golangci-lintのキャッシュは`~/.cache/golangci-lint`に書き込む。** `filesystem.allowWrite`にこれが無いと、`qsoku lint`・`qsoku check`が`Failed to persist facts to cache ... read-only file system`の警告を出す。結果（`0 issues`）と終了コードには影響せず、キャッシュが効かなくなるだけ（2026-10-01、`template/`の動作確認中に気づいた。mtqg本体でも`allowWrite`に足した）
 - **`check.trivy.dev`への接続はTrivyのバージョン確認機能で、許可リストに無くても`qsoku trivy`の結果・終了コードには影響しない。** `sandbox_violations`として警告は出るが、スキャン自体（脆弱性・ライセンスのレポート）は正常に完了し終了コード0になる。実害のない拒否なので、許可リストに足すかは任意
 - **`git fetch`・`git pull`（リモートのgithub.comへの読み取り）と`gh pr create`には`github.com`・`api.github.com`への許可が要る。** mtqgの運用ルールで禁止しているのは`git push`だけなので、fetch/pullはask・denyどちらにも入らず素通りする想定だが、サンドボックスのネットワーク許可が無いと接続自体がブロックされる
 - **サンドボックスの書き込み保護（`filesystem.write.denyWithinAllow`）が、作業ディレクトリ直下に`.bashrc`・`.gitconfig`・`.claude/agents`などのダミーファイルを出現させることがある。** `git status`に大量の未追跡ファイルとして見えて驚くが、`ls -la`で見ると`crw-rw-rw-`のキャラクタデバイス（`/dev/null`相当）で、`mount`で見ると`devtmpfs`由来。本来ホームディレクトリ側のパスを指す保護対象が、作業ディレクトリ基準で解決されてしまったものと見られる。中身は空で、未追跡のままなのでコミットには影響しない（`git add`しない限り無害）。mtqgの実装やこのリポジトリの状態には起因しない、サンドボックス機構側の挙動
+- **サブディレクトリで一時的に`git init`して使い、後で`.git`を消す手順（例：サブディレクトリに対して`mtqg init`を走らせるためだけの使い捨てリポジトリ）は、上と同根の保護パス誤解決と衝突することがある。** `~/.gitconfig`保護が作業ディレクトリ相対に解決され、その使い捨てリポジトリの`<サブディレクトリ>/.git/config`がread-onlyでbind mountされてしまい、`rm`・`mv`のどちらでも「デバイスもしくはリソースがビジー状態」で削除できなくなる（2026-09-30、`template/`作成時に遭遇。mtqgのbug `fec4be3f47`）。作業ディレクトリを変えて再試行しても再発する。Bash側では回避策が無く、人間にサンドボックス外での削除を依頼するしかない
 
 ## GitHub Actions CIの落とし穴
 

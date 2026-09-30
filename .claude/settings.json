@@ -42,7 +42,7 @@
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "allowWrite": ["~/.cache/go-build", "~/go", "~/.cache/trivy"],
+      "allowWrite": ["~/.cache/go-build", "~/go", "~/.cache/trivy", "~/.cache/golangci-lint"],
       "denyRead": ["~/.ssh", "~/.aws", "~/.config/gh"]
     },
     "network": {

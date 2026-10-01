@@ -22,6 +22,18 @@ set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck fish
 
+# The Bash sandbox (.claude/settings.json "sandbox") needs bubblewrap (bwrap)
+# and socat on Linux; without them it silently stays off even with
+# "enabled": true. Install only what is missing, since some base images
+# already have them. Project-independent (.claude/rules/testing.md).
+missing_sandbox_deps=()
+command -v bwrap >/dev/null 2>&1 || missing_sandbox_deps+=(bubblewrap)
+command -v socat >/dev/null 2>&1 || missing_sandbox_deps+=(socat)
+if [ "${#missing_sandbox_deps[@]}" -gt 0 ]; then
+  sudo apt-get update
+  sudo apt-get install -y "${missing_sandbox_deps[@]}"
+fi
+
 # Trivy: known vulnerabilities (CVE) and license compatibility of dependencies
 # (qsoku trivy, .claude/rules/testing.md). Installed from the official apt repository.
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg >/dev/null

@@ -1,6 +1,6 @@
 # mtqg 設計文書
 
-mtqg（memo / todo / qa / bug / glossary / rule）の設計判断と、その理由の記録。日本語のみ（英語版は作らない）。bugは2026-09-21に足した5つ目の種類、ruleは2026-09-25に足した6つ目の種類で、それ以前の文書はそれぞれの種類が無かった時点で書かれている（`history.md`）。
+mtqg（memo / todo / qa / bug / glossary / rule）の今の設計と、その判断の理由。日本語のみ（英語版は作らない）。
 
 旧称：tdmqa（ToDoMemoQA）→ tmqg → mtqg。名前の由来と順序の意味は§3。
 
@@ -14,8 +14,9 @@ mtqg（memo / todo / qa / bug / glossary / rule）の設計判断と、その理
 ## 位置づけ
 
 - ここにあるのは「**なぜこうなっているか**」の記録。**現在の仕様（何をするか）は `docs/reference/` が正**であり、食い違う場合は reference に従う
-- 設計判断を変えるときは、まず `docs/reference/` を更新する。ここは経緯として残し、判断が大きく変わった場合だけ該当節に追記する（書き換えて過去の理由を消さない）
-- 段階4（`PLAN.md`）以降、mtqg自身の経緯は `.mtqg/` に記録される。ここは「mtqgを使い始める前の設計の記録」という位置づけで、あまり増えない
+- 設計判断を変えるときは、まず `docs/reference/` を更新する。判断の理由が大きく変わる場合は、該当節を今の設計に合わせて直す
+- ここには**今の設計**を書く。経緯は、前のやり方に戻すと同じ問題がまた起きるものだけを書き、それ以外の経緯は `.mtqg/` に記録する（`.claude/rules/documentation.md`）
+- 段階4（`PLAN.md`）以降、mtqg自身の経緯は `.mtqg/` に記録される
 - 計画・進捗・未決事項は `PLAN.md` にある
 
 ## 節番号
@@ -32,7 +33,6 @@ mtqg（memo / todo / qa / bug / glossary / rule）の設計判断と、その理
 | [`06-implementation.md`](06-implementation.md) | §10 実装方針（言語、コアの構成、表示の言語、文書とリポジトリの構成、テスト、配布） |
 | [`07-integrations.md`](07-integrations.md) | §11 外部ツール連携（MCP、フック、VSCode拡張） |
 | [`08-development.md`](08-development.md) | §12 開発の進め方、§13 先行事例 |
-| [`cli.md`](cli.md) | CLI設計（旧「CLI検討案」、CLI設計§1〜§10） |
-| [`history.md`](history.md) | 改訂履歴（決めたことの時系列） |
+| [`cli.md`](cli.md) | CLI設計（CLI設計§1〜§11） |
 
 旧「構想メモ」§14（未検討・今後詰める事項）は `PLAN.md` に移した。

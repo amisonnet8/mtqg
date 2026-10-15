@@ -148,6 +148,8 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 現在地
 
+**各PJ共通のルールに揃えた（2026-10-15、人間の依頼）。** 人間がルールを共通化し（bcuzで全コマンドを記録・srwrの厳格モード・道具は`@latest`・`documentation.md`・`working-with-human.md`・`datetime.md`など）、それに合わせて実装・文書・設定を追随させた。①golangci-lintを`@latest`にしたら、`internal/journal/find.go`の`.mtqg/`の探索がgosec G703で落ちたので、1階層ずつ`os.Root`で見る形に直した（`.mtqg`自体が外を指すリンクならエラー。bug `a322108cd4`、質問`cad1cae53f`）。②`docs/design/`を「今の設計」だけにした：`history.md`を廃止し、各章の日付つきの経緯・実装記録・廃止した設計（記録元ID、`<git-dir>/mtqg/`、`at`など）を今の設計に書き直し、戻すと再発する理由だけを残した（質問`d7513dd9a8`）。**このPLAN.mdの中の`docs/design/history.md`への参照は、廃止前のコミット`da1ada5`の版で読める**（`git show da1ada5:docs/design/history.md`）。③`working-with-human.md`4章に、mtqgでの対象と資料の置き場所（`q add`の本文）を書き足した。④CIの`shellcheck`ジョブで`qsoku hook`（bcuzを強制するフックの判定表）も回すようにした。⑤mutation-checkのSKILL.mdの例をbcuzの形に直した（gen-mutantsのビルド例がもともと動かなかったのも直した。bug `9f40ef5250`）。
+
 **`v1.1.0`をpush・公開した（2026-09-28、人間の作業）。CI green。** 内容は`--at`廃止（下記段落）とSCHEMA.mdの鮮度マーカー（直後の段落）の2つ。ドキュメントの見直し中に`docs/design/03-data-model.md`§5.3の「SCHEMA.mdを書き換えるのはinitと形式を上げるときだけ」という記述が今回の変更で不正確になっていたのを追記で直し（コミット`49e5363`）、タグをそのコミットへ付け直してからpushした。**mtqg本体側は完了。** qsoku・mtqg-vscode側は、`go install github.com/amisonnet8/mtqg/cmd/mtqg@v1.1.0`への入れ替えと`mtqg upgrade`の実行を、各リポジトリの作業として案内する。
 
 **SCHEMA.mdの鮮度マーカーを実装した（2026-09-28）。** 直前の`at`廃止（下記の段落）で`docs/reference/schema.md`の中身が変わったが、形式のバージョンは上げなかったため、既存リポジトリ（このリポジトリ自身も含む）の`.mtqg/SCHEMA.md`が古いまま取り残されると人間から指摘があった。原因は`mtqg upgrade`のSCHEMA.md書き換えが形式バージョンの上昇だけに連動していたこと。`.mtqg/version`自体を`X.Y.Z`にする案は、`readVersion`が全桁数字以外をハードエラーにするため退け（既存バイナリを壊す）、代わりに`docs/reference/schema.md`のソースに静的マーカー`<!-- schema as of mtqg 1.1.0 -->`（Versioning節末尾）を書き、`internal/journal/version.go`に手動管理の`journal.SchemaVersion`定数を置いて、両者の一致を**テストで機械的に確認する**設計にした（人間の提案：「schema.mdそのままでいい」「ビルドする時にschema.mdとコードの定数が一致しているかチェックする」）。`mtqg upgrade`は、形式が変わらなくてもSCHEMA.mdのマーカーが古ければSCHEMA.mdだけ書き直す（`.mtqg/version`には一切触れない）。実装・テスト・mutation-check（9個、7 killed・2 SURVIVED、どちらも等価変異と判断）まで完了、`qsoku check`・`test`・`race`・`docs-examples`すべてgreen。**このリポジトリ自身の`.mtqg/SCHEMA.md`も`mtqg upgrade`で最新化し、`docs/reference/schema.md`と完全一致することを確認済み。** 設計の詳細は`docs/design/cli.md`§11.4。人間の判断で`v1.1.0`タグに含めることになり（`--at`廃止と合わせて1つのリリースに）、上記のとおりpush・公開済み。
@@ -367,7 +369,7 @@ qsoku（段階2）とのやり取りの中で、人間とClaude Codeの対話か
 
 ## 保留事項
 
-- **`PostToolUse`フックは反映済み（2026-09-20）。** `.claude/hooks/build.sh`が、`.go`・`go.mod`・`go.sum`の編集後に`make build`を実行し、失敗時は終了コード2で理由をClaudeへ返す。スクリプトはShellCheckの対象（`make shellcheck`。追跡されているので自動で拾われる）。複数ファイルにまたがる編集の途中は、まだ書いていないファイルを参照してビルドが一時的に失敗し、その通知が出る点に注意。`.claude/settings.json`は人間が管理するので、今後の変更は原則として提案にとどめる（今回は人間が明示的に許可した）
+- **`PostToolUse`フックは反映済み（2026-09-20。2026-10-15からsrwrの厳格モードに合わせ、対象をsrwrの`edit`・`new`に変えた）。** `.claude/hooks/build.sh`が、srwrの`edit`・`new`で`.go`・`go.mod`・`go.sum`を変えたあとに`qsoku build`を実行し、失敗時は終了コード2で理由をClaudeへ返す。スクリプトはShellCheckの対象（`qsoku shellcheck`。追跡されているので自動で拾われる）。複数ファイルにまたがる編集の途中は、まだ書いていないファイルを参照してビルドが一時的に失敗し、その通知が出る点に注意。`.claude/settings.json`は人間が管理するので、変更は差分で示すにとどめる
 - **`ubuntu-latest`がUbuntu 26.04に移行する（2026-10-19開始、11-19完了。段階的）。** 今は対応しない：警告だけでCIは通っており、移行期間中にCIが自動で新しいイメージで動く。`ubuntu-latest`を前提にしているのは`.github/workflows/ci.yml`と`.claude/rules/testing.md`。**10月中旬に見直すこと。** 移行期間中にCIが落ちたら、`ubuntu-24.04`に一時的に固定して原因を調べ、直してから戻す。影響を受けそうなのは、`shellcheck`ジョブが使うプリインストールの`shellcheck`と、`race`が使う`gcc`（移行の告知にこれらのバージョン変更の記載は無く、変わらないとも言えない）。`ubuntu-26.04`のラベルは今でも使える。出典：actions/runner-images#14748
 - **devcontainer.json反映待ちリスト**：コンテナをリビルドせずに進める間、手動でインストール・設定したものはここに追記し、区切りでまとめて`.devcontainer/`へ反映する
   - （なし）

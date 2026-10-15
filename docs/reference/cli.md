@@ -239,6 +239,12 @@ mtqg never looks above the repository root. Outside a git repository it stops
 with an error. There is one `.mtqg/` per git repository; a submodule has its
 own.
 
+`.mtqg` may be a symbolic link to a directory within the directory that holds
+it. A `.mtqg` that leads outside that directory is an error, not a `.mtqg/` to
+use, so that a cloned repository cannot make mtqg read or write outside it. The
+starting directory must be readable. A directory above it that mtqg has no
+permission to open is passed over as having neither `.mtqg/` nor `.git`.
+
 <!-- mtqg:example repo=none path=/home/me/sample-parser -->
 ```
 $ mtqg t add Add tests for comment handling

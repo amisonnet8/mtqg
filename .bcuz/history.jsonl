@@ -55,3 +55,12 @@
 {"v":1,"ts":"2026-10-15T18:01:54.086Z","why":"2つ目のコミットに入るものと残るものを確かめるため","cmd":["git","status","--short"],"dir":".","exit":0,"ms":3}
 {"v":1,"ts":"2026-10-15T18:01:57.674Z","why":"フックをgit addして追跡対象になったので、コミット前にqsokuの名前でShellCheckを通すため","cmd":["qsoku","shellcheck"],"dir":".","exit":0,"ms":247}
 {"v":1,"ts":"2026-10-15T18:02:13.311Z","why":"3つ目のコミット（docs/designの整理と記録）に入れるファイルを選ぶため","cmd":["git","add","-A","docs/design","PLAN.md",".mtqg/journal.jsonl",".srwr/tapes/20261015-1145-nxwf.tape.jsonl.gz"],"dir":".","exit":0,"ms":10}
+{"v":1,"ts":"2026-10-15T22:38:05.803Z","why":"v1.1.1 が要るか判断するため、v1.1.0 以降のコミットを見る","cmd":["git","log","--oneline","--stat","v1.1.0..HEAD"],"dir":".","exit":0,"ms":13}
+{"v":1,"ts":"2026-10-15T22:38:12.295Z","why":"製品に効く唯一の変更の中身を見て、利用者への影響を判断する","cmd":["git","show","d2f1693","--","internal/journal/find.go"],"dir":".","exit":0,"ms":2}
+{"v":1,"ts":"2026-10-15T22:38:18.805Z","why":"find.go の振る舞いの変化（.mtqg が外を指すリンクならエラー）が仕様書に書かれているか確かめる","cmd":["grep","-rn","-i","symlink\\|symbolic","docs/reference/cli.md","docs/reference/schema.md"],"dir":".","exit":1,"ms":1}
+{"v":1,"ts":"2026-10-15T22:40:46.053Z","why":".mtqg/ の探し方を書いた節を探す","cmd":["grep","-n","-i","\\.git\\b\\|parent\\|walk\\|-C <path>\\|discover\\|look for\\|upward","docs/reference/cli.md"],"dir":".","exit":0,"ms":1}
+{"v":1,"ts":"2026-10-15T22:40:53.656Z","why":"日本語版で同じ節の位置を探す","cmd":["grep","-n","\\.git","docs/reference/cli_ja.md"],"dir":".","exit":0,"ms":1}
+{"v":1,"ts":"2026-10-15T22:41:24.042Z","why":"cli.md と日本語版の追記で、例の対応（英日の数・印）が崩れていないか確かめる","cmd":["qsoku","test"],"dir":".","exit":0,"ms":7794}
+{"v":1,"ts":"2026-10-15T22:41:36.250Z","why":"コミット前に、テープに無い変更が無いか確かめる","cmd":["srwr","tapes","check"],"dir":".","exit":0,"ms":12}
+{"v":1,"ts":"2026-10-15T22:41:36.447Z","why":"コミットの記録者が正しいか確かめる","cmd":["git","config","user.email"],"dir":".","exit":0,"ms":1}
+{"v":1,"ts":"2026-10-15T22:41:40.241Z","why":"コミットにテープを入れるため閉じる","cmd":["srwr","tapes","new"],"dir":".","exit":0,"ms":18}

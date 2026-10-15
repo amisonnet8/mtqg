@@ -17,6 +17,7 @@
 - `journal.jsonl`・`archive/`・`version`・`.local/`に書くのは`internal/journal/`だけ（directory-structure.md）
 - 呼び出し側は`op`・`type`・`re`・本文など**意味の部分だけ**を渡す。`id`（新規作成時の生成）、`ts`、`author`、`tty`、`v`はジャーナル層が埋める
 - **`.mtqg/`の中のファイルは、すべて`os.OpenRoot`で開いた`os.Root`経由で開く**（`Journal.openRoot`）。`os.Root`は、`..`でも、外を指すシンボリックリンクでも`.mtqg/`の外に出さない。mtqgは、他人が作ったリポジトリをcloneした直後に動かされる（AIエージェントが典型）。そのリポジトリが`.mtqg/journal.jsonl`や`.mtqg/.local`を外への向きのリンクとしてコミットしていると、`os.OpenFile`ではリンク先に書き込んでしまう。gosecのG703（利用者が渡したパスでファイルを開く）も、除外を足さずにこれで解消する。`.mtqg/`の中を指すリンクは使える
+- **`.mtqg/`の探索（`find.go`の`locate`）も、1階層ずつ`os.OpenRoot`で開き、`.mtqg`・`.git`を`os.Root`経由で見る**（2026-10-15、golangci-lint `@latest`のG703への対応。mtqgのbug `a322108cd4`）。`.mtqg`自体がリポジトリの外を指すリンクとしてコミットされていても、`.mtqg/`として使わずエラーにする（中を指すリンクは使える）。`os.OpenRoot`は読み取り権の無いディレクトリを開けないので、**開始点より上の祖先**で権限のエラーになったものだけは「何も無い」として飛ばす（`711`の`/home`など。リポジトリの外なら`ErrNotInRepository`のまま）。開始点自身が開けないときはエラー
 - ファイルは開きっぱなしにしない。操作ごとに開いて閉じる（Windowsは、開いているファイルを置き換えられないため）
 
 ### 追記の手順

@@ -14,10 +14,12 @@ description: テストが本当に効いているかを、実装を1か所ずつ
 `.claude/skills/mutation-check/gen-mutants/`は、mtqg本体とは別のGoモジュール（`go.mod`を持つ）。対象のリポジトリのビルド・lintの対象に入らないようにするため（`internal/`の一部ではなく、開発ツール）。
 
 ```bash
-go build -o /tmp/gen-mutants ./.claude/skills/mutation-check/gen-mutants   # 一度だけ
-/tmp/gen-mutants -C /workspaces/mtqg -file internal/cli/candidates.go -list   # 見つかる変異を一覧するだけ
-/tmp/gen-mutants -C /workspaces/mtqg -file internal/cli/candidates.go -- \
-  go test -count=1 ./internal/cli/ -run TestCandidates                        # 1つずつ入れて回す
+# 一度だけ（サンドボックスでは /tmp に書けないので $TMPDIR に置く）
+bcuz "変異を回す道具を用意する" go -C .claude/skills/mutation-check/gen-mutants build -o "$TMPDIR/gen-mutants" .
+# 見つかる変異を一覧するだけ
+bcuz "candidates.goで見つかる変異を見る" "$TMPDIR/gen-mutants" -C /workspaces/mtqg -file internal/cli/candidates.go -list
+# 1つずつ入れて回す
+bcuz "candidates.goの構文的な変異をテストが検出するか確かめる" "$TMPDIR/gen-mutants" -C /workspaces/mtqg -file internal/cli/candidates.go -- go test -count=1 ./internal/cli/ -run TestCandidates
 ```
 
 - 見つける変異：比較演算子の反転（`==`↔`!=`、`<`↔`<=`、`>`↔`>=`）、論理演算子の反転（`&&`↔`||`）、算術演算子の反転（`+`↔`-`、`*`↔`/`）、インクリメント/デクリメントの反転（`++`↔`--`）、複合代入の反転（`+=`↔`-=`）、先頭の`!`の削除、真偽値リテラルの反転（`true`↔`false`）、整数リテラルの±1（境界値）
@@ -32,7 +34,7 @@ go build -o /tmp/gen-mutants ./.claude/skills/mutation-check/gen-mutants   # 一
 2. **1つずつ、`mutate.sh`で入れる。**
 
    ```bash
-   bash .claude/skills/mutation-check/mutate.sh <名前> <ファイル> <元の文字列> <新しい文字列> -- <テストのコマンド>
+   bcuz "<なぜ壊すか>" bash .claude/skills/mutation-check/mutate.sh <名前> <ファイル> <元の文字列> <新しい文字列> -- <テストのコマンド>
    ```
 
    - **元の文字列は、ファイルに1回だけ出てくる、なるべく短い断片**にする（最初の1か所だけが置き換わる）。複数行でよい
@@ -41,13 +43,15 @@ go build -o /tmp/gen-mutants ./.claude/skills/mutation-check/gen-mutants   # 一
    - テストのコマンドは、その変異に関係するものだけ（`go test -count=1 ./internal/cli/ -run Candidate`、e2eなら`go test -tags e2e -count=1 -run '^TestX' ./e2e/`）。`-count=1`でキャッシュを避ける
    - 埋め込むスクリプト（`internal/cli/completions/`など）は、`go:embed`なので、e2eが建てるバイナリに入る。そのままファイルを壊せる
 
-3. **一覧を回すときは、シェルのループで。** 終了コード1・3が出ても止まらないように`|| true`を付ける。
+3. **一覧を回すときは、`bcuz "理由" sh -c '…'`で1つに包む。** 終了コード1・3が出ても止まらないように`|| true`を付ける。中は単一引用符で包むので、変異の文字列は二重引用符で書く（引用符の中の改行・`;`・`||`は、フックが断らない）
 
    ```bash
+   bcuz "candidatesの約束をテストが守っているか確かめる" sh -c '
    m() { bash .claude/skills/mutation-check/mutate.sh "$@" || true; }
    T="go test -count=1 ./internal/cli/ -run Candidate"
-   m "前方一致で絞らない" internal/cli/candidates.go '!strings.HasPrefix(cand.value, partial)' 'false' -- $T
-   m "古い順に出す"       internal/cli/candidates.go 'slices.Backward(all)' 'slices.All(all)' -- $T
+   m "前方一致で絞らない" internal/cli/candidates.go "!strings.HasPrefix(cand.value, partial)" "false" -- $T
+   m "古い順に出す"       internal/cli/candidates.go "slices.Backward(all)" "slices.All(all)" -- $T
+   '
    ```
 
 4. **生き残った変異（SURVIVED）を、握りつぶさずに読む。** 3つのどれかを判断する。
@@ -61,8 +65,10 @@ go build -o /tmp/gen-mutants ./.claude/skills/mutation-check/gen-mutants   # 一
 - 終わったら`git status --short`で、意図しない差分が無いことを確かめる。コミットしていないファイルでも動く（スクリプトは`git`を使わず、退避したコピーで戻す）
 - **変異は、gofmt・lintを通らなくてよい**（`qsoku check`は走らせない）。ただしコンパイルはできること（できなければ終了コード3）
 - 時間のかかるテスト（`qsoku race`、全部のe2e）を、変異ごとに走らせない。変異に関係するテストだけを走らせる。最後に、変異を入れていない状態で、`qsoku check`・`qsoku test`を通す
-- `PostToolUse`のフック（`.go`の編集後に`qsoku build`）は、`Edit`・`Write`のときだけ走る。`mutate.sh`が書き換えても走らない
-- `gen-mutants`自身（`.claude/skills/mutation-check/gen-mutants/`）は独立したGoモジュールなので、対象リポジトリの`qsoku check`・`golangci-lint`には入らない。`gen-mutants`自体を変更したときは、そのディレクトリで`gofmt -l . && go vet ./... && go test ./...`を通す
+- `PostToolUse`のフック（`.go`の編集後に`qsoku build`）は、srwrの`edit`・`new`のときだけ走る（`Edit`・`Write`は厳格モードで禁止。`.claude/rules/srwr-usage.md`）。`mutate.sh`・`gen-mutants`が書き換えても走らない
+- **Bashツールでは、上の例のコマンドも`bcuz "理由" …`で1つずつ動かす**（2026-10-15、fleet-syncでbcuzの強制を入れた。`.claude/rules/bcuz-usage.md`）。`bcuz`で始まらないもの、複数行（③の`m() { … }`と`T=…`、`\`での継続行）、`;`・`&&`でつなぐものは、`PreToolUse`フックが断る。一覧を回すときは、`bcuz "理由" sh -c '…'`で1つに包む（`|| true`も中に書く）。上の例は、この形で書いてある
+- `mutate.sh`・`gen-mutants`のソースの書き換えと戻しは、Bashでの書き換えなので、srwrのテープに理由のない`external`として残る（止められない）。走らせる前に`session`で「壊して確かめる」の題のテープを始め、終わったら`srwr tapes check`で、戻し忘れた差分が無いことも確かめる
+- `gen-mutants`自身（`.claude/skills/mutation-check/gen-mutants/`）は独立したGoモジュールなので、対象リポジトリの`qsoku check`・`golangci-lint`には入らない。`gen-mutants`自体を変更したときは、そのディレクトリで`gofmt -l . && go vet ./... && go test ./...`を通す（Bashツールでは`bcuz "gen-mutantsを変えたあとの確認" sh -c 'cd .claude/skills/mutation-check/gen-mutants && gofmt -l . && go vet ./... && go test ./...'`）
 
 ## 記録する
 

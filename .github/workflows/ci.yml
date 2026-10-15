@@ -26,14 +26,11 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # @latest, not pinned, while qsoku itself is still moving fast (decision,
-      # 2026-09-26; .devcontainer/postCreate.sh installs it the same way).
-      # Re-pin to a specific release once mtqg's own development settles down.
       - name: Install qsoku
         run: go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.13.2
+          version: latest
           install-only: true
       - name: qsoku check
         shell: bash
@@ -74,6 +71,10 @@ jobs:
         run: go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
       - name: qsoku shellcheck
         run: qsoku shellcheck
+      # The decision table of the PreToolUse hook that forces commands through
+      # bcuz (.claude/hooks/require-bcuz.sh). Needs jq, which ubuntu-latest has.
+      - name: qsoku hook
+        run: qsoku hook
 
   trivy:
     runs-on: ubuntu-latest
@@ -86,6 +87,6 @@ jobs:
         run: go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
       - uses: aquasecurity/setup-trivy@v0.3.1
         with:
-          version: v0.71.2
+          version: latest
       - name: qsoku trivy
         run: qsoku trivy

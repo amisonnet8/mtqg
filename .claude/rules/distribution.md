@@ -13,8 +13,20 @@ go install github.com/amisonnet8/mtqg/cmd/mtqg@latest
 - 配布のための仕組みを作らない。タグを打てば、それだけでバージョンを指定して入れられる
 - **v0.1〜v0.2の間はタグを打たなかった（2026-09-21の人間の判断）。** リポジトリは最初からpublicで、タグを打つとGoのモジュールプロキシ（`proxy.golang.org`）にバージョンが記録され、後から消せない。未完成の版が`@latest`で入ってしまう懸念があった（`PLAN.md`「公開の2段階」）
 - **`v0.2.0`から実際にタグを打つことにした（人間の判断、2026-09-25）。** 段階1（v0.1の条件）・段階3（v0.2の条件、qsokuでの検証）に加え、`rule`の追加・段階4a（エージェントのフック）・4b（MCP）まで進んだ現状を最初のタグとする。v0.1は別途打たない。**「公開中・未完成」の段階自体は変わらない**：README（`README.md`・`README_ja.md`）は看板化せず、注意書きのまま。タグは`go install ...@v0.2.0`のような**バージョン指定**を可能にするだけで、「完成として公開する」（`PLAN.md`「公開の2段階」）とは別の判断
-- **`.goreleaser.yaml`とGitHub Releasesのバイナリ配布は、v1.0.0正式公開の準備として2026-09-28に作った。** `v*`タグのpushで`.github/workflows/release.yml`が`goreleaser/goreleaser-action`を呼び、`cmd/mtqg`をlinux・darwin・windows × amd64・arm64向けにビルドしてGitHub Releasesに置く（アーカイブは`tar.gz`、Windowsだけ`zip`）。バージョンは`-ldflags "-X .../internal/cli.version={{.Version}}"`で埋め込む（下記「バージョンの取り方」の優先順位の1番目）。`CGO_ENABLED=0`はビルド設定に明示（devcontainerの既定と合わせる）。手元での確認は`goreleaser check`と`goreleaser release --snapshot --clean`（実際にタグをpushせず、ビルドとアーカイブだけ試す）。goreleaser自体は`go install github.com/goreleaser/goreleaser/v2@latest`で入れる開発ツールで、`go.mod`には入れない
+- **`.goreleaser.yaml`とGitHub Releasesのバイナリ配布は、v1.0.0正式公開の準備として2026-09-28に作った。** `v*`タグのpushで`.github/workflows/release.yml`が`goreleaser/goreleaser-action`を呼び、`cmd/mtqg`をlinux・darwin・windows × amd64・arm64向けにビルドしてGitHub Releasesの**下書き**に置く（公開は人間。下の「リリースの流れ」）（アーカイブは`tar.gz`、Windowsだけ`zip`）。バージョンは`-ldflags "-X .../internal/cli.version={{.Version}}"`で埋め込む（下記「バージョンの取り方」の優先順位の1番目）。`CGO_ENABLED=0`はビルド設定に明示（devcontainerの既定と合わせる）。手元での確認は`goreleaser check`と`goreleaser release --snapshot --clean`（実際にタグをpushせず、ビルドとアーカイブだけ試す）。goreleaser自体は`go install github.com/goreleaser/goreleaser/v2@latest`で入れる開発ツールで、`go.mod`には入れない
 - Homebrewなどのパッケージマネージャーは、要望が出てから考える
+
+## リリースの流れ
+
+ビルド済みのバイナリなどを GitHub Releases で配るときは、次の流れにする。
+
+1. **人間が**タグ（`v0.1.0`の形）を打って push する
+2. タグで動く workflow（`.github/workflows/release.yml`）が、テストを通してから配布物を作り、**下書きの Release**（`--draft`）に添付する
+3. **人間が**下書きの中身を見て、公開する
+
+- **Claude Codeは、タグも Release も作らない。** `gh release create`は`.claude/settings.json`で拒否（deny）されている。Release を作るのは workflow の中だけ
+- このリポジトリは goreleaser（`.goreleaser.yaml`・`.github/workflows/release.yml`、上の「v0.xの間は`go install`だけ」の`.goreleaser.yaml`の項目）
+- ビルド済みのバイナリは、リポジトリにコミットしない（下の「リポジトリにバイナリをコミットしない」）
 
 ## 純粋なGoにする（cgoを使わない）
 

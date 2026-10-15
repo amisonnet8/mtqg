@@ -5,7 +5,8 @@ set -euo pipefail
 # lsb-release:    Adding the Trivy apt repository below.
 # gcc:            qsoku race (CGO_ENABLED=1 go test -race) needs a C compiler.
 #                 The container itself runs with CGO_ENABLED=0 (.claude/rules/distribution.md).
-# jq:             Inspecting journal.jsonl and --json output while debugging.
+# jq:             Used by .claude/hooks/build.sh, .claude/hooks/require-bcuz.sh and the
+#                 allowWrite block below; also for inspecting journal.jsonl and --json output.
 # ShellCheck:     Static analysis of tracked *.sh and *.bash files (qsoku shellcheck, .claude/rules/testing.md).
 #                 Comment lines must not start with the lowercase directive word,
 #                 or ShellCheck parses them as directives (SC1072/SC1073).
@@ -64,10 +65,15 @@ if [ -f "$sandbox_settings" ]; then
   done < <(jq -r '.sandbox.filesystem.allowWrite[]?' "$sandbox_settings")
 fi
 
-# golangci-lint: lint (qsoku check, .golangci.yaml). The official install script
-# puts the binary into GOPATH/bin. The version is pinned so that lint results
-# do not change when the container is rebuilt; .golangci.yaml was verified with it.
-wget -qO - https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.13.2
+# golangci-lint: lint (qsoku check, .golangci.yaml). Built from source with the
+# container's Go (go install), not the prebuilt binary of install.sh. @latest,
+# not pinned: a golangci-lint reads the export data of the standard library only
+# up to the version of its own x/tools, so a pinned one stops working when the
+# container's Go moves on ("export data version 5 is greater than maximum
+# supported version 4"; building the same version again does not help). A newer
+# lint reads it. If lint still fails that way right after a Go update, the lint
+# is not out yet: `qsoku lint` says so (qsokufile, .claude/rules/testing.md).
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
 go install golang.org/x/tools/gopls@latest
 go install golang.org/x/tools/cmd/goimports@latest
@@ -78,12 +84,7 @@ go install golang.org/x/tools/cmd/goimports@latest
 # rather than risking `goreleaser check` behaving differently here than there.
 go install github.com/goreleaser/goreleaser/v2@latest
 
-# qsoku: build/check/test entry points (qsokufile, replaces the former Makefile;
-# see docs/design/history.md 2026-09-23). @latest, not pinned, while qsoku
-# itself is still moving fast (decision, 2026-09-26): a regression is caught
-# locally right away instead of silently, which is an acceptable trade while
-# development is active on both sides. Re-pin to a specific release once
-# mtqg's own development settles down (CI, below, is pinned the same way).
+# qsoku: build/check/test entry points (qsokufile).
 go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
 
 # mtqg: build from this repository's own source, so a fresh devcontainer has
@@ -92,6 +93,23 @@ go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
 # release -- see .claude/rules/mtqg-usage.md for why the *records* this
 # container writes use a separately reinstalled, known-good build instead.
 go install ./cmd/mtqg
+
+# srwr: the AI's edits go through its look / edit / new tools, each with a
+# reason (why), and are recorded on a tape (.claude/rules/srwr-usage.md).
+# @latest, like qsoku above (only mtqg itself is built from this source). srwr
+# is 0.x, so after a rebuild that picked up a new version, run `srwr init` once:
+# it makes .claude/settings.json follow any change in the tools' names.
+go install github.com/amisonnet8/srwr/cmd/srwr@latest
+
+# bcuz: every command Claude Code runs through the Bash tool goes through
+# `bcuz "<reason>" <command>`, which records when / why / what / result in
+# .bcuz/history.jsonl (.claude/rules/bcuz-usage.md; enforced by the PreToolUse
+# hook .claude/hooks/require-bcuz.sh). @latest, like qsoku and srwr above.
+go install github.com/amisonnet8/bcuz/cmd/bcuz@latest
+
+# Create .bcuz/ at the repository root (idempotent: prints "already exists"
+# and succeeds if it is there). Without it, commands still run but are not recorded.
+(cd "$(dirname "$0")/.." && bcuz --init)
 
 # Wire up qsoku's shell integration (working-directory carry-back and
 # completion) for bash, zsh, fish and pwsh. Idempotent: skipped if already

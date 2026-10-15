@@ -1,19 +1,25 @@
 # ディレクトリ構成
 
-mtqgは「**コア（ジャーナル層・モデル層）が核、CLIはコアを使う入口の1つ**」という構造を取る（設計§10.7）。新しいファイルを追加する際は、どの層に属するかを必ず意識すること。
+mtqgは「**コア（ジャーナル層・モデル層）が核、CLIはコアを使う入口の1つ**」という構造を取る（設計§10.7）。新しいファイルを追加する際は、どの層に属するか、どこに置くかをここで確かめる。**構成を変えたら、この文書も同じ変更の中で直す。**
 
 ```
 mtqg/
 ├── CLAUDE.md               ← プロジェクトルール（参照先の案内）
 ├── PLAN.md                 ← 実装計画・進捗管理（段階、現在地、保留事項）
-├── qsokufile               ← ビルド・テストの近道（qsoku使用。旧Makefile。docs/design/history.md 2026-09-23）
+├── qsokufile               ← ビルド・テストの近道（qsoku使用。`.claude/rules/qsoku-usage.md`）
 ├── LICENSE                 （MIT）
+├── README.md / README_ja.md ← 未完成の間は注意書きだけ（下の「README」）
 ├── go.mod / go.sum
 ├── .gitignore
 ├── .gitattributes          （`* text=auto eol=lf`）
 ├── .golangci.yaml           ← lintの設定（層の依存の向き、文言をCLIの層に限ることも機械的に検査）
 ├── trivy.yaml              ← 脆弱性・ライセンス検査の設定（testing.md）
 ├── .goreleaser.yaml         ← 各OS向けバイナリのビルド設定（distribution.md。`v*`タグのpushで.github/workflows/release.ymlが実行）
+├── .mcp.json               ← mtqgとsrwrのMCPサーバーの配線
+├── .srwrignore             ← srwrがテープに記録しないファイル（`.mtqg/`・`.bcuz/`・生成物）
+├── .bcuz/                  ← bcuzの記録（`history.jsonl`）。`postCreate.sh`が`bcuz --init`で作る。**コミットする**（`merge=union`）
+├── .srwr/                  ← srwrの鍵・ロック・テープ（最初のhook・MCPの呼び出しでできる。**閉じた`tapes/*.gz`だけコミットする**）
+├── .mtqg/                  ← mtqg自身の開発の記録（段階4から。下の「`.mtqg/`が段階4から実際に使われている」）
 ├── schema.go               ← docs/reference/schema.md を embed するだけのパッケージ
 ├── cmd/mtqg/main.go        ← 引数を internal/cli に渡すだけ（数行）
 ├── internal/
@@ -25,8 +31,8 @@ mtqg/
 │   ├── reference/          ← 仕様。英語版 schema.md・cli.md と日本語版 *_ja.md
 │   ├── design/             ← 設計判断と理由の記録（日本語）
 │   └── examples/           ← 入門から実例まで（英語 examples.md・日本語 examples_ja.md。2026-09-28作成）
-├── .devcontainer/
-├── .claude/                ← rules/（ルール）、skills/（繰り返す手順。mutation-check）、hooks/、settings.json（人間が管理）
+├── .devcontainer/          ← 開発環境（devcontainer.json、devcontainer-lock.json、postCreate.sh）
+├── .claude/                ← rules/（ルール）、skills/（繰り返す手順。mutation-check）、hooks/（build.sh、require-bcuz.sh とそのテスト）、settings.json（人間が管理）
 └── .github/workflows/
 ```
 
@@ -60,11 +66,20 @@ mtqg/
 - **`internal/`**: Goの仕組みとして、リポジトリの外からimportできない。**コアはライブラリとして公開しない**（設計§10.7）。外との約束はデータ形式（`docs/reference/schema.md`）とCLIの`--json`だけ
 - **`go.sum`**: コミットする（改ざん検知・再現可能なビルドのため。Goの標準的な慣習）
 - **VSCodeの設定**: `.devcontainer/devcontainer.json`の`customizations.vscode`に置く（拡張と設定を1か所にまとめる。開発環境はdevcontainerだけのため）。`.vscode/`は作らない
-- **`.gitattributes`**: `* text=auto eol=lf`。Windowsランナーでの改行コード変換による誤検知を防ぐ（testing.md）。mtqgが`init`で`.mtqg/`の中に置く`.gitattributes`（`*.jsonl text eol=lf merge=union`）とは別物で、両者はぶつからない
+- **`.gitattributes`**: `* text=auto eol=lf`。Windowsランナーでの改行コード変換による誤検知を防ぐ（testing.md）。`.bcuz/history.jsonl merge=union`（下の`.bcuz/`）。mtqgが`init`で`.mtqg/`の中に置く`.gitattributes`（`*.jsonl text eol=lf merge=union`）とは別物で、両者はぶつからない
 - **`docs/reference/`**: 仕様。**実装しながら育てる文書**であり、実装と仕様がずれたらここを更新する。設計判断を変えるときは、まずここを更新してから着手する。英語版（正）と日本語版（`*_ja.md`）を同じ変更の中で両方直す。埋め込むのは英語版の`schema.md`だけ
-- **`docs/design/`**: 設計時点の判断と理由の記録。仕様と食い違う場合は`docs/reference/`が正。ここは経緯として残し、書き換えて過去の理由を消さない
+- **`docs/design/`**: 今の設計と、その判断の理由。仕様と食い違う場合は`docs/reference/`が正。経緯をどこまで書くか（前のやり方に戻すと同じ問題が起きるものだけ。それ以外はmtqgに記録する）は`.claude/rules/documentation.md`
 - **`docs/examples/`**: 実装完了後に、英語版（`examples.md`）と日本語版（`examples_ja.md`）を最初から両方作った（2026-09-28、`PLAN.md`「公開前にやること」）。当初は歩いて回る入門を`docs/tour/`に分けていたが、単体の文書としては小さすぎたため、`docs/examples/`の冒頭の節に統合し`docs/tour/`は廃止した（同日、人間の指摘）。例の実行・確認は`e2e/examples_test.go`が`docs/reference/`と同じしくみで担う
 - **README**: **看板としてのREADMEは最後に作る**（`PLAN.md`「READMEとGitHubの看板」）。先に作ってはいけない。ただしリポジトリはpublicなので、未完成の間は**注意書きだけの`README.md`・`README_ja.md`**をルートに置く（Step 1）。注意書きに売り文句・機能の説明・使い方を足さない
+- **`.mtqg/`**: コミットされる。中のファイルは直接編集せず、すべて`mtqg`のコマンド経由で書く（`.claude/rules/mtqg-usage.md`）。`.mtqg/.local/`はコミットされない
+- **`.bcuz/`**: bcuzが`.bcuz/history.jsonl`に追記する、コマンドの実行の記録（`.claude/rules/bcuz-usage.md`）。**コミットする**（`.gitignore`の`!/.bcuz/`）。行を足すだけなので、`.gitattributes`の`merge=union`で、マージしても両側の行が残る。コミットの前に`git add .bcuz/history.jsonl`する（`git commit`は`bcuz`を通さない）。秘密をコマンドに書かない（記録に残る）。中のファイルは直接編集しない。`.srwrignore`でテープにも載せない
+- **`.claude/hooks/require-bcuz.sh`**: Bashツールのコマンドを、`bcuz`を通っていなければ実行前に断る`PreToolUse`フック。判定の表は`require-bcuz.test.sh`（`bash .claude/hooks/require-bcuz.test.sh`）。判定を変えたら、テストの表も同じ変更の中で直す
+- **`.mcp.json`**: `mtqg mcp`と`srwr mcp`（MCPサーバー）の配線。`mtqg init --agent claude-code`・`srwr init`が書くものと同じ。呼ぶ`mtqg`は作業中のソースから入れたもの（`.claude/rules/mtqg-usage.md`）
+- **`.srwr/`**: 最初のhook・MCPの呼び出しで、srwrが作る（`srwr init`でも作られる。鍵`key`・`lock`・`active`・`tapes/`・`init-backup/`）。**コミットするのは閉じて圧縮したテープ`tapes/*.tape.jsonl.gz`だけ**。書き込み中の生のテープ`*.tape.jsonl`は`.gitignore`で対象外（閉じると`.gz`に置き換わり、生のままコミットすると「削除＋追加」の差分が出るため）。鍵は共有しない。鍵はプロジェクトごと・手元ごとに別
+- **`.srwrignore`**: テープに記録しないファイル（`.gitignore`と同じ書き方）。生成物や巨大なファイルはここに足す。`.env`・`*.pem`・`*.key`などはsrwrが元から外す
+- **`.devcontainer/devcontainer-lock.json`**: コンテナのビルドで自動で作られる。**できたらコミットする**（この版のfeatureでテストなどが通った証明になる）。featureを新しくしたいときは、lockを消してビルドし直し、新しいlockをコミットする
+- **`.gitignore`のドットファイル**: ルート直下のドットファイル・ドットディレクトリは**許可リスト方式**（`/.*`を無視し、追跡するものだけ`!`で戻す。`.claude/`の中は`/.claude/*`を無視して`settings.json`・`rules/`・`skills/`・`hooks/`だけ戻す）。サンドボックスが作業ディレクトリ直下に出すダミーファイルを`git add -A`で混ぜないため（`.claude/rules/testing.md`）。**追跡するドットファイルを新しく足すときは、`.gitignore`に`!`の行を足すこと**。足さないと`git add`が無視する
+- **シェルスクリプト**: 最小限にする。追跡中のものは`qsoku shellcheck`の対象になる（`.claude/rules/testing.md`）
 - **配布物（ビルド済みバイナリ）**: リポジトリにコミットしない（distribution.md）。`.gitignore`には**ルート直下に限定して**`/mtqg`・`/mtqg.exe`・`/dist/`と書く。`mtqg`とだけ書くと、ソースの`cmd/mtqg/`まで無視されて`main.go`がコミットされない（コマンド名とディレクトリ名が同じため）
 
 ## `.mtqg/`が段階4から実際に使われている

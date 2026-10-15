@@ -18,11 +18,15 @@
 
 実装したら、ビルド確認に加えて実際の動作確認を行うこと。ロジック上正しそうに見えても、動かして初めて見つかる不具合はある。
 
-- `qsoku check`（fmt・vet・lint・単体テスト）は作業の区切りで必ず通す
+- `qsoku check`（vet・lint・cross・単体テスト。整形の差異は`lint`が報告する）は作業の区切りで必ず通す
 - e2e（`qsoku test`）を走らせる粒度は作業規模で判断する
   - 小規模な修正（数行、1関数内）は、一連の作業の最後に1回でよい
   - 複数ファイルにまたがる変更、ジャーナル層・ロック・マージに関わる変更は、各ステップの区切りごとに実行する
   - 迷ったら実行する側に倒す
+- 並行性・排他制御に関わる変更は`qsoku race`も通す
+- 依存を足したら`qsoku trivy`（既知の脆弱性・ライセンス）を通す
+- シェルスクリプトを足したら`qsoku shellcheck`を通す（`git add`してから走らせる。追跡中のものだけが対象）
+- `.claude/hooks/require-bcuz.sh`を変えたら`qsoku hook`（判定の表）を通す。判定を変えたら、表も同じ変更の中で直す
 
 ## Goのテスト
 
@@ -77,12 +81,13 @@
 - **`log --json --events`が削除された記録も連れ戻す（2026-09-27。mtqg-vscodeからの依頼：Memo画面で「消しても跡が残る」を実現するため）：壊して確かめた（6個の変異、5個検出、1個は「本当に同じ意味」として残した）**：`internal/cli/log.go`の`runLog`が`--events`のときも`state.Every()`でなく`state.All()`を使う、`recs[i].Deleted`を設定しない、`--before`が`--events`のときも`state.Resolve`・`state.Before`のまま（`ResolveAny`・`EveryBefore`に切り替えない）、`--events`無しの`--json`チェックを外す。`internal/model/record.go`の`Hidden`が`s.visible(r)`でなく`r.Deleted`だけを見る（親が削除された記録を見落とす）。**生き残った変異**：`internal/cli/json.go`の`recordJSON`（`log`以外の全コマンドが使う）に`Deleted: r.Deleted`を足しても、`TestJSONEventsOnlyOnLog`を含む`internal/cli`パッケージ全体のテストで検出できなかった——`recordJSON`は常に`state.All()`由来の可視な記録にしか呼ばれず（`list`・`search`・`show`・`add`はどれも`pick`で絞った後の記録しか渡さない）、`r.Deleted`はそこでは常に`false`。`deleted`は`omitzero`なので、`false`はJSONに出ずキー自体が現れない。**「削除された記録は他のコマンドの`jsonRecord`まで届かないので、`r.Deleted`を足しても観測できる違いが生まれない」という真の等価変異**（`.claude/skills/mutation-check/SKILL.md`の「本当に同じ意味で、区別できない」に該当）。`Deleted`を設定するのは`runLog`の`--events`だけ、というコメント（`json.go`）はこの理由から来ている。**最初の1回でモデル層の変異コマンドが誤って生き残った**：シェル変数`Tmodel`にダブルクォートで包んだ複数語のテストコマンド（`go test ... -run 'A|B'`）を渡したところ、`mutate.sh`側でクォートが崩れ、変異前のベースラインからテストが失敗する誤検出になった（`EveryBefore`が`Every()`でなく`All()`を使う、`prefixBefore`のオフバイワン、の2件）。**教訓：`mutate.sh`のテストコマンドには、複数のテスト名をシェルのクォートでまとめず、単純な`-run <正規表現>`の1語で渡すか、それぞれ別呼び出しにする。** シェルのクォートを疑い、単語に分けて渡し直したところ両方とも正しくkilledになった
 - **`mtqg upgrade`とv1確定（2026-09-28）：壊して確かめた（5個の変異、すべて検出）**：`internal/journal/upgrade.go`の`Upgrade`が「既に最新版・dry runなら何も書かない」を外す（同じ版でもSCHEMA.mdを書いてしまう）、衝突マーカーを見ない、`SCHEMA.md`を渡された内容で書かない、`.mtqg/version`に`to`でなく`from`を書く、成功後に`j.version`を更新しない。`SupportedVersion`を0から1に上げたことに伴い、「形式が新しすぎる」を確かめる既存のテスト（`internal/journal/journal_test.go`・`internal/cli/candidates_test.go`・`commands_test.go`・`json_test.go`・`e2e/boundaries_test.go`）が軒並み「1はもう新しすぎない」で落ちたため、ハードコードされた数字を`journal.SupportedVersion`を参照する形に直した（次に上げるときの手間を無くすため）。`internal/journal/rewrite.go`の`writeTemp`・（旧）`replaceJournal`を、対象ファイル名を引数に取る`replaceRootFile`に一般化し、`journal.jsonl`の書き直しと`version`・`SCHEMA.md`の書き換えとで同じ一時ファイル経由の置き換えを共用した
 - **SCHEMA.mdの鮮度マーカー（2026-09-28）：壊して確かめた（9個の変異、7個killed、2個SURVIVED）**：`internal/journal/upgrade.go`の`Upgrade`が、SCHEMA.mdのマーカーが古くても`schemaUpdated`をfalseにする（`stale`を無視）、`internal/journal/schema.go`の`schemaStale`がマーカーの無いSCHEMA.mdを古いと判定しない、`Upgrade`がdry runでも実際に書き込む、`internal/cli/upgrade.go`が`--json`の`schema_updated`を常にfalseにする、`Upgrade`が形式を上げても`j.version`を更新しない、書き込みが要らないのに衝突マーカーのチェックをスキップしてしまう（＝チェックを外す変異）、`schemaOlder`をX.Y.Zの数値比較でなく文字列の辞書式比較にする（`"1.9.0" < "1.10.0"`が偽になる）——すべてkilled。**SURVIVEDの2個はどちらも「本当に同じ意味で区別できない」と判断してそのまま残した**：①`schemaOlder`の`pa[i] < pb[i]`を`pa[i] <= pb[i]`にする変異——この行に到達するのは直前の`if pa[i] != pb[i]`を通った後だけなので、両者が等しい（`<`と`<=`が違う結果を返しうる）ケースはそもそもこの行に来ない。②`Upgrade`が形式を上げる必要がない（`raise == false`）ときも`.mtqg/version`への書き込みを無条件で行う変異——`raise == false`のとき`to == from`なので、たとえ書いても中身は既存のファイルと同じになり、外から観測できる違い（ファイルの中身、`--json`の`from`/`to`）が生まれない
-- `.mtqg/`の探索（リポジトリの外、サブディレクトリ、サブモジュール、既存の`.mtqg/`への`init`）
+- `.mtqg/`の探索（リポジトリの外、サブディレクトリ、サブモジュール、既存の`.mtqg/`への`init`）。**`os.Root`経由の探索（2026-10-15）は壊して確かめた（4個、すべて検出）**：開始点の権限エラーも飛ばす、読めない祖先を飛ばさない、`.mtqg`のリンクをたどらない、外を指す`.mtqg`のエラーを無視する。**最後の1つは最初生き残った**：エラーを無視すると上へたどって`ErrNotInRepository`になり、「何かのエラー」しか見ないテストを満たしてしまった。テストを「`NotInitializedError`でも`ErrNotInRepository`でもないエラー」に締めて検出した。権限のテストは、rootとWindowsではskip（`internal/journal/find_test.go`）
 - `version`が知らない番号のとき、読み書きとも断る
 
 ## lint
 
-- `golangci-lint`（`.golangci.yaml`、v2.13.2で`golangci-lint config verify`済み。devcontainerも同じ版で固定）
+- `golangci-lint`（`.golangci.yaml`）。版は固定せず`@latest`（devcontainer・CIとも。下の「Bashサンドボックスの落とし穴」のgolangci-lintの項目）。設定を変えたら`golangci-lint config verify`で確かめる。新しいlintの指摘で赤くなったら、設定か指摘を直す
+- `qsoku cross`が、`GOOS=windows`・`darwin`でも`go vet`・`golangci-lint run`を動かす（ロック・端末のファイルがOSで分かれるため。`.claude/rules/qsoku-usage.md`）
 - `depguard`で層の依存の向き（`cli → model → journal`）とgitライブラリ（go-git）の禁止を、`forbidigo`で`internal/cli`・`cmd`以外の`fmt.Print`系を機械的に検査する
 - **ルールを破る指摘が出たら、除外を足すのではなく配置を見直すこと。** 除外（`//nolint`や`exclusions`）を足す必要があるときは、理由を説明して確認を取る。`//nolint`には対象のlinterと理由を必ず書く（`nolintlint`で検査される）
 
@@ -112,7 +117,7 @@
 - mtqgはMITで配布する。**MIT・BSD・Apache-2.0等は許可、GPL・AGPL等の互換性のないライセンスは失敗**にする
 - 何を失敗とみなすか（深刻度、禁止するライセンスの種類）は`trivy.yaml`で固定する。HIGH・CRITICALで失敗し、ライセンスはTrivyの既定の分類に従う（forbidden＝CRITICAL、restricted＝HIGHなのでGPL系は失敗、reciprocal＝MEDIUMのMPLや、notice＝LOWのMIT・BSD・Apacheは通る）。分類を上書きするときは理由を`PLAN.md`に記録する
 - `go get`で依存を足したら、必ずTrivyを通す。**依存は、Goの標準ライブラリと`golang.org/x/`だけ**（`CLAUDE.md`）。それ以外は「どうしても必要な場合」の例外で、足す前に理由を説明して確認を取り、`PLAN.md`に記録する（`go get`は確認が出る設定になっている）。`x/`に限るので、ライセンスは実質BSD-3-Clauseだけになる
-- Trivyは脆弱性データベースの取得に通信が要る
+- Trivyは脆弱性データベースの取得に通信が要る（devcontainerのBashサンドボックスでは、下記「Bashサンドボックスの落とし穴」参照）
 - ソースコード自体のコピペ検出は対象外（人間のレビューに委ねる）
 
 ## ShellCheck：シェルスクリプト
@@ -139,10 +144,15 @@
 
 - **Trivyの脆弱性DBの取得先は`ghcr.io`ではなく`mirror.gcr.io`（`mirror.gcr.io/aquasec/trivy-db:2`）。** 名前から`ghcr.io`（GitHub Container Registry）を許可すればよいと思い込むと、`qsoku trivy`が`sandbox_violations`で失敗する。実際に動かして初めて分かった（サンドボックスが拒否したホスト名がそのままエラーに出る）
 - **Trivyの脆弱性DBは`~/.cache/trivy`に書き込む。** サンドボックスの`filesystem.allowWrite`にこれが無いと、ネットワークを許可してもダウンロード後の書き込みで`read-only file system`になる
+- **golangci-lintは、Goより古いと標準ライブラリを読めず、`typecheck`で落ちる**（`could not load export data … export data version 5 is greater than maximum supported version 4`）。golangci-lintは、自分が抱えるx/toolsの版までのexport dataしか読めない。コンテナのGoが新しいパッチ・版に上がると、固定した版（ビルド済みの`install.sh`の版も）が突然落ちる。**同じ版をコンテナのGoで作り直しても直らない**（実測）。そのため、版を固定せず`go install …/golangci-lint/v2/cmd/golangci-lint@latest`で入れる（`.devcontainer/postCreate.sh`、CIの`version: latest`）。Goが上がった直後で、対応するlintがまだ無いときは落ちたままになる。`qsoku lint`が、このエラーを見つけたら更新のしかたを案内する（`qsokufile`）。直し方は、`go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`を動かす（`proxy.golang.org`と`storage.googleapis.com`への接続が要る）。固定しない代わりに、新しいlintの指摘で赤くなることがある（そのときは設定か指摘を直す）
 - **golangci-lintのキャッシュは`~/.cache/golangci-lint`に書き込む。** `filesystem.allowWrite`にこれが無いと、`qsoku lint`・`qsoku check`が`Failed to persist facts to cache ... read-only file system`の警告を出す。結果（`0 issues`）と終了コードには影響せず、キャッシュが効かなくなるだけ（2026-10-01、`template/`の動作確認中に気づいた。mtqg本体でも`allowWrite`に足した）
 - **`allowWrite`に書いたパスは、ディレクトリが既に存在しないと効かない。** リビルド直後の新しいコンテナには`~/.cache/golangci-lint`・`~/.cache/trivy`が無く、`~/.cache`自体は読み取り専用なので、`qsoku lint`・`qsoku check`は`failed to initialize build cache ... mkdir ... read-only file system`で**失敗**し（終了コード1。上の`Failed to persist facts`の警告はディレクトリがある場合だけで、無いとこちらになる）、`qsoku trivy`もDBを保存できず終了コード1になる。`qsoku vet`・`qsoku test`・補完e2eは、`~/.cache/go-build`が`go install`で先にできているので通る。`postCreate.sh`が`.claude/settings.json`の`allowWrite`を`jq`で読み、`~/`と絶対パス（`/go`など。`/dev`・`/proc`・`/sys`と相対パスは除く。作れなければ警告だけ）を`mkdir -p`して先に作る（`allowWrite`を変えても`postCreate.sh`は直さなくてよい。2026-10-01、リビルド後の確認で発見。mtqgのbug `5bc2e001fe`）。**すでにあるコンテナを直すには、サンドボックスの外で`mkdir -p ~/.cache/golangci-lint ~/.cache/trivy`する**
+- **Linuxでは`bubblewrap`（`bwrap`）と`socat`が無いと、`sandbox.enabled: true`でも黙って無効のままになる。** エラーも出ないので、サンドボックスが効いているつもりで効いていない状態になる。`postCreate.sh`が、無いものだけ`apt`で入れる（ベースイメージが持っていれば何もしない）
 - **`check.trivy.dev`への接続はTrivyのバージョン確認機能で、許可リストに無くても`qsoku trivy`の結果・終了コードには影響しない。** `sandbox_violations`として警告は出るが、スキャン自体（脆弱性・ライセンスのレポート）は正常に完了し終了コード0になる。実害のない拒否なので、許可リストに足すかは任意
 - **`git fetch`・`git pull`（リモートのgithub.comへの読み取り）と`gh pr create`には`github.com`・`api.github.com`への許可が要る。** mtqgの運用ルールで禁止しているのは`git push`だけなので、fetch/pullはask・denyどちらにも入らず素通りする想定だが、サンドボックスのネットワーク許可が無いと接続自体がブロックされる
+- **許可リストに無いものに当たったら、自分で回り道を探し続けない。** `.claude/rules/working-with-human.md` 2章の形で、何をどこに足すかを短く頼む
+- **`sudo`は、サンドボックスの中では承認しても失敗する。** サンドボックスのuidの付け替え（特権の無いユーザー名前空間）で、本来rootが持つファイルがnobodyの持ち物に見え、`sudo`自身の所有者の確認に落ちる。`sudo`が要るときは、人間のターミナルで動かすよう頼む（`.claude/rules/working-with-human.md` 2章）
+- **`srwr init`は、書き換えるものがあるときは、サンドボックスの中では`.mcp.json`・`.claude/settings.json`を置き換えられない（書き換えが無ければ動く。このリポジトリでは設定がそろっているので、動かさなくてよい）**（一時ファイルを`rename`する先が書き込み保護で、`device or resource busy`。`.srwr/`の鍵だけが先にできる）。人間のターミナルで動かす（`.claude/rules/srwr-usage.md`「落とし穴」）。`srwr view`は`~/.cache/srwr`に書くので、同じく人間のターミナルで動かす
 - **サンドボックスの書き込み保護（`filesystem.write.denyWithinAllow`）が、作業ディレクトリ直下に`.bashrc`・`.gitconfig`・`.claude/agents`などのダミーファイルを出現させることがある。** `git status`に大量の未追跡ファイルとして見えて驚くが、`ls -la`で見ると`crw-rw-rw-`のキャラクタデバイス（`/dev/null`相当）で、`mount`で見ると`devtmpfs`由来。本来ホームディレクトリ側のパスを指す保護対象が、作業ディレクトリ基準で解決されてしまったものと見られる。中身は空で、未追跡のままなのでコミットには影響しない（`git add`しない限り無害）。これはサンドボックス内のBashからだけ見える見かけ上のファイルで（`/dev/null`のbind mount）、サンドボックスの外の人間側には存在しない。Claude Codeが`git add -A`で混ぜないよう、`.gitignore`はルート直下のドットファイルを許可リスト方式にした（`/.*`を無視し、追跡するものだけ`!`で戻す。`.claude/`の中も同様。2026-10-01）。**追跡するドットファイル・`.claude/`の下の共有物を新しく足すときは、`.gitignore`に`!`の行を足すこと。**mtqgの実装やこのリポジトリの状態には起因しない、サンドボックス機構側の挙動
 - **サブディレクトリで一時的に`git init`して使い、後で`.git`を消す手順（例：サブディレクトリに対して`mtqg init`を走らせるためだけの使い捨てリポジトリ）は、上と同根の保護パス誤解決と衝突することがある。** `~/.gitconfig`保護が作業ディレクトリ相対に解決され、その使い捨てリポジトリの`<サブディレクトリ>/.git/config`がread-onlyでbind mountされてしまい、`rm`・`mv`のどちらでも「デバイスもしくはリソースがビジー状態」で削除できなくなる（2026-09-30、`template/`作成時に遭遇。mtqgのbug `fec4be3f47`）。作業ディレクトリを変えて再試行しても再発する。Bash側では回避策が無く、人間にサンドボックス外での削除を依頼するしかない
 
@@ -150,11 +160,12 @@
 
 > **出所:** 別プロジェクト（ExecDB・SanDBox）で、初回push後にCI上でのみ顕在化した事象。mtqgも同じ構成（3OSのホステッドランナー）を採るため、あらかじめ対処しておく。
 
-- **`windows-latest`で`qsoku`を`go install`しても、内部で呼ぶ`sh`がそのままPATHに乗るとは限らない。** `qsokufile`のコマンドは常に`sh`（Git Bash付属）で実行される（qsoku自身の仕様）。CIの`run:`ステップは`shell: bash`を明示し、Git Bashが通ったPATHでqsokuを実行する（`.github/workflows/ci.yml`。Makefile時代の`choco install make -y`は不要になった。qsoku自身のバージョンはCI・devcontainerとも同じ形で入れる（当初は`@v0.1.1`に固定していたが、2026-09-26から双方とも`@latest`。qsoku自身の開発がまだ活発なうちは、固定するとかえって古いまま気づかず使い続けることになるため。mtqgの開発が一段落ついたら、その時点のバージョンで固定し直す。理由・経緯は`docs/design/history.md`2026-09-23・2026-09-26）
+- **`windows-latest`で`qsoku`を`go install`しても、内部で呼ぶ`sh`がそのままPATHに乗るとは限らない。** `qsokufile`のコマンドは常に`sh`（Git Bash付属）で実行される（qsoku自身の仕様）。CIの`run:`ステップは`shell: bash`を明示し、Git Bashが通ったPATHでqsokuを実行する（`.github/workflows/ci.yml`。Makefile時代の`choco install make -y`は不要になった。qsoku自身のバージョンはCI・devcontainerとも`@latest`（道具の版は固定しない。mtqgの決まり事）
 - **`/dev/stderr`等のUnix固有のパスはWindows（Git Bash）で壊れる。** `tee /dev/stderr`などを使わず、標準のリダイレクトだけで書く
 - **Windowsのcheckoutで改行がCRLFになると、`gofmt -l`が全ファイルを未整形と誤検知する。** ルートの`.gitattributes`（`* text=auto eol=lf`）で防ぐ。最初のpush前に置く（配置済み）
 - **`uses: owner/repo@TAG`はタグ名と厳密に一致しないと失敗する。** `v`の有無を見落としやすい。書く前に実際のタグ名を確かめる
 - **Windowsには実行ビットの概念がない。** `os.Chmod`後に実行ビットを確かめるテストは、`runtime.GOOS != "windows"`でガードする
+- **実行権限の無いファイルで「起動できない（126）」を作るテストは、Windowsでは「見つからない（127）」になる。** 拡張子の無い名前（`script`・`build.sh`）は`PATHEXT`に合わず、コマンドとして探されないため。Windowsでは`.exe`の名前で、中身が実行形式でないファイルにすると、起動に失敗して126になる
 - mtqg固有の注意：**Windowsでは開いているファイルを置き換え（rename）できないことがある。** 一時ファイル経由の置き換え（`undo`・`archive`）は、Windowsランナーで必ず確かめる
 - mtqg固有の注意：**Windowsでは、開いているハンドルのあるディレクトリを消せない。** `os.Root`を開いたまま`os.RemoveAll`すると失敗する（`Init`が失敗したときの後片付けで、実際にCIのWindowsだけで起きた）。**先に`Close`してから消す。** 後片付けの失敗を握りつぶさない（握りつぶすと、作りかけが残り、次の実行が「すでにある」と断る連鎖になる）
 - mtqg固有の注意：**`docs/reference/`の`--json`の例に`path=`でリポジトリのパスを置き換えるとき、JSONの中のパスはバックスラッシュが二重にエスケープされる（Windows限定）。** `e2e/examples_test.go`の置き換えは、実行時の生のディレクトリパス（`dir`。Windowsではバックスラッシュ区切り）を、コマンドの出力の中で探して置き換える。しかし`--json`の出力では、Windowsのパス（例：`C:\Users\...`）がJSONの文字列としてバックスラッシュが2つに増えた形（`C:\\Users\\...`）で出るため、`dir`のまま探しても一致せず、置き換えが起きない。段階4a（`init --agent ... --json`の例。PR #4）でWindowsのCIだけが落ちて見つかった。**バックスラッシュを2つに増やした形を先に置き換えてから、元の形を置き換える**（2段階の`strings.ReplaceAll`）。Linuxでは`dir`にバックスラッシュが無いので、この処理は何もしない（既存の例に影響なし）

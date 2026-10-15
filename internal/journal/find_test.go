@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -126,6 +127,69 @@ func TestFind(t *testing.T) {
 		}
 		if _, err := Find(file); err == nil {
 			t.Fatal("Find accepted a file as the place to start")
+		}
+	})
+
+	t.Run(".mtqg links inside the repository", func(t *testing.T) {
+		root := newRepo(t)
+		newMtqg(t, mkdir(t, filepath.Join(root, "store")), "0\n", nil)
+		link := filepath.Join(root, mtqgDirName)
+		if err := os.Symlink(filepath.Join("store", mtqgDirName), link); err != nil {
+			t.Skipf("cannot create a symbolic link here: %v", err)
+		}
+		got, err := Find(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Root != root || got.Dir != link {
+			t.Errorf("got %+v, want root %s dir %s", got, root, link)
+		}
+	})
+
+	t.Run(".mtqg links outside the repository", func(t *testing.T) {
+		// A cloned repository could commit .mtqg as a link to somewhere else on
+		// the machine; mtqg must not take that for its .mtqg/ and write there.
+		root := newRepo(t)
+		outside := newMtqg(t, realPath(t, t.TempDir()), "0\n", nil)
+		if err := os.Symlink(outside, filepath.Join(root, mtqgDirName)); err != nil {
+			t.Skipf("cannot create a symbolic link here: %v", err)
+		}
+		got, err := Find(root)
+		var notInit *NotInitializedError
+		if err == nil || errors.As(err, &notInit) || errors.Is(err, ErrNotInRepository) {
+			t.Fatalf("got %+v, err = %v, want an error about .mtqg leading out of the repository", got, err)
+		}
+	})
+
+	t.Run("an ancestor that cannot be read is passed over", func(t *testing.T) {
+		if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+			t.Skip("permissions do not stop root, and Windows has no searchable-only directories")
+		}
+		isolateGit(t)
+		locked := filepath.Join(realPath(t, t.TempDir()), "locked")
+		start := mkdir(t, filepath.Join(locked, "inner"))
+		if err := os.Chmod(locked, 0o111); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(locked, 0o750) }) // so that t.TempDir can clean up
+		if _, err := Find(start); !errors.Is(err, ErrNotInRepository) {
+			t.Fatalf("err = %v, want ErrNotInRepository", err)
+		}
+	})
+
+	t.Run("start that cannot be read is an error", func(t *testing.T) {
+		if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+			t.Skip("permissions do not stop root, and Windows has no searchable-only directories")
+		}
+		root := newRepo(t)
+		newMtqg(t, root, "0\n", nil)
+		start := mkdir(t, filepath.Join(root, "locked"))
+		if err := os.Chmod(start, 0o111); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(start, 0o750) }) // so that t.TempDir can clean up
+		if _, err := Find(start); !errors.Is(err, fs.ErrPermission) {
+			t.Fatalf("err = %v, want a permission error (only ancestors are passed over)", err)
 		}
 	})
 

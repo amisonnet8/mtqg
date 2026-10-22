@@ -142,3 +142,13 @@ MCP: search の本文を切らない | internal/cli/mcp_tools.go | if utf8.RuneC
 # fish 3.6 では、"--word=$cur" の引用符を外しても通る（空のトークンでも $cur は空文字1つで、引数が消えない）。引用符は、空のリストのときの備えとして残す
 # 補完 fish: --word= の引用符を外す | internal/cli/completions/mtqg.fish | mtqg candidates "--word=$cur" -- $words | mtqg candidates --word=$cur -- $words
 補完 PowerShell: 打ちかけの語を --word= で渡さない | internal/cli/completions/mtqg.ps1 | mtqg candidates "--word=$wordToComplete" -- @words | mtqg candidates -- @words
+
+# --- 配布物のライセンス（tools/licenses。go test ./tools/licenses/ で足りる）
+ライセンス: Windows でだけリンクされるモジュールを集めない | tools/licenses/main.go | {"linux", "darwin", "windows"} | {"linux", "darwin"}
+ライセンス: ライセンスのファイルが無いモジュールを通す | tools/licenses/main.go | if len(files) == 0 { | if false {
+ライセンス: ライセンスでないファイル（README）も集める | tools/licenses/main.go | if e.Type().IsRegular() && isLicense(e.Name()) { | if e.Type().IsRegular() {
+ライセンス: COPYING をライセンスのファイルと見なさない | tools/licenses/main.go | "LICENCE", "COPYING", "NOTICE"} | "LICENCE", "NOTICE"}
+ライセンス: Go の標準ライブラリのライセンスを go/LICENSE に置かない | tools/licenses/main.go | filepath.Join(dir, "go", "LICENSE") | filepath.Join(dir, "go", "LICENSE.txt")
+ライセンス: 前の出力を消さずに足す | tools/licenses/main.go | if err := os.RemoveAll(dir); err != nil { | if err := error(nil); err != nil {
+ライセンス: 引数が多すぎても動く | tools/licenses/main.go | if len(os.Args) != 3 { | if len(os.Args) < 3 {
+ライセンス: 失敗を終了コード 1 で知らせない | tools/licenses/main.go | os.Exit(1) | os.Exit(0)

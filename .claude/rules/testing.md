@@ -196,6 +196,7 @@
 - **`uses: owner/repo@TAG`はタグ名と厳密に一致しないと失敗する。** `v`の有無を見落としやすい。書く前に実際のタグ名を確かめる
 - **Windowsには実行ビットの概念がない。** `os.Chmod`後に実行ビットを確かめるテストは、`runtime.GOOS != "windows"`でガードする
 - **実行権限の無いファイルで「起動できない（126）」を作るテストは、Windowsでは「見つからない（127）」になる。** 拡張子の無い名前（`script`・`build.sh`）は`PATHEXT`に合わず、コマンドとして探されないため。Windowsでは`.exe`の名前で、中身が実行形式でないファイルにすると、起動に失敗して126になる
+- **テストの中で`go build -o`して起動するバイナリは、Windowsでは名前に`.exe`を付ける**（付けないと`executable file not found in %PATH%`。拡張子の無い名前は`PATHEXT`に合わない。`tools/licenses`の`TestCommand`で、CI の Windows でだけ落ちた）
 - mtqg固有の注意：**Windowsでは開いているファイルを置き換え（rename）できないことがある。** 一時ファイル経由の置き換え（`undo`・`archive`）は、Windowsランナーで必ず確かめる
 - **Windowsの`os.Symlink`は、リンクの宛先の`/`を`\`にして保存する。** `os.Readlink`は`releases\v2`を返す。宛先を見せる・比べるときは`filepath.ToSlash`で`/`にそろえる。テストの宛先は、区切りを含むもの（`src/auth`）にする。区切りの無い宛先（`src`）では、この食い違いを捕まえられない（crube の`show`の`link`で、CI の Windows でだけ落ちた）
 - **OSで分かれる動き（区切りの`\`など）は、手元のLinuxのテストからも確かめる。** `filepath.Separator`のようなOSの値を、パッケージの変数（例：crube の`internal/core`の`osSeparator`）に入れて使い、テストでWindowsの値に差し替える（`t.Cleanup`で戻す。`t.Parallel`にしない）。CIのWindowsまで待たずに、手元で落ちる

@@ -8,6 +8,12 @@ import (
 	"github.com/amisonnet8/mtqg/internal/cli"
 )
 
+// version is set by the release build (-ldflags "-X main.version=v0.1.0",
+// .goreleaser.yaml). go install leaves it empty.
+var version string
+
 func main() {
-	os.Exit(cli.Run(cli.OSEnv(), os.Args[1:]))
+	env := cli.OSEnv()
+	env.Version = version
+	os.Exit(cli.Run(env, os.Args[1:]))
 }

@@ -34,12 +34,19 @@
 - 一時ファイル・ディレクトリは`t.TempDir()`で作る。作成も後片付けもテストの仕組みに任せ、`rm -rf`で片付けない
 - gitを使うテストは**本物の`git`コマンド**で一時リポジトリを作る。gitの動きを模したものに置き換えない
 - テスト内のgitは、開発者の設定の影響を受けないようにする。`HOME`と`GIT_CONFIG_GLOBAL`を一時ディレクトリに向け、`user.name`・`user.email`はテスト内で設定する（`t.Setenv`）
-- **期待値の件数・ID・桁は、手で書かずに、実際の出力を読んで正しいと確かめてから固定する。** Step 5で、手で数えた「記録11件」と、写し間違えた質問IDが、正しい実装の出力と食い違った。テストが落ちたときは、実装と期待値のどちらが間違っているかを、出力を読んで判断する（貼るだけにしない）
+- **期待値は、テストを書く前に決める。** 推測で埋めて、落ちてから直す、をしない
+  - **計算で決まる値**（ハッシュ・表示幅・日時の書式など）は、実装とは別の道具（`sha256sum`など）で求めて書く。実装の出力を写すだけでは、実装の誤りを固定してしまう
+  - **動かして決まる値**（走査・照合の結果など）は、先に実装を動かして出力を読み、1件ずつ正しいと確かめてから貼る
+  - **件数より中身で比べる**（名前の一覧など）。件数は数え間違えても気づきにくく、落ちたときに何が違うか分からない
+  - 例（mtqg、Step 5）：手で数えた「記録11件」と、写し間違えた質問IDが、正しい実装の出力と食い違った
+  - テストが落ちたときは、実装と期待値のどちらが誤りかを先に確かめる
+  - 「〇〇と同じ書式・動き」と仕様にあるものは、その本家を道具として使って期待値を求める（gitignore の書式なら`git check-ignore`。パスに末尾の`/`を付けて聞くと、ディレクトリそのものの判定が本来と変わることがある。付けずに聞く）
+- **表の形の行（行末のコメント、map の値）を手で桁揃えしない。** gofmt が揃え方を決めるので、`qsoku lint`が`File is not properly formatted (gofmt)`で落ちる。書いたら`qsoku fmt`で整形してから`qsoku check`する（整形ツールが書いた変更は、テープに理由なしで載るが、それでよい）
 - **`Run`を直接呼ぶテストで、`Env.Now`が効くのは表示だけ。** ジャーナルに書かれる`ts`は、ジャーナル層の本物の時計（`Journal.now`）から入る。書いた行の`ts`を固定値と比べるテストは書けない（正規表現で形を確かめる。時刻の並びを確かめたいときは`setJournal`で行を用意する）。Step 6で、`edit`の行の`ts`を`Env.Now`の値と比べて落ちた
 - **「まだ作っていないコマンド」（`run`が無いコマンド）のテストは、実在のコマンドに頼らず、テストの中で`commands`に仮のコマンドを足して書く。** Step 6で`undo`を作ったとき、それを使っていた3か所（`commands_test.go`・`json_test.go`・`e2e_test.go`）が落ちた。Step 7で`archive`を作って未実装のコマンドが無くなったので、仮のコマンドを`t.Cleanup`で戻す形にした（このパッケージのテストは`t.Parallel`を使わない）。e2eは本物のバイナリに仮のコマンドを足せないので、このケースを持たない（`run == nil`の扱いは単体テストの担当）
 - **gosecのG602（添字の範囲）は、除外を足さず、添字を使わない書き方にして解消する。** 「見つけた最良の行の添字」を持ち回る代わりに、その行の時刻を持ち回った（`model/undo.go`）
 - ロックは、複数のgoroutine・複数のプロセスから同時に書いて、行が欠けないこと・混ざらないことを確かめる。書き直し（`undo`・`archive`）と追記を同時に走らせても行が消えないことも確かめる
-- **壊して確かめる手順は、Skill `mutation-check`（`.claude/skills/mutation-check/`。`mutate.sh`が、変異を入れて、テストを走らせ、必ず元に戻す）。** Step 7・8・9で、同じ手順を毎回その場で書いていたので固定した。生き残った変異は、握りつぶさずに読み、テストを足すか、同じ意味だと理由を書いて残す。**段階4bで、構文だけで判定できる変異（比較・論理・算術演算子の反転、真偽値リテラル、境界値など）を自動で見つけて回す`gen-mutants`（同ディレクトリ、mtqg本体とは別のGoモジュール）を足した**（qsokuの報告「11章で解くもの」——手作業の変異確認の機械化——への対応、2026-09-25）。仕様の意味を読まないと分からない変異（`mutate.sh`が引き続き担当）を代替するものではなく、構文的な変異の網羅だけを自動化する。`internal/cli/candidates.go`で動作確認し、90変異中78 killed・6 not compiled・6 SURVIVED（1件は境界で結果が同じになる等価変異と確認、残りは簡易確認のみ）。詳細は`.claude/skills/mutation-check/SKILL.md`。
+- **壊して確かめる手順は、下の「壊して確かめる（mutation-check）」。** 2026-10-22に、テンプレートの Skill（変異の道具`mutants/`と、仕様の変異の一覧`spec.txt`）に置き換えた（前の`mutate.sh`・`gen-mutants`はテンプレートの元になった形）
 - **並行・排他のテストは、壊して確かめる。** ロックを無効にする（`tryLock`が常に成功する、`Rewrite`がロックを取らない）変異を手で入れ、テストが失敗するかを一度見て、元に戻す。追記どうしの並行は、`O_APPEND`のおかげでロックなしでも通ってしまう。排他を直接確かめるテスト（待ち時間切れ、保持者を`Kill`する、シンボリックリンク経由）と、追記と書き直しの並行テスト（ロックを外すと120行中33行しか残らない）が、ロックの有無を区別する。通るだけのテストは、効いているとは限らない
 - **並行テストには「証明にならない」ガードを入れる。** 書き直しが3回未満なら失敗にする、など。ロックは公平ではない（`lock`のコメント）ので、休みなしで追記し続けると書き直しが締め出され、テストが何も確かめないまま通る（実際に`-race`で1回だけ失敗した）。追記の合間に短い休みを入れて、実際の使い方（短いコマンドの間に休みがある）に近づける
   - **ガードを入れるだけでは、実行時間を縮めたときに間欠的に落ちる**（Step 7で、`archive`のテストの追記の回数を減らしたら、10回に2回、アーカイブが1回しか重ならず落ちた）。**追記の側を「決めた回数」でなく「書き直す側が必要な回数を終えるまで続ける」形にする**と、ロックの分け方に関わらず、必ず重なる。書けた行数を数えておき、あとで期待値にする
@@ -47,7 +54,20 @@
   - **`TestRewriteWhileProcessesAppend`（プロセス版）も同じ日に直した**（mtqgのbug `5e7e4a8492`、2026-09-26）。goroutine版と違い、追記側は別プロセスなので`stop`のようなフラグを直接は渡せない。**`TestHelperProcess`の`append`モードに「`MTQG_COUNT`が0以下（未指定を含む）なら、killされるまで無限に書き続ける」を足し**、書けた件数はプロセスに報告させず（killされた側は報告できない）、**killしたあとに`journal.jsonl`を読んで、写し先のprefixごとの連番から直接数える**。書き直し側は`wantRewrites`回を必ず行い、かつ「何かが実際に追記されるまで」は続ける（`appended() == 0`のガード。プロセスの起動待ちで追記が1件も無いまま`wantRewrites`に達する可能性があるため）。500回という上限は、本当におかしくなったとき用の安全弁であり、狙って踏む前提の値ではない。**mutation-checkは行わなかった**（テストインフラ自体の修正であり、生成側の実装を確かめるものではないため。かわりに`-count=30`・`qsoku race`の繰り返しで安定性を確認した）。生き残りとして扱わなかった判断：`wantRewrites`の値そのものを弱くする変異（例：3→0）は、ループの継続条件`appended() == 0`が独立に効くため検出できない——これは「確認の回数を決める定数」を、その定数自身が作るループでしか確かめようがないという構造上の限界で、`TestArchiveWhileGoroutinesAppend`の`wantArchives`にも同じ限界がある。テストを足しても直せる類のものではないので、そのまま受け入れる
 - 別のプロセスから書くテストは、テストバイナリ自身を`os.Args[0]`で再実行するヘルパー（`TestHelperProcess`、環境変数で動作を切り替える）で書く。シェルスクリプトは使わない
 - 並行テストは、`-count=10`や`qsoku race`の繰り返しで、たまにしか落ちないことを確かめてから区切りにする
-- **Goのソースに、見えない文字（ゼロ幅、U+2028・U+2029、文字の向きを変える制御文字、制御文字）を、そのまま書かない。** エスケープ（`\xe2\x80\xa8`のバイト列、または数値）で書く。`\uXXXX`と書いたつもりが、書き込みの途中で実際の文字に展開されていたことがあり（`internal/journal/event_test.go`にU+2028が入り、JSONのエスケープを読むテストの入力が普通の文字に変わっていた）、gosecのG116が検出した。ルートの`source_test.go`が、すべての`.go`を検査する（最初の草稿の、自分自身のコメントも検出した）。文字の範囲を書くときも、数値で書く
+- **Goのソースに、見えない文字（ゼロ幅、U+2028・U+2029、結合文字、文字の向きを変える制御文字、そのほかの制御文字）をそのまま書かない。** 書き込みの途中で本物の文字に置き換わると、見た目では気づけない不具合になる
+  - **UTF-8 のバイトのエスケープで書く**（U+2028 なら`\xe2\x80\xa8`）。何の文字かは、コメントかテストの名前に残す。バイトのエスケープは文字列リテラルの中でだけ使える（rune リテラルには使えない）
+  - **バックスラッシュと`u`で始まる、コードポイントのエスケープは使わない。** srwrの`edit`・`new`の引数はJSONで渡るので、そう書くと引数の段階で本物の文字になって届く（U+2028・U+2029・U+0301・U+200Dで実測）
+  - 書いたあとに`grep -P '[\x{2028}\x{2029}\x{200D}\x{0301}]'`で、本物の文字が無いことを確かめる。`qsoku lint`（staticcheckのST1018）が見つけるのは書式文字だけ
+  - ルートの`source_test.go`が、すべての`.go`を検査する（最初の草稿の、自分自身のコメントも検出した）。`\uXXXX`と書いたつもりが、書き込みの途中で実際の文字に展開されていたことがあり（`internal/journal/event_test.go`にU+2028が入り、JSONのエスケープを読むテストの入力が普通の文字に変わっていた）、gosecのG116が検出した。文字の範囲を書くときも、数値で書く
+
+## 壊して確かめる（mutation-check）
+
+通るだけのテストは、効いているとは限らない。実装を1か所ずつ壊して、テストが落ちるかを見る。手順・道具（`mutants/`）・仕様の変異の一覧（`spec.txt`）は、Skill`mutation-check`（`.claude/skills/mutation-check/`）にある。生き残った変異は、握りつぶさずに読み、テストを足すか、同じ意味だと理由を書いて残す。
+
+- **作業ツリーではなく、写しで壊す。** `$TMPDIR`に写しを作り（書き方は Skill の手順1）、その中で変異を入れる。作業ツリーをBashで書き換えると、srwrのテープに理由のない`external`が残り、戻し忘れの心配もある。足したテストは、写しへコピーしてから同じ変異をもう一度入れ、落ちることを確かめる
+- **パッケージ自身のテストで生き残ったものは、全テスト（`go test ./...`。e2eがあれば、それも含む）でもう一度回す。** CLIの出力の変異は、e2eが捕まえることが多い
+- **見落としやすい形**：整える処理（書き出しの整形など）を通して比べるテストは、手前の誤り（読み込みで空白を残す、など）を隠す。整える処理がもう一度直すため。読み込んだ結果そのものを比べる。期待値が偶然一致することもある（境目ちょうどの例を足す）
+- **意味が同じなので残した変異**：今までのものは「mtqg固有の検証項目」の各項目の「生き残った変異」にある。新しく残したものと理由は、ここに足す
 
 ## mtqg固有の検証項目
 
@@ -126,10 +146,17 @@
 - `qsoku shellcheck`は`git ls-files '*.sh' '*.bash'`で追跡中のものを列挙して`shellcheck`にかける（新しいスクリプトを足しても`qsokufile`の変更が要らない）。**追跡中のものだけ**なので、`git add`してから走らせる
 - 対象：`.devcontainer/postCreate.sh`、`.claude/hooks/`のスクリプト、補完のbashスクリプト（`internal/cli/completions/mtqg.bash`）など。zsh・fish・PowerShellのスクリプトはShellCheckの対象外（e2eで本物のシェルが確かめる）
 - **`postCreate.sh`の中で`. /etc/os-release`をsourceしない**（ShellCheckのSC1091が、追える形で指定されていないファイルとして、情報の水準で報告し、終了コードが非0になる）。ディストリビューションの版は`lsb_release -rs`で取る
+- `# shellcheck disable=…`は、`case`の枝の前には置けない（SC1124 のパースエラー）。`case`の文の前に置くと、全部の枝に効く
 - CIでは`ubuntu-latest`だけの専用ジョブにする（スクリプトの中身はOSで変わらず、Windowsランナーに`shellcheck`がある保証もない）
 
 **シェルスクリプト中のコメントを、行頭が小文字の`# shellcheck`で始まる文にしてはいけない。** ShellCheckがインラインディレクティブとして解釈しようとし、`key=value`形式でないとパースエラー（SC1072/SC1073）になって、以降の行がチェックできなくなる。「ShellCheck」のように大文字を混ぜて書く。
 > **出所:** 別プロジェクト SanDBox で実際に踏んだ事象。
+
+## シェル向けのもの：補完のスクリプト・シェルとの連携
+
+- devcontainer のシェルは、`postCreate.sh`の`shells`で決める。テンプレートの初めは`(bash)`だけで、**このリポジトリは4つ**（mtqg の補完のスクリプトを配るため。下の行の形）
+- 補完のスクリプトなど、自分のシェル向けのものを配るプロジェクトは、**本物のシェルで動かして確かめる**。`shells`を`(bash zsh fish pwsh)`にし、`devcontainer.json`の`features`に`"ghcr.io/devcontainers/features/powershell:2.0.3": {}`を足して、コンテナを作り直す（bash・zsh はベースイメージ、fish は`postCreate.sh`の apt、pwsh は feature）。`pwsh`を挙げて feature が無いと、`postCreate.sh`が止まる
+- テストは、入っていないシェルを飛ばす（CI のランナーにあるのは bash と`pwsh`）。飛んだときは、コンテナを作り直したかを確かめる。何を候補にするかは単体テストで見て、本物のシェルのテストは「スクリプトがシェルとつながること」だけを見る（mtqg では「mtqg固有の検証項目」の「シェル補完」）
 
 ## `-race`の運用
 
@@ -145,6 +172,7 @@
 - **Trivyの脆弱性DBの取得先は`ghcr.io`ではなく`mirror.gcr.io`（`mirror.gcr.io/aquasec/trivy-db:2`）。** 名前から`ghcr.io`（GitHub Container Registry）を許可すればよいと思い込むと、`qsoku trivy`が`sandbox_violations`で失敗する。実際に動かして初めて分かった（サンドボックスが拒否したホスト名がそのままエラーに出る）
 - **Trivyの脆弱性DBは`~/.cache/trivy`に書き込む。** サンドボックスの`filesystem.allowWrite`にこれが無いと、ネットワークを許可してもダウンロード後の書き込みで`read-only file system`になる
 - **golangci-lintは、Goより古いと標準ライブラリを読めず、`typecheck`で落ちる**（`could not load export data … export data version 5 is greater than maximum supported version 4`）。golangci-lintは、自分が抱えるx/toolsの版までのexport dataしか読めない。コンテナのGoが新しいパッチ・版に上がると、固定した版（ビルド済みの`install.sh`の版も）が突然落ちる。**同じ版をコンテナのGoで作り直しても直らない**（実測）。そのため、版を固定せず`go install …/golangci-lint/v2/cmd/golangci-lint@latest`で入れる（`.devcontainer/postCreate.sh`、CIの`version: latest`）。Goが上がった直後で、対応するlintがまだ無いときは落ちたままになる。`qsoku lint`が、このエラーを見つけたら更新のしかたを案内する（`qsokufile`）。直し方は、`go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`を動かす（`proxy.golang.org`と`storage.googleapis.com`への接続が要る）。固定しない代わりに、新しいlintの指摘で赤くなることがある（そのときは設定か指摘を直す）
+- **道具のリリースのタグが打たれた直後にコンテナを作り直すと、前の版が入ることがある**（srwr の v0.3.0 で起きた）。Go のモジュールプロキシは`@latest`の答えをしばらく覚えているので、`postCreate.sh`の`go install …@latest`が前の版を入れ、その版に無い補完も警告を出して飛ばす。作り直したら、新しく出た道具の`--version`を見る。古ければ`go install github.com/amisonnet8/<道具>/cmd/<道具>@<新しい版>`で入れ直し（`proxy.golang.org`・`sum.golang.org`・`storage.googleapis.com`への接続が要る）、補完は人間のターミナルで入れ直す（書き先がサンドボックスの外）
 - **golangci-lintのキャッシュは`~/.cache/golangci-lint`に書き込む。** `filesystem.allowWrite`にこれが無いと、`qsoku lint`・`qsoku check`が`Failed to persist facts to cache ... read-only file system`の警告を出す。結果（`0 issues`）と終了コードには影響せず、キャッシュが効かなくなるだけ（2026-10-01、`template/`の動作確認中に気づいた。mtqg本体でも`allowWrite`に足した）
 - **`allowWrite`に書いたパスは、ディレクトリが既に存在しないと効かない。** リビルド直後の新しいコンテナには`~/.cache/golangci-lint`・`~/.cache/trivy`が無く、`~/.cache`自体は読み取り専用なので、`qsoku lint`・`qsoku check`は`failed to initialize build cache ... mkdir ... read-only file system`で**失敗**し（終了コード1。上の`Failed to persist facts`の警告はディレクトリがある場合だけで、無いとこちらになる）、`qsoku trivy`もDBを保存できず終了コード1になる。`qsoku vet`・`qsoku test`・補完e2eは、`~/.cache/go-build`が`go install`で先にできているので通る。`postCreate.sh`が`.claude/settings.json`の`allowWrite`を`jq`で読み、`~/`と絶対パス（`/go`など。`/dev`・`/proc`・`/sys`と相対パスは除く。作れなければ警告だけ）を`mkdir -p`して先に作る（`allowWrite`を変えても`postCreate.sh`は直さなくてよい。2026-10-01、リビルド後の確認で発見。mtqgのbug `5bc2e001fe`）。**すでにあるコンテナを直すには、サンドボックスの外で`mkdir -p ~/.cache/golangci-lint ~/.cache/trivy`する**
 - **Linuxでは`bubblewrap`（`bwrap`）と`socat`が無いと、`sandbox.enabled: true`でも黙って無効のままになる。** エラーも出ないので、サンドボックスが効いているつもりで効いていない状態になる。`postCreate.sh`が、無いものだけ`apt`で入れる（ベースイメージが持っていれば何もしない）
@@ -167,6 +195,8 @@
 - **Windowsには実行ビットの概念がない。** `os.Chmod`後に実行ビットを確かめるテストは、`runtime.GOOS != "windows"`でガードする
 - **実行権限の無いファイルで「起動できない（126）」を作るテストは、Windowsでは「見つからない（127）」になる。** 拡張子の無い名前（`script`・`build.sh`）は`PATHEXT`に合わず、コマンドとして探されないため。Windowsでは`.exe`の名前で、中身が実行形式でないファイルにすると、起動に失敗して126になる
 - mtqg固有の注意：**Windowsでは開いているファイルを置き換え（rename）できないことがある。** 一時ファイル経由の置き換え（`undo`・`archive`）は、Windowsランナーで必ず確かめる
+- **Windowsの`os.Symlink`は、リンクの宛先の`/`を`\`にして保存する。** `os.Readlink`は`releases\v2`を返す。宛先を見せる・比べるときは`filepath.ToSlash`で`/`にそろえる。テストの宛先は、区切りを含むもの（`src/auth`）にする。区切りの無い宛先（`src`）では、この食い違いを捕まえられない（crube の`show`の`link`で、CI の Windows でだけ落ちた）
+- **OSで分かれる動き（区切りの`\`など）は、手元のLinuxのテストからも確かめる。** `filepath.Separator`のようなOSの値を、パッケージの変数（例：crube の`internal/core`の`osSeparator`）に入れて使い、テストでWindowsの値に差し替える（`t.Cleanup`で戻す。`t.Parallel`にしない）。CIのWindowsまで待たずに、手元で落ちる
 - mtqg固有の注意：**Windowsでは、開いているハンドルのあるディレクトリを消せない。** `os.Root`を開いたまま`os.RemoveAll`すると失敗する（`Init`が失敗したときの後片付けで、実際にCIのWindowsだけで起きた）。**先に`Close`してから消す。** 後片付けの失敗を握りつぶさない（握りつぶすと、作りかけが残り、次の実行が「すでにある」と断る連鎖になる）
 - mtqg固有の注意：**`docs/reference/`の`--json`の例に`path=`でリポジトリのパスを置き換えるとき、JSONの中のパスはバックスラッシュが二重にエスケープされる（Windows限定）。** `e2e/examples_test.go`の置き換えは、実行時の生のディレクトリパス（`dir`。Windowsではバックスラッシュ区切り）を、コマンドの出力の中で探して置き換える。しかし`--json`の出力では、Windowsのパス（例：`C:\Users\...`）がJSONの文字列としてバックスラッシュが2つに増えた形（`C:\\Users\\...`）で出るため、`dir`のまま探しても一致せず、置き換えが起きない。段階4a（`init --agent ... --json`の例。PR #4）でWindowsのCIだけが落ちて見つかった。**バックスラッシュを2つに増やした形を先に置き換えてから、元の形を置き換える**（2段階の`strings.ReplaceAll`）。Linuxでは`dir`にバックスラッシュが無いので、この処理は何もしない（既存の例に影響なし）
 - mtqg固有の注意：**gitリポジトリをファイル単位でコピーすると、git自身が`.git/`の中に作った一時ファイルを、コピーの途中で消してしまうことがある。** `e2e/examples_test.go`の`copyOf`（docsの例をフィクスチャのgitリポジトリごと複製する）が、macOSのCIだけで`lstat .../.git/objects/maintenance.lock: no such file or directory`で落ちた（`filepath.WalkDir`が一覧に載せた直後、gitがそのファイルを消していた。2026-09-25、mtqgのbug `858dd2cafb`）。**一覧に載ってから読むまでに消えたファイルは、コピーごと失敗させずに飛ばす**（`d.Info()`・`os.ReadFile`が`fs.ErrNotExist`を返したら`return nil`）。git管理下の一時ファイルはコピー先に無くても実害が無い。決定的に確かめるテストは`TestCopyEntrySkipsVanishedFiles`・`TestCopyEntrySkipsFilesThatVanishAfterStat`（`os.DirEntry.Info()`は呼ぶたびに再lstatするので、`ReadDir`の後にファイルを消せばこの競合を確実に再現できる）

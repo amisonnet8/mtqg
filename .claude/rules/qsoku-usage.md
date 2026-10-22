@@ -19,6 +19,7 @@
 | `qsoku trivy` | 既知の脆弱性・ライセンスの検査 | 依存を足したとき |
 | `qsoku shellcheck` | 追跡中の`*.sh`・`*.bash`をShellCheckにかける | シェルスクリプトを足したとき |
 | `qsoku hook` | `.claude/hooks/require-bcuz.test.sh`（bcuz を強制するフックの判定の表。`jq`が要る） | `require-bcuz.sh`を変えたとき（CIでも`shellcheck`ジョブで回る） |
+| `qsoku snapshot` | `goreleaser check`のあと、タグなしで配布物を`dist/`に作る（`.goreleaser.yaml`。goreleaser が要る） | タグを打つ前、`.goreleaser.yaml`や`tools/licenses`を変えたとき。中身を見てからタグを打つ（`.claude/rules/distribution.md`） |
 
 **`qsoku cross`**：`GOOS=windows`・`darwin`で`go vet`と`golangci-lint run`を動かす。このリポジトリにはOSごとのファイル（ロックの`flock`と`LockFileEx`、`internal/cli`の`ansi_*.go`・`tty_*.go`）があるので、有効にして`check`に入れてある。Linuxだけで動かしていると、Windows向けのファイルが壊れていてもCIのWindowsで初めて落ちる（`syscall.Flock`のようなUnix専用の呼び出しなど）
 

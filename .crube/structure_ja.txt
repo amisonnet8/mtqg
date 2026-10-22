@@ -1,0 +1,234 @@
+.bcuz/	bcuz を通して動かしたコマンドの記録（コミットする）
+	history.jsonl	1コマンド1行の JSON：いつ・なぜ・何を・終了コード
+.claude/	リポジトリで共有する Claude Code の設定
+	hooks/	Claude Code が道具の前後に動かすフック
+		build.sh	srwr で .go・go.mod・go.sum を変えたあとに qsoku build を動かす
+		crube-untracked.sh	srwr の new でファイルを作ったあと、説明の無いパスを言語ごとに Claude に知らせる
+		require-bcuz.sh	bcuz を通さない Bash のコマンドを断る PreToolUse フック
+		require-bcuz.test.sh	require-bcuz.sh が通す・断るコマンドの表（qsoku hook）
+	rules/	このリポジトリで作業するときのルール（日本語）。いつ読むかは CLAUDE.md にある
+		bcuz-usage.md	Bash のコマンドを bcuz で動かす方法と、秘密をコマンドに書かないこと
+		cli-output.md	CLI の出力：英語の文言は internal/cli だけ、--json は外との約束、したことを正直に伝える
+		crube-usage.md	crube の使い方：MCP と CLI、場所の探し方、両方の言語の説明の保ち方
+		datetime.md	日時の扱い：UTC で持ち、表示だけ利用者のタイムゾーンに直す
+		directory-structure.md	ファイルの置き場所と、リポジトリの構成
+		distribution.md	配布の方法：goreleaser での配布物の作り方と、リリースの流れ
+		documentation.md	文書の書き方：例の値は道具で求める、docs/design/ に書く経緯の線引き
+		git-integration.md	製品としての mtqg が git にしてよいこと・いけないこと（読むだけ）
+		journal-format.md	データ形式：追記だけ、行の書き方とロック、形式の版
+		mtqg-usage.md	mtqg でメモ・todo・質問・不具合・決まり事を記録する方法
+		naming.md	命名：製品名、日本語と英語の用語の対応、コマンド、JSON のフィールド
+		qsoku-usage.md	ビルド・テスト・lint の qsoku の名前と呼び方
+		srwr-usage.md	ファイルは srwr だけで変える（厳格モード）こと、テープの閉じ方
+		testing.md	テスト方針と、サンドボックス・OS ごとの CI の落とし穴
+		working-with-human.md	人間への頼み方：小さなつまずき、確認、見え方の了承
+	settings.json	Claude Code の許可・サンドボックス・フック（人間が管理する）
+	skills/	Claude Code のスキル
+		commit-with-tape/	スキル：srwr のテープを閉じてコミットする
+			SKILL.md	スキルの手順
+		mutation-check/	スキル：実装をわざと壊して、テストが気づくか確かめる
+			SKILL.md	スキルの手順
+			spec.txt	プロジェクトの仕様の約束を1つずつ壊す変異の一覧（仕様の言葉で書く。最初は空）
+			mutants/	変異を入れてテストを回す道具（独立した Go モジュール）
+				go.mod	モジュールの定義（このプロジェクトとは別）
+				main.go	構文の変異、または一覧の変異を1つずつ入れ、ファイルを元に戻す
+				main_test.go	道具のテスト
+.devcontainer/	開発用のコンテナ
+	devcontainer-lock.json	コンテナを作ったときの feature の版
+	devcontainer.json	コンテナの定義と VS Code の設定
+	postCreate.sh	コンテナを作ったときに1回動く：道具（@latest）とシェルを入れ、サンドボックスのキャッシュのディレクトリを作る
+.github/	GitHub の設定
+	workflows/	GitHub Actions のワークフロー
+		ci.yml	CI：Linux・macOS・Windows で qsoku check と e2e、ほかに race・shellcheck・hook・trivy（release.yml からも呼ぶ）
+		release.yml	タグで動くリリース。ci.yml を通してから、goreleaser の配布物を Release に添付して公開する
+.mtqg/	mtqg の作業記録：メモ・todo・質問・不具合・用語・決まり事
+	.gitattributes	journal.jsonl を merge=union でマージする
+	.gitignore	.local/ を git に入れない
+	SCHEMA.md	journal.jsonl のデータ形式
+	journal.jsonl	記録そのもの。1件1行の JSON（mtqg からだけ書く）
+	version	mtqg のデータ形式の版
+.srwr/	srwr：AI によるファイル編集のテープ（操作ごとに理由つき）
+	tapes/	閉じたテープ（コミットする）。srwr view で再生できる
+		| 作業のまとまりごとに1本のテープ（圧縮済みの *.tape.jsonl.gz）。
+		| テープは .crube/ignore で crube の対象から外してあり、説明は要らない。
+.gitattributes	改行（すべて LF）と、記録のファイルの merge=union
+.gitignore	git に入れないもの。ルート直下のドットで始まる名前は許可リスト方式
+.golangci.yaml	golangci-lint の設定。層の依存の向き（depguard）と、出力を internal/cli に限ること（forbidigo）も検査する
+.goreleaser.yaml	配布物の作り方（goreleaser）。release.yml と qsoku snapshot が使う
+.mcp.json	Claude Code に mtqg・srwr と、crube（英語・日本語）の MCP サーバーをつなぐ設定
+.srwrignore	srwr がテープに記録しないファイル
+CLAUDE.md	このリポジトリでの Claude Code のルールと、読むべきルールファイルの案内
+LICENSE	MIT ライセンス
+PLAN.md	実装計画と進み具合（日本語）：段階、現在地、保留事項
+README.md	今は、未完成であることの注意書きだけ
+README_ja.md	同じ注意書きの日本語版
+go.mod	Go モジュールと依存
+go.sum	依存のチェックサム
+qsokufile	ビルド・テスト・lint の名前つきコマンド（qsoku）
+schema.go	docs/reference/schema.md を埋め込むパッケージ（Go はパッケージより下のファイルしか埋め込めない）
+schema_test.go	schema.md のマーカーが journal.SchemaVersion と合うかを確かめる
+source_test.go	どの .go にも見えない文字がそのまま入っていないかを確かめる
+trivy.yaml	Trivy の設定：何を脆弱性・ライセンスの失敗とみなすか
+tools/	プロジェクトを作るための道具（実行ファイルには組み込まれない）
+	licenses/	配布物に入れる依存のライセンス文を集める
+		| go run ./tools/licenses <dir> <main パッケージ>。goreleaser がビルドの前に動かす。ライセンスのファイルが無いモジュールがあれば失敗する。
+		main.go	実行ファイルに組み込まれるモジュールを go list -deps で求め、ライセンス文を写す
+		main_test.go	道具のテスト。./cmd/mtqg のライセンスの一覧を持つ（依存を足す・外すと変わる）
+cmd/	コマンド
+	mtqg/	mtqg コマンド
+		main.go	引数と、リリースのビルドが埋めた版を internal/cli に渡す
+internal/	mtqg のコード（外から import できない）：コア（journal・model）と CLI
+	cli/	入口：引数、英語の文言、表、--json、フック、MCP サーバー
+		| model・journal に依存し、逆向きは無い。文はすべて messages.go にある。
+		add.go	memo・todo・rule の add：記録を作るコマンド
+		agent_claude.go	mtqg init --agent claude-code：.claude/settings.json・.mcp.json・CLAUDE.md を配線する
+		ansi_other.go	Windows 以外での色の扱い
+		ansi_windows.go	Windows のコンソールで色を有効にする
+		archive.go	mtqg archive：日付の範囲を解釈し、移したもの・残したものを報告する
+		args.go	コマンドラインの文法をデータとして持つ：種類、コマンド、オプション
+		author.go	記録者を決める（MTQG_AUTHOR_*、なければ git config user.name）
+		candidates.go	mtqg candidates：シェル補完のため、コマンドラインの次に来うるもの
+		completion.go	mtqg completion：埋め込んだシェルの補完スクリプトを出す
+		completions/	補完スクリプト（固定のテキスト。TAB のたびに mtqg candidates に聞く）
+			mtqg.bash	bash
+			mtqg.fish	fish
+			mtqg.ps1	PowerShell
+			mtqg.zsh	zsh
+		context.go	mtqg context：文章にし、予算に収まるまで削る
+		doc.go	パッケージのコメント
+		done.go	done・reopen：状態の変更
+		edit.go	edit・delete
+		env.go	Env：Run が引数の外で触るものすべて。テストから Run を呼べるように差し込む
+		env_os.go	OSEnv：動いているプログラムの Env
+		format.go	mtqg format：diff・git show・アーカイブから渡されたジャーナルの行を見せる
+		glossary.go	glossary の add・list
+		help.go	ヘルプ。コマンドラインを読むのと同じ表から作る
+		hook.go	mtqg hook：エージェントとイベントで振り分ける（エージェントのターンを壊さない）
+		hook_claude.go	Claude Code のフック：SessionStart で context を渡し、Stop で記録を促す
+		init.go	mtqg init
+		json.go	--json の形を1か所に（ほかのプログラムとの約束）
+		list.go	memo・todo・rule の list（質問・バグの一覧は thread.go）
+		log.go	mtqg log：全種類の新しい記録
+		mcp.go	mtqg mcp：標準入出力で MCP サーバーを動かす
+		mcp_tools.go	MCP のツールとハンドラ
+		messages.go	mtqg が出す文のすべて
+		render.go	表、ウィンドウの幅で切る、制御文字の置き換え、色
+		report.go	エラーと警告。人間向けと --json の kind
+		review.go	mtqg review：食い違う事実を、判定せずに並べる
+		run.go	Run：引数を解釈して1つのコマンドを動かす
+		search.go	mtqg search
+		show.go	mtqg show：1件を全文で、経緯とともに
+		status.go	mtqg status：未完了のものと、未コミットの記録の件数
+		text.go	記録の本文：引数・標準入力・$EDITOR から
+		thread.go	質問と回答、バグと返信：1つの形を1つのコードで（add・list）
+		tty_unix.go	デバイス番号からの端末識別子（Linux・macOS）
+		tty_windows.go	Windows では端末識別子なし（MTQG_TTY は使える）
+		undo.go	mtqg undo：この端末から最後に書いた行を消す
+		upgrade.go	mtqg upgrade：形式の版を上げ、SCHEMA.md を書き直す
+		version.go	mtqg version：mtqg の版と、リポジトリの形式の版
+		width.go	表示の幅（全角は2）
+		bug_test.go	バグのコマンドのテスト
+		commands_test.go	Run を通したコマンドのテスト
+		helpers_test.go	テストの補助：一時的な git リポジトリで Run を呼ぶ harness
+		tty_test.go	端末識別子のテスト
+		*_test.go	同じ名前のファイルのテスト
+	journal/	ジャーナル層：.mtqg/ の中のファイルを読み書きする（イベントの意味は知らない）
+		| .mtqg/ の中のファイルは、すべて os.Root 経由で開く。書くのはこの層だけ。
+		append.go	Append：ロックを取って1イベントを追記する
+		archive.go	Archive：1回のロックで、archive/ へ追記してから journal.jsonl を置き換える
+		errors.go	エラーの種類（文は持たない）
+		event.go	Event：ジャーナルの1行と、その JSON の書き方
+		find.go	.mtqg/ とリポジトリを、1階層ずつ os.Root 経由で探す
+		git.go	git を読む（user.name、HEAD、コミット済みのジャーナル、status）。書かない
+		id.go	ID：ランダムな16進32桁
+		init.go	Init：.mtqg/ を作る
+		journal.go	Open と、パッケージのコメント
+		lock.go	.mtqg/.local/lock のロック。取れるか5秒たつまで再試行する
+		lock_unix.go	flock
+		lock_windows.go	LockFileEx
+		read.go	行の読み込みと、飛ばした・怪しい行の警告
+		replace_other.go	rename でのファイルの置き換え
+		replace_windows.go	Windows でのファイルの置き換え（別のプロセスが開いている間は再試行する）
+		rewrite.go	Rewrite：一時ファイルに書いて journal.jsonl を置き換える（undo）
+		schema.go	.mtqg/SCHEMA.md が古いかを見分けるマーカー
+		session.go	.mtqg/.local/sessions/ のフックのセッション
+		upgrade.go	Upgrade：形式の版と SCHEMA.md
+		version.go	SupportedVersion と SchemaVersion（手で上げる）
+		bench_test.go	読み書きのベンチマーク
+		helpers_test.go	テストの補助と、プロセスをまたぐテストの補助プロセス
+		symlink_test.go	シンボリックリンク経由でたどった .mtqg/ のテスト
+		*_test.go	同じ名前のファイルのテスト
+	model/	モデル層：イベントの意味（状態、検証、review、undo・archive の対象、context）
+		archive.go	archive が期間に対してどの記録を移すか
+		context.go	context がエージェントに伝える中身と、削る順序
+		doc.go	パッケージのコメント
+		errors.go	エラーの種類（文は持たない）
+		history.go	1件の記録の経緯
+		record.go	記録と、イベントから組み立てる状態
+		resolve.go	打った ID（4桁以上の前方一致）と、記録への変更
+		review.go	並行した状態変更、用語の重複定義、親のない返信
+		search.go	見えている記録の本文の検索
+		session.go	ShouldPrompt：Stop フックがエージェントに記録を促すか
+		undo.go	undo がどの行を消すか、いつ断るか
+		edit_test.go	edit・delete のテスト
+		model_test.go	状態の組み立てのテストと、テストの補助
+		thread_test.go	質問と回答、バグと返信のテスト
+		*_test.go	同じ名前のファイルのテスト
+e2e/	ビルドした mtqg と本物の git で動かすテスト（ビルドタグ e2e、qsoku test）
+	boundaries_test.go	衝突マーカー、知らない版、サブモジュール、.local/ を消したとき、既存の .mtqg/ への init
+	completion_test.go	補完スクリプトを本物の bash・zsh・fish・PowerShell で動かす
+	e2e_test.go	ブランチの union マージ、並行した変更、ブランチをまたぐ archive
+	examples_test.go	docs/ の例を動かして出力と比べる（qsoku docs-examples で書き直す）
+	hook_test.go	本物のバイナリでの mtqg hook claude-code
+	lock_unix_test.go	worktree・シンボリックリンクをまたぐロック（Linux・macOS）
+	mcp_test.go	本物のバイナリでの mtqg mcp
+	records_test.go	曖昧な ID、種類の取り違え、edit・delete・search
+	testdata/	テストのデータ
+		examples/	docs/ の例のフィクスチャ（印の repo= で名前を指す）
+			| *.jsonl を名前の順に journal.jsonl へ足し、1つずつコミットする（uncommitted*.jsonl はコミットしない）。
+			ambiguous/	前方が重なる ID
+				*.jsonl	ジャーナルの行
+			ambiguous_ja/	前方が重なる ID（本文は日本語）
+				*.jsonl	ジャーナルの行
+			broken/	読めない行のあるジャーナル
+				*.jsonl	ジャーナルの行
+			parser/	文書の節をまたいで使う主なフィクスチャ
+				uncommitted.jsonl	コミットしないままのジャーナルの行
+				*.jsonl	ジャーナルの行（1つ1コミット）
+			parser_ja/	主なフィクスチャ（本文は日本語）
+				uncommitted.jsonl	コミットしないままのジャーナルの行
+				*.jsonl	ジャーナルの行（1つ1コミット）
+			refuse/	undo が作成の行を消すのを断る記録
+				*.jsonl	ジャーナルの行
+			rules/	context の例のための決まり事
+				*.jsonl	ジャーナルの行
+			rules_ja/	決まり事（本文は日本語）
+				*.jsonl	ジャーナルの行
+			years/	archive の例のための、数年にわたる記録
+				*.jsonl	ジャーナルの行
+			years_ja/	数年にわたる記録（本文は日本語）
+				*.jsonl	ジャーナルの行
+docs/	文書
+	assets/	文書の画像
+		demo.gif	デモのアニメーション
+		demo.tape	demo.gif を録る VHS のスクリプト
+		logo.svg	ロゴ
+	design/	今の設計と、その理由（日本語）。節とファイルの対応は README.md
+		README.md	章とファイルの対応
+		01-purpose.md	mtqg の目的と、引き受けないこと
+		02-storage-and-git.md	記録をリポジトリに置くことと、git
+		03-data-model.md	記録の種類とイベント
+		04-append-and-merge.md	追記、ロック、マージ
+		05-reading.md	ジャーナルの読み込みと、状態の組み立て
+		06-implementation.md	実装：層、依存、テスト、配布
+		07-integrations.md	エージェント：フックと MCP サーバー
+		08-development.md	mtqg 自身の開発の進め方
+		cli.md	コマンドラインの設計
+	examples/	最初の一巡りから実例まで
+		examples.md	英語
+		examples_ja.md	日本語
+	reference/	仕様（英語が正。*_ja.md は日本語版）
+		cli.md	コマンド
+		cli_ja.md	コマンド（日本語）
+		schema.md	データ形式。埋め込まれ、.mtqg/SCHEMA.md として書き出される
+		schema_ja.md	データ形式（日本語）

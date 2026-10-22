@@ -7,17 +7,13 @@ import (
 	"github.com/amisonnet8/mtqg/internal/journal"
 )
 
-// version is set at build time (-ldflags "-X .../internal/cli.version=v0.1.0").
-// Without it, the version comes from the build information.
-var version string
-
-// buildVersion says which mtqg this is: the version set at build time, else the
-// version of the module in the build information (a tag for go install
-// ...@v0.1.0, a version made of the commit time and hash for go build), else
-// dev with the commit if it is known.
-func buildVersion() string {
-	if version != "" {
-		return version
+// buildVersion says which mtqg this is: the version set at build time
+// (Env.Version), else the version of the module in the build information (a tag
+// for go install ...@v0.1.0, a version made of the commit time and hash for go
+// build), else dev with the commit if it is known.
+func buildVersion(set string) string {
+	if set != "" {
+		return set
 	}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
@@ -50,13 +46,13 @@ func runVersion(c *ctx) int {
 		}
 	}
 	if c.inv.json {
-		out := jsonVersion{Command: c.inv.cmd.label(), Mtqg: buildVersion(), Format: jsonFormatVersion{Supported: journal.SupportedVersion}}
+		out := jsonVersion{Command: c.inv.cmd.label(), Mtqg: buildVersion(c.env.Version), Format: jsonFormatVersion{Supported: journal.SupportedVersion}}
 		if known {
 			out.Format.Repository = &found
 		}
 		return c.emit(out)
 	}
-	c.println(msgVersion(buildVersion()))
+	c.println(msgVersion(buildVersion(c.env.Version)))
 	c.println(msgFormatVersion(found, journal.SupportedVersion, known))
 	return exitOK
 }

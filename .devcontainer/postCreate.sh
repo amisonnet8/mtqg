@@ -1,27 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The shells this container is set up for: qsoku's shell integration and the
+# completion of bcuz, crube, mtqg and srwr go into each of them (the end of this file).
+# All four: mtqg ships its own completion scripts, run by the real shells in
+# e2e/completion_test.go (.claude/rules/testing.md). The template starts with
+# bash only. bash and zsh are in the base image, fish is installed below, and
+# pwsh comes only from the "powershell" feature of devcontainer.json.
+shells=(bash zsh fish pwsh)
+has_shell() {
+  local shell
+  for shell in "${shells[@]}"; do
+    [ "$shell" = "$1" ] && return 0
+  done
+  return 1
+}
+if has_shell pwsh && ! command -v pwsh >/dev/null 2>&1; then
+  echo 'error: shells lists pwsh, but there is no pwsh: add the "powershell" feature to devcontainer.json and rebuild' >&2
+  exit 1
+fi
+
 # wget, gnupg,
-# lsb-release:    Adding the Trivy apt repository below.
-# gcc:            qsoku race (CGO_ENABLED=1 go test -race) needs a C compiler.
-#                 The container itself runs with CGO_ENABLED=0 (.claude/rules/distribution.md).
-# jq:             Used by .claude/hooks/build.sh, .claude/hooks/require-bcuz.sh and the
-#                 allowWrite block below; also for inspecting journal.jsonl and --json output.
-# ShellCheck:     Static analysis of tracked *.sh and *.bash files (qsoku shellcheck, .claude/rules/testing.md).
-#                 Comment lines must not start with the lowercase directive word,
-#                 or ShellCheck parses them as directives (SC1072/SC1073).
-# fish:           One of the four shells that mtqg completion has a script for (the scripts
-#                 are run by the real shells in e2e/completion_test.go), and one of the four
-#                 shells qsoku's own shell integration supports (bash, zsh, fish, pwsh -- qsoku
-#                 v0.2.0 added pwsh; qsokufile commands themselves still always run under sh
-#                 regardless). The other three come from elsewhere: bash and zsh are in the
-#                 base image, and PowerShell is the "powershell" feature in devcontainer.json.
-# gh:             GitHub CLI (issues, pull requests, Actions runs) is the "github-cli" feature
-#                 in devcontainer.json, not installed here. Both features are left unpinned
-#                 (no "version" option): each rebuild installs the latest release, as the
-#                 apt installs did before (decision, 2026-10-01).
+# lsb-release: Adding the Trivy apt repository below.
+# gcc:         qsoku race (CGO_ENABLED=1 go test -race) needs a C compiler.
+#              The container itself runs with CGO_ENABLED=0 (devcontainer.json).
+# jq:          Used by .claude/hooks/build.sh, .claude/hooks/require-bcuz.sh (and
+#              its test, qsoku hook) and the allowWrite block below; also for
+#              inspecting --json output.
+# ShellCheck:  Static analysis of tracked *.sh and *.bash files (qsoku shellcheck).
+#              Comment lines must not start with the lowercase directive word,
+#              or ShellCheck parses them as directives (SC1072/SC1073).
+# gh:          GitHub CLI (issues, pull requests, Actions runs) is the "github-cli"
+#              feature in devcontainer.json, not installed here. The features are left
+#              unpinned (no "version" option): each rebuild installs the latest release.
+# fish:        Only when shells (above) lists it.
+shell_packages=()
+if has_shell fish; then shell_packages+=(fish); fi
 sudo apt-get update
-sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck fish
+sudo apt-get install -y wget gnupg lsb-release gcc jq shellcheck "${shell_packages[@]}"
 
 # The Bash sandbox (.claude/settings.json "sandbox") needs bubblewrap (bwrap)
 # and socat on Linux; without them it silently stays off even with
@@ -78,12 +94,6 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install golang.org/x/tools/gopls@latest
 go install golang.org/x/tools/cmd/goimports@latest
 
-# goreleaser: builds each OS's binary from .goreleaser.yaml for a release
-# (.claude/rules/distribution.md). @latest, not pinned, to match the CI
-# workflow's own loose "~> v2" version constraint (.github/workflows/release.yml)
-# rather than risking `goreleaser check` behaving differently here than there.
-go install github.com/goreleaser/goreleaser/v2@latest
-
 # qsoku: build/check/test entry points (qsokufile).
 go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
 
@@ -97,54 +107,90 @@ go install ./cmd/mtqg
 # srwr: the AI's edits go through its look / edit / new tools, each with a
 # reason (why), and are recorded on a tape (.claude/rules/srwr-usage.md).
 # @latest, like qsoku above (only mtqg itself is built from this source). srwr
-# is 0.x, so after a rebuild that picked up a new version, run `srwr init` once:
-# it makes .claude/settings.json follow any change in the tools' names.
+# is 0.x, so after a rebuild that
+# picked up a new version, run `srwr init` once: it makes .claude/settings.json
+# follow any change in the tools' names.
 go install github.com/amisonnet8/srwr/cmd/srwr@latest
 
 # bcuz: every command Claude Code runs through the Bash tool goes through
 # `bcuz "<reason>" <command>`, which records when / why / what / result in
 # .bcuz/history.jsonl (.claude/rules/bcuz-usage.md; enforced by the PreToolUse
-# hook .claude/hooks/require-bcuz.sh). @latest, like qsoku and srwr above.
+# hook .claude/hooks/require-bcuz.sh). @latest, like the tools above.
 go install github.com/amisonnet8/bcuz/cmd/bcuz@latest
 
 # Create .bcuz/ at the repository root (idempotent: prints "already exists"
 # and succeeds if it is there). Without it, commands still run but are not recorded.
 (cd "$(dirname "$0")/.." && bcuz --init)
 
+# crube: descriptions of this repository's files and directories in .crube/,
+# used by Claude Code through the crube / crube-ja MCP servers of .mcp.json,
+# the CLI and the hook .claude/hooks/crube-untracked.sh
+# (.claude/rules/crube-usage.md). @latest, like the tools above.
+go install github.com/amisonnet8/crube/cmd/crube@latest
+
+# goreleaser: builds the release archives (.goreleaser.yaml). Needed here only
+# for `qsoku snapshot`, which makes them without a tag to look at before tagging
+# (.claude/rules/distribution.md); the release workflow installs its own.
+# @latest, like the tools above.
+go install github.com/goreleaser/goreleaser/v2@latest
+
+# pwsh has no $PROFILE of its own until asked: query it rather than hardcode
+# the path. zsh's fpath[1] in this image is a root-owned system directory. The
+# single quotes are intentional: $PROFILE and $fpath are not bash's.
+if has_shell pwsh; then
+  # shellcheck disable=SC2016
+  pwsh_profile=$(pwsh -NoLogo -NoProfile -Command '$PROFILE')
+  mkdir -p "$(dirname "$pwsh_profile")"
+fi
+if has_shell zsh; then
+  # shellcheck disable=SC2016
+  zsh_fpath=$(zsh -fc 'echo $fpath[1]')
+  sudo mkdir -p "$zsh_fpath"
+fi
+if has_shell fish; then mkdir -p ~/.config/fish/completions; fi
+if has_shell bash; then mkdir -p ~/.local/share/bash-completion/completions; fi
+
 # Wire up qsoku's shell integration (working-directory carry-back and
-# completion) for bash, zsh, fish and pwsh. Idempotent: skipped if already
-# present, so re-running postCreate.sh does not duplicate the line. The single
-# quotes are intentional -- the line is meant to land in the rc file unexpanded.
-# shellcheck disable=SC2016
-grep -qF 'qsoku .shell bash' ~/.bashrc 2>/dev/null || echo 'eval "$(qsoku .shell bash)"' >>~/.bashrc
-# shellcheck disable=SC2016
-grep -qF 'qsoku .shell zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(qsoku .shell zsh)"' >>~/.zshrc
-mkdir -p ~/.config/fish
-grep -qF 'qsoku .shell fish' ~/.config/fish/config.fish 2>/dev/null || echo 'qsoku .shell fish | source' >>~/.config/fish/config.fish
-# pwsh has no $PROFILE of its own until asked; query it rather than hardcode
-# the path (qsoku v0.2.0, cli.md "Shell integration"). The single quotes below
-# are intentional too -- $PROFILE is pwsh's variable, not bash's.
-# shellcheck disable=SC2016
-pwsh_profile=$(pwsh -NoLogo -NoProfile -Command '$PROFILE')
-mkdir -p "$(dirname "$pwsh_profile")"
-grep -qF 'qsoku .shell pwsh' "$pwsh_profile" 2>/dev/null || echo 'Invoke-Expression (& qsoku .shell pwsh | Out-String)' >>"$pwsh_profile"
+# completion) in each shell. Idempotent: skipped if already present, so
+# re-running postCreate.sh does not duplicate the line. The single quotes are
+# intentional -- the lines are meant to land in the rc files unexpanded.
+for shell in "${shells[@]}"; do
+  # shellcheck disable=SC2016
+  case "$shell" in
+    bash) grep -qF 'qsoku .shell bash' ~/.bashrc 2>/dev/null || echo 'eval "$(qsoku .shell bash)"' >>~/.bashrc ;;
+    zsh) grep -qF 'qsoku .shell zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(qsoku .shell zsh)"' >>~/.zshrc ;;
+    fish) grep -qF 'qsoku .shell fish' ~/.config/fish/config.fish 2>/dev/null || echo 'qsoku .shell fish | source' >>~/.config/fish/config.fish ;;
+    pwsh) grep -qF 'qsoku .shell pwsh' "$pwsh_profile" 2>/dev/null || echo 'Invoke-Expression (& qsoku .shell pwsh | Out-String)' >>"$pwsh_profile" ;;
+    *)
+      echo "error: unknown shell in shells: $shell (bash, zsh, fish or pwsh)" >&2
+      exit 1
+      ;;
+  esac
+done
 
-# mtqg's own completion, for interactive use in this container, for all four
-# shells it has a script for (mtqg completion <shell>, docs/reference/cli.md
-# "Shell completion"). Each install path is the one that section names.
-mkdir -p ~/.local/share/bash-completion/completions
-mtqg completion bash >~/.local/share/bash-completion/completions/mtqg
-
-# zsh's fpath[1] in this image is a root-owned system directory, unlike
-# bash's and fish's user-local completion directories above and below.
-zsh_fpath=$(zsh -c 'echo $fpath[1]')
-sudo mkdir -p "$zsh_fpath"
-mtqg completion zsh | sudo tee "$zsh_fpath/_mtqg" >/dev/null
-
-mkdir -p ~/.config/fish/completions
-mtqg completion fish >~/.config/fish/completions/mtqg.fish
-
-# pwsh has no separate completions directory: the script is meant to be
-# appended to $PROFILE (docs/reference/cli.md), so re-running this idempotently
-# needs the same marker-line check as the qsoku pwsh integration above.
-grep -qF 'Register-ArgumentCompleter -Native -CommandName mtqg' "$pwsh_profile" 2>/dev/null || mtqg completion powershell >>"$pwsh_profile"
+# The completion of bcuz, crube, mtqg and srwr, for interactive use in this
+# container, in each shell, at the places their documents name. bcuz prints it
+# with --completion <shell> (it has no subcommands); the others with completion
+# <shell>. They are installed above (mtqg from this source, the others @latest), and a release older than its
+# completion has none: then it only warns, and the next rebuild after a release
+# picks it up. pwsh has no completions directory: the script is appended to
+# $PROFILE once, found again by its Register-ArgumentCompleter line.
+for tool in bcuz crube mtqg srwr; do
+  if [ "$tool" = bcuz ]; then
+    print_completion=(bcuz --completion)
+  else
+    print_completion=("$tool" completion)
+  fi
+  if ! "${print_completion[@]}" bash >/dev/null 2>&1; then
+    echo "warning: no shell completion from this $tool (${print_completion[*]} bash failed); skipped" >&2
+    continue
+  fi
+  for shell in "${shells[@]}"; do
+    case "$shell" in
+      bash) "${print_completion[@]}" bash >~/.local/share/bash-completion/completions/"$tool" ;;
+      zsh) "${print_completion[@]}" zsh | sudo tee "$zsh_fpath/_$tool" >/dev/null ;;
+      fish) "${print_completion[@]}" fish >~/.config/fish/completions/"$tool".fish ;;
+      pwsh) grep -qF -e "-CommandName $tool -ScriptBlock" "$pwsh_profile" 2>/dev/null || "${print_completion[@]}" powershell >>"$pwsh_profile" ;;
+    esac
+  done
+done

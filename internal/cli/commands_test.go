@@ -661,6 +661,21 @@ func TestVersion(t *testing.T) {
 		}
 	})
 
+	t.Run("the version the release build set is shown as it is", func(t *testing.T) {
+		h := initialized(t)
+		h.env.Version = "v9.8.7"
+		code, out, errOut := h.run("version")
+		wantExit(t, code, 0, out, errOut)
+		if !strings.HasPrefix(out, "mtqg v9.8.7\n") {
+			t.Errorf("stdout %q", out)
+		}
+		code, out, errOut = h.run("--json", "version")
+		wantExit(t, code, 0, out, errOut)
+		if !strings.Contains(out, `"mtqg": "v9.8.7",`) {
+			t.Errorf("stdout %q", out)
+		}
+	})
+
 	t.Run("outside a repository it is not an error", func(t *testing.T) {
 		isolateGit(t)
 		h := &harness{t: t, vars: map[string]string{}}

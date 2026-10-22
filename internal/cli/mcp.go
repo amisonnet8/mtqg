@@ -17,7 +17,7 @@ import (
 
 // runMCP starts the server and blocks until standard input ends.
 func runMCP(c *ctx) int {
-	server := mcp.NewServer(&mcp.Implementation{Name: "mtqg", Version: buildVersion()}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "mtqg", Version: buildVersion(c.env.Version)}, nil)
 	addTools(server, c.env, c.inv.dir)
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		return c.fail(err)

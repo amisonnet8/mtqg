@@ -2,6 +2,8 @@
 
 mtqgは「**コア（ジャーナル層・モデル層）が核、CLIはコアを使う入口の1つ**」という構造を取る（設計§10.7）。新しいファイルを追加する際は、どの層に属するか、どこに置くかをここで確かめる。**構成を変えたら、この文書も同じ変更の中で直す。**
 
+**このリポジトリの説明（`.crube/`）も保つ。** ファイル・ディレクトリを足す・動かす・消すときは、同じ変更の中で英語と日本語の説明を直し、コミットの前に両方の言語で`crube status --require all`を通す。やり方（MCPとCLI、`.crube/ignore`の保ち方）は`.claude/rules/crube-usage.md`
+
 ```
 mtqg/
 ├── CLAUDE.md               ← プロジェクトルール（参照先の案内）
@@ -14,26 +16,28 @@ mtqg/
 ├── .gitattributes          （`* text=auto eol=lf`）
 ├── .golangci.yaml           ← lintの設定（層の依存の向き、文言をCLIの層に限ることも機械的に検査）
 ├── trivy.yaml              ← 脆弱性・ライセンス検査の設定（testing.md）
-├── .goreleaser.yaml         ← 各OS向けバイナリのビルド設定（distribution.md。`v*`タグのpushで.github/workflows/release.ymlが実行）
-├── .mcp.json               ← mtqgとsrwrのMCPサーバーの配線
+├── .goreleaser.yaml         ← 配布物の作り方（goreleaser。`release.yml`と`qsoku snapshot`が使う。`.claude/rules/distribution.md`）
+├── .mcp.json               ← mtqg・srwrとcrube（英語の`crube`・日本語の`crube-ja`）のMCPサーバーの配線
 ├── .srwrignore             ← srwrがテープに記録しないファイル（`.mtqg/`・`.bcuz/`・生成物）
 ├── .bcuz/                  ← bcuzの記録（`history.jsonl`）。`postCreate.sh`が`bcuz --init`で作る。**コミットする**（`merge=union`）
+├── .crube/                 ← このリポジトリのファイルの説明（crube。`structure.txt`は英語、`structure_ja.txt`は日本語、`ignore`は`.gitignore`に合わせて手で保つ）。**コミットする**
 ├── .srwr/                  ← srwrの鍵・ロック・テープ（最初のhook・MCPの呼び出しでできる。**閉じた`tapes/*.gz`だけコミットする**）
 ├── .mtqg/                  ← mtqg自身の開発の記録（段階4から。下の「`.mtqg/`が段階4から実際に使われている」）
 ├── schema.go               ← docs/reference/schema.md を embed するだけのパッケージ
-├── cmd/mtqg/main.go        ← 引数を internal/cli に渡すだけ（数行）
+├── cmd/mtqg/main.go        ← 引数と、リリースのビルドが埋めた版（`main.version`）を internal/cli に渡すだけ（数行）
 ├── internal/
 │   ├── journal/            ← 【ジャーナル層】journal.jsonl の読み書きだけ
 │   ├── model/              ← 【モデル層】イベントの意味
 │   └── cli/                ← 【入口】引数の解釈、英語の文言、表の整形、--json
+├── tools/licenses/         ← 配布物に入れる依存のライセンス文を集める道具（goreleaser が`go run`で動かす。実行ファイルには組み込まれない）
 ├── e2e/                    ← ビルドした本物のバイナリと本物のgitで動かすテスト（ビルドタグ e2e）。`examples_test.go`は`docs/`（`reference/`・`tour/`・`examples/`）の例の確認で、フィクスチャは`testdata/examples/`
 ├── docs/
 │   ├── reference/          ← 仕様。英語版 schema.md・cli.md と日本語版 *_ja.md
 │   ├── design/             ← 設計判断と理由の記録（日本語）
 │   └── examples/           ← 入門から実例まで（英語 examples.md・日本語 examples_ja.md。2026-09-28作成）
 ├── .devcontainer/          ← 開発環境（devcontainer.json、devcontainer-lock.json、postCreate.sh）
-├── .claude/                ← rules/（ルール）、skills/（繰り返す手順。mutation-check）、hooks/（build.sh、require-bcuz.sh とそのテスト）、settings.json（人間が管理）
-└── .github/workflows/
+├── .claude/                ← rules/（ルール）、skills/（commit-with-tape：テープを閉じてコミットする手順。mutation-check：壊して確かめる手順と、変異の道具`mutants/`（別の Go モジュール）・仕様の変異の一覧`spec.txt`）、hooks/（build.sh、require-bcuz.sh とそのテスト、crube-untracked.sh：srwr の new のあとに未説明を知らせる）、settings.json（人間が管理）
+└── .github/workflows/      ← CI（`ci.yml`）と、タグで動くリリース（`release.yml`。`ci.yml`を呼んでから Release を作って公開する）
 ```
 
 `internal/`配下の具体的なファイル構成は、実装を進めながら決めてよい。ここでは「どの層に属するか」という配置の判断基準を定める。
@@ -63,6 +67,8 @@ mtqg/
 ## 各ファイル・ディレクトリの補足
 
 - **`schema.go`**: Goの`embed`は、そのパッケージのディレクトリより下のファイルしか埋め込めない。`internal/journal/`から`docs/reference/schema.md`を`..`で辿って埋め込むことはできないため、ルートに埋め込むだけのパッケージを置き、`internal/`からそれを使う。**`schema.md`のコピーを作らない**（仕様の元の文書は1つ・設計§10.8）
+- **`tools/licenses/`**: 配布物に同梱する依存のライセンス文を集める（`.claude/rules/distribution.md`）。`go run ./tools/licenses <出力先> <main パッケージ>`。`TestRun`は`./cmd/mtqg`の一覧
+- **`.claude/skills/mutation-check/mutants/`**: 変異の道具。`go.mod`を持つ別のモジュールなので、`qsoku check`（`./...`）の対象に入らない。変えたら、そのディレクトリで整形・vet・テストを通す（Skill の「気をつけること」）
 - **`internal/`**: Goの仕組みとして、リポジトリの外からimportできない。**コアはライブラリとして公開しない**（設計§10.7）。外との約束はデータ形式（`docs/reference/schema.md`）とCLIの`--json`だけ
 - **`go.sum`**: コミットする（改ざん検知・再現可能なビルドのため。Goの標準的な慣習）
 - **VSCodeの設定**: `.devcontainer/devcontainer.json`の`customizations.vscode`に置く（拡張と設定を1か所にまとめる。開発環境はdevcontainerだけのため）。`.vscode/`は作らない
@@ -74,7 +80,8 @@ mtqg/
 - **`.mtqg/`**: コミットされる。中のファイルは直接編集せず、すべて`mtqg`のコマンド経由で書く（`.claude/rules/mtqg-usage.md`）。`.mtqg/.local/`はコミットされない
 - **`.bcuz/`**: bcuzが`.bcuz/history.jsonl`に追記する、コマンドの実行の記録（`.claude/rules/bcuz-usage.md`）。**コミットする**（`.gitignore`の`!/.bcuz/`）。行を足すだけなので、`.gitattributes`の`merge=union`で、マージしても両側の行が残る。コミットの前に`git add .bcuz/history.jsonl`する（`git commit`は`bcuz`を通さない）。秘密をコマンドに書かない（記録に残る）。中のファイルは直接編集しない。`.srwrignore`でテープにも載せない
 - **`.claude/hooks/require-bcuz.sh`**: Bashツールのコマンドを、`bcuz`を通っていなければ実行前に断る`PreToolUse`フック。判定の表は`require-bcuz.test.sh`（`bash .claude/hooks/require-bcuz.test.sh`）。判定を変えたら、テストの表も同じ変更の中で直す
-- **`.mcp.json`**: `mtqg mcp`と`srwr mcp`（MCPサーバー）の配線。`mtqg init --agent claude-code`・`srwr init`が書くものと同じ。呼ぶ`mtqg`は作業中のソースから入れたもの（`.claude/rules/mtqg-usage.md`）
+- **`.mcp.json`**: `mtqg mcp`と`srwr mcp`（MCPサーバー）の配線。`mtqg init --agent claude-code`・`srwr init`が書くものと同じ。呼ぶ`mtqg`は作業中のソースから入れたもの（`.claude/rules/mtqg-usage.md`）。その後ろに、crubeのMCPサーバー（`crube mcp --allow-write`。`crube-ja`は`CRUBE_LANG=ja`）を手で足している（`.claude/rules/crube-usage.md`）
+- **`.crube/`**: このリポジトリのファイルとディレクトリの説明（`.claude/rules/crube-usage.md`）。**コミットする**（`.gitignore`の`!/.crube/`）。閉じたテープ（`*.tape.jsonl.gz`）は、説明を付けず`.crube/ignore`で外す（パターンのエントリにすると、最初のテープを閉じるまで何にも当たらず`orphan`になり、無ければ新しいテープが`untracked`になるため）。`ignore`は`.gitignore`を手で写したもの（crube は`.gitignore`を読まない）
 - **`.srwr/`**: 最初のhook・MCPの呼び出しで、srwrが作る（`srwr init`でも作られる。鍵`key`・`lock`・`active`・`tapes/`・`init-backup/`）。**コミットするのは閉じて圧縮したテープ`tapes/*.tape.jsonl.gz`だけ**。書き込み中の生のテープ`*.tape.jsonl`は`.gitignore`で対象外（閉じると`.gz`に置き換わり、生のままコミットすると「削除＋追加」の差分が出るため）。鍵は共有しない。鍵はプロジェクトごと・手元ごとに別
 - **`.srwrignore`**: テープに記録しないファイル（`.gitignore`と同じ書き方）。生成物や巨大なファイルはここに足す。`.env`・`*.pem`・`*.key`などはsrwrが元から外す
 - **`.devcontainer/devcontainer-lock.json`**: コンテナのビルドで自動で作られる。**できたらコミットする**（この版のfeatureでテストなどが通った証明になる）。featureを新しくしたいときは、lockを消してビルドし直し、新しいlockをコミットする

@@ -33,7 +33,7 @@ test: (cd //; go test -tags e2e -count=1 ./e2e/...)
 # Read the diff: an example that changed is a document that went stale, or a bug.
 docs-examples: (cd //; go test -tags e2e -count=1 -run '^TestDocExamples$' ./e2e/... -update)
 
-# -race needs cgo, which the container turns off (.claude/rules/distribution.md).
+# -race needs cgo, which the container turns off (.devcontainer/devcontainer.json).
 race: (cd //; CGO_ENABLED=1 go test -race -count=1 ./...)
 
 trivy: (cd //; trivy fs --config trivy.yaml .)
@@ -42,3 +42,7 @@ shellcheck: (cd //; git ls-files '*.sh' '*.bash' | xargs -r shellcheck)
 
 # The decision table of the hook that forces commands through bcuz (needs jq).
 hook: (cd //; bash .claude/hooks/require-bcuz.test.sh)
+
+# The release archives of .goreleaser.yaml, made without a tag into dist/, to
+# look at before tagging (needs goreleaser: .claude/rules/distribution.md).
+snapshot: (cd //; goreleaser check && goreleaser release --snapshot --clean)

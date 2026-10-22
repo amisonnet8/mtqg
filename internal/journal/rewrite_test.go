@@ -388,7 +388,11 @@ func TestRewriteWhileProcessesAppend(t *testing.T) {
 			}
 		}
 		for range cmds {
-			<-waits // each reports that it was killed
+			// Each reports that it was killed. One that ended by itself had
+			// stopped appending before it was meant to.
+			if err := <-waits; err == nil {
+				t.Errorf("a process ended before it was killed")
+			}
 		}
 	}
 	defer func() {

@@ -45,4 +45,8 @@ type Env struct {
 	// RunEditor runs an editor, given as the command and its arguments, with the
 	// terminal attached, and returns when the editor has exited.
 	RunEditor func(argv []string) error
+
+	// Version is the version the release build set (cmd/mtqg's main.version, the
+	// tag as v0.1.0), or empty: then it comes from the build information.
+	Version string
 }

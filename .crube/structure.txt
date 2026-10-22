@@ -1,0 +1,234 @@
+.bcuz/	Record of the commands run through bcuz (committed)
+	history.jsonl	One JSON line per command: when, why, what and the exit code
+.claude/	Claude Code settings shared in the repository
+	hooks/	Hooks that Claude Code runs around its tools
+		build.sh	Runs qsoku build after a .go, go.mod or go.sum file is changed with srwr
+		crube-untracked.sh	After srwr new creates a file, tells Claude which of its paths have no description, per language
+		require-bcuz.sh	PreToolUse hook that refuses Bash commands not run through bcuz
+		require-bcuz.test.sh	Table of the commands require-bcuz.sh allows and refuses (qsoku hook)
+	rules/	Rules for working in this repository (Japanese); CLAUDE.md says when to read each
+		bcuz-usage.md	How to run Bash commands through bcuz, and keeping secrets out of them
+		cli-output.md	CLI output: English wording only in internal/cli, --json as a promise, saying honestly what was done
+		crube-usage.md	Using crube: MCP and the CLI, finding places, keeping descriptions in both languages
+		datetime.md	Dates and times: keep UTC, show in the local time zone
+		directory-structure.md	Where each file goes, and the layout of the repository
+		distribution.md	How the project is released: building the archives with goreleaser, and the release flow
+		documentation.md	How to write documents: example values from tools, what history goes in docs/design/
+		git-integration.md	What mtqg as a product may and may not do to git (it only reads)
+		journal-format.md	The data format: append only, how lines are written and locked, the format version
+		mtqg-usage.md	How to record memos, todos, questions, bugs and rules with mtqg
+		naming.md	Names: the product, Japanese and English terms, commands, JSON fields
+		qsoku-usage.md	The qsoku names for build, test and lint, and how to call them
+		srwr-usage.md	Editing files only through srwr (strict mode), and closing tapes
+		testing.md	Test policy, and pitfalls of the sandbox and of CI on each OS
+		working-with-human.md	How to ask people: small blockers, checks, and approval of what users see
+	settings.json	Permissions, sandbox and hooks of Claude Code (managed by people)
+	skills/	Skills of Claude Code
+		commit-with-tape/	Skill: close the srwr tape and commit
+			SKILL.md	The steps of the skill
+		mutation-check/	Skill: break the code on purpose to see that the tests notice
+			SKILL.md	The steps of the skill
+			spec.txt	Mutations that break the promises of the project one by one, in the words of the spec (empty at first)
+			mutants/	The tool that makes the mutations and runs the tests (a Go module of its own)
+				go.mod	Module definition, apart from this project
+				main.go	Makes syntactic mutations, or those of a list, one at a time, and puts the files back
+				main_test.go	Tests of the tool
+.devcontainer/	Development container
+	devcontainer-lock.json	Versions of the features the container was built with
+	devcontainer.json	Container definition and VS Code settings
+	postCreate.sh	Runs once the container is made: installs the tools (@latest), the shells, and makes the sandbox's cache directories
+.github/	GitHub settings
+	workflows/	GitHub Actions workflows
+		ci.yml	CI: qsoku check and e2e on Linux, macOS and Windows; race, shellcheck, hook and trivy (release.yml calls it too)
+		release.yml	Release on a tag: runs ci.yml, attaches goreleaser's archives to a Release and publishes it
+.mtqg/	Process record kept with mtqg: memos, todos, questions, bugs, glossary and rules
+	.gitattributes	Merges journal.jsonl with merge=union
+	.gitignore	Keeps .local/ out of git
+	SCHEMA.md	Data format of journal.jsonl
+	journal.jsonl	The records, one JSON line each (written only through mtqg)
+	version	Version of the mtqg data format
+.srwr/	srwr: tapes of the file edits made by AI, each with its reason
+	tapes/	Closed tapes (committed); replay them with srwr view
+		| One compressed tape (*.tape.jsonl.gz) for each unit of work.
+		| The tapes are left out by .crube/ignore, so that they need no description.
+.gitattributes	Line endings (LF everywhere) and merge=union for the record files
+.gitignore	Files kept out of git; dot entries in the root are an allowlist
+.golangci.yaml	golangci-lint settings, including the direction of the layers (depguard) and printing only in internal/cli (forbidigo)
+.goreleaser.yaml	How the release archives are made (goreleaser): used by release.yml and qsoku snapshot
+.mcp.json	MCP servers for Claude Code: mtqg, srwr, and crube in English and Japanese
+.srwrignore	Files srwr does not put on its tapes
+CLAUDE.md	Rules for Claude Code in this repository, and the rule files to read
+LICENSE	MIT license
+PLAN.md	Implementation plan and progress (Japanese): stages, where things stand, pending items
+README.md	For now only a notice that mtqg is unfinished
+README_ja.md	The same notice in Japanese
+go.mod	Go module and its dependencies
+go.sum	Checksums of the dependencies
+qsokufile	Named commands for build, test and lint (qsoku)
+schema.go	Package that embeds docs/reference/schema.md (Go embeds only files below a package)
+schema_test.go	Checks that the schema marker matches journal.SchemaVersion
+source_test.go	Checks that no .go file holds invisible characters as they are
+trivy.yaml	Trivy settings: what counts as a vulnerability or license failure
+tools/	Tools for building the project (not built into its command)
+	licenses/	Gathers the license texts of the dependencies for the release archives
+		| go run ./tools/licenses <dir> <main package>; goreleaser runs it before building. Fails if a module has no license file.
+		main.go	Finds the modules linked into the command with go list -deps and copies their licenses
+		main_test.go	Tests of the tool, with the list of the licenses of ./cmd/mtqg (changes when a dependency is added or dropped)
+cmd/	The commands
+	mtqg/	The mtqg command
+		main.go	Hands the arguments and the version set by the release build to internal/cli
+internal/	The code of mtqg, not importable from outside: core (journal, model) and the CLI
+	cli/	The entry point: arguments, English wording, tables, --json, hooks and the MCP server
+		| Depends on model and journal, never the other way. All sentences are in messages.go.
+		add.go	memo/todo/rule add: the commands that create a record
+		agent_claude.go	mtqg init --agent claude-code: wires .claude/settings.json, .mcp.json and CLAUDE.md
+		ansi_other.go	Color codes on systems other than Windows
+		ansi_windows.go	Turns on color codes in the Windows console
+		archive.go	mtqg archive: reads the range of dates, and reports what moved and what stayed
+		args.go	The grammar of the command line as data: kinds, commands, options
+		author.go	Who is recorded as the author (MTQG_AUTHOR_*, else git config user.name)
+		candidates.go	mtqg candidates: what can come next on a command line, for shell completion
+		completion.go	mtqg completion: prints the embedded completion script of a shell
+		completions/	Completion scripts (fixed text; they ask mtqg candidates at every TAB)
+			mtqg.bash	bash
+			mtqg.fish	fish
+			mtqg.ps1	PowerShell
+			mtqg.zsh	zsh
+		context.go	mtqg context: puts the context into words and cuts it to the budget
+		doc.go	Package comment
+		done.go	done and reopen: status changes
+		edit.go	edit and delete
+		env.go	Env: everything Run touches outside the arguments, injected so tests can call Run
+		env_os.go	OSEnv: the Env of the running program
+		format.go	mtqg format: shows journal lines given from a diff, git show or an archive
+		glossary.go	glossary add and list
+		help.go	Help, from the same table that reads the command line
+		hook.go	mtqg hook: dispatch by agent and event (never breaks the agent's turn)
+		hook_claude.go	The Claude Code hooks: SessionStart gives the context, Stop prompts to record
+		init.go	mtqg init
+		json.go	The shape of --json, in one place (a promise to other programs)
+		list.go	list of memos, todos and rules (questions and bugs are listed in thread.go)
+		log.go	mtqg log: the newest records of every kind
+		mcp.go	mtqg mcp: starts the MCP server on standard input and output
+		mcp_tools.go	The MCP tools and their handlers
+		messages.go	Every sentence mtqg prints
+		render.go	Tables, cutting to the window, replacing control characters, color
+		report.go	Errors and warnings, for people and as --json kinds
+		review.go	mtqg review: shows facts that disagree, without judging
+		run.go	Run: parses the arguments and runs one command
+		search.go	mtqg search
+		show.go	mtqg show: one record in full, with its history
+		status.go	mtqg status: what is open, and how many records are not committed
+		text.go	The text of a record: from arguments, standard input or $EDITOR
+		thread.go	Questions and answers, bugs and replies: one shape, one code (add, list)
+		tty_unix.go	The terminal ID from the device number (Linux, macOS)
+		tty_windows.go	No terminal ID on Windows (MTQG_TTY still works)
+		undo.go	mtqg undo: removes the last line written from this terminal
+		upgrade.go	mtqg upgrade: raises the format version and rewrites SCHEMA.md
+		version.go	mtqg version: the version of mtqg and the format version of the repository
+		width.go	Display width (full width counts as 2)
+		bug_test.go	Tests of the bug commands
+		commands_test.go	Tests of the commands through Run
+		helpers_test.go	Test helpers: a harness that calls Run in a temporary git repository
+		tty_test.go	Tests of the terminal ID
+		*_test.go	Tests of the file of the same name
+	journal/	Journal layer: reads and writes the files in .mtqg/ (it does not know what events mean)
+		| Every file in .mtqg/ is opened through os.Root. Only this layer writes there.
+		append.go	Append: writes one event under the lock
+		archive.go	Archive: appends lines to archive/ and then replaces journal.jsonl, in one lock
+		errors.go	Kinds of error (no sentences)
+		event.go	Event: one line of the journal, and how it is written as JSON
+		find.go	Finding .mtqg/ and the repository, one directory at a time through os.Root
+		git.go	Reading git (user.name, HEAD, the committed journal, status); never writes
+		id.go	IDs: random 32 hex digits
+		init.go	Init: makes .mtqg/
+		journal.go	Open, and the package comment
+		lock.go	The lock in .mtqg/.local/lock, retried until it is free or 5 seconds pass
+		lock_unix.go	flock
+		lock_windows.go	LockFileEx
+		read.go	Reading lines, and warnings for lines that are skipped or suspect
+		replace_other.go	Replacing a file with rename
+		replace_windows.go	Replacing a file on Windows, retrying while another process has it open
+		rewrite.go	Rewrite: writes a temporary file and replaces journal.jsonl (undo)
+		schema.go	The schema marker, to tell whether .mtqg/SCHEMA.md is old
+		session.go	The hook sessions in .mtqg/.local/sessions/
+		upgrade.go	Upgrade: the format version and SCHEMA.md
+		version.go	SupportedVersion and SchemaVersion (set by hand)
+		bench_test.go	Benchmarks of reading and writing
+		helpers_test.go	Test helpers, and the helper process for tests across processes
+		symlink_test.go	Tests of .mtqg/ reached through symbolic links
+		*_test.go	Tests of the file of the same name
+	model/	Model layer: what the events mean (state, checks, review, undo and archive targets, context)
+		archive.go	Which records archive moves for a range of time
+		context.go	What context tells an agent, and the order in which it is cut
+		doc.go	Package comment
+		errors.go	Kinds of error (no sentences)
+		history.go	The history of one record
+		record.go	Records and the state built from events
+		resolve.go	Typed IDs (prefixes of 4 digits or more) and the changes made to records
+		review.go	Concurrent status changes, words defined twice, replies with no parent
+		search.go	Search in the text of records in view
+		session.go	ShouldPrompt: whether a Stop hook asks the agent to record
+		undo.go	Which line undo removes, and when it refuses
+		edit_test.go	Tests of edit and delete
+		model_test.go	Tests of building the state, and test helpers
+		thread_test.go	Tests of questions and answers, bugs and replies
+		*_test.go	Tests of the file of the same name
+e2e/	Tests with the built mtqg and the real git (build tag e2e, qsoku test)
+	boundaries_test.go	Conflict markers, unknown versions, submodules, .local/ removed, init on an existing .mtqg/
+	completion_test.go	The completion scripts in real bash, zsh, fish and PowerShell
+	e2e_test.go	Union merges of branches, concurrent changes, archive across branches
+	examples_test.go	Runs the examples in docs/ and compares their output (qsoku docs-examples rewrites them)
+	hook_test.go	mtqg hook claude-code with the real binary
+	lock_unix_test.go	The lock across worktrees and symbolic links (Linux and macOS)
+	mcp_test.go	mtqg mcp with the real binary
+	records_test.go	Ambiguous IDs, kinds mixed up, edit, delete and search
+	testdata/	Test data
+		examples/	Fixtures of the examples in docs/ (a repo= mark names one)
+			| Each *.jsonl is appended to journal.jsonl in name order and committed, except uncommitted*.jsonl.
+			ambiguous/	IDs that share a prefix
+				*.jsonl	Journal lines
+			ambiguous_ja/	IDs that share a prefix (text in Japanese)
+				*.jsonl	Journal lines
+			broken/	A journal with lines that cannot be read
+				*.jsonl	Journal lines
+			parser/	The main fixture, used across the sections of the documents
+				uncommitted.jsonl	Journal lines left uncommitted
+				*.jsonl	Journal lines, one commit each
+			parser_ja/	The main fixture (text in Japanese)
+				uncommitted.jsonl	Journal lines left uncommitted
+				*.jsonl	Journal lines, one commit each
+			refuse/	A record whose creation undo refuses to remove
+				*.jsonl	Journal lines
+			rules/	Rules, for the examples of context
+				*.jsonl	Journal lines
+			rules_ja/	Rules (text in Japanese)
+				*.jsonl	Journal lines
+			years/	Records over several years, for the examples of archive
+				*.jsonl	Journal lines
+			years_ja/	Records over several years (text in Japanese)
+				*.jsonl	Journal lines
+docs/	Documents
+	assets/	Images of the documents
+		demo.gif	The demo animation
+		demo.tape	The VHS script that records demo.gif
+		logo.svg	The logo
+	design/	The current design and the reasons for it (Japanese); README.md maps sections to files
+		README.md	The chapters and their files
+		01-purpose.md	What mtqg is for, and what it does not take on
+		02-storage-and-git.md	Keeping the records in the repository, and git
+		03-data-model.md	The kinds of record and the events
+		04-append-and-merge.md	Appending, locking and merging
+		05-reading.md	Reading the journal and building the state
+		06-implementation.md	Implementation: layers, dependencies, tests, distribution
+		07-integrations.md	Agents: the hooks and the MCP server
+		08-development.md	How mtqg itself is developed
+		cli.md	The design of the command line
+	examples/	From a first walk-through to real examples
+		examples.md	English
+		examples_ja.md	Japanese
+	reference/	The specification (English is authoritative; *_ja.md is the Japanese version)
+		cli.md	The commands
+		cli_ja.md	The commands (Japanese)
+		schema.md	The data format, embedded and written out as .mtqg/SCHEMA.md
+		schema_ja.md	The data format (Japanese)

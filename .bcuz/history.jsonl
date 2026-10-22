@@ -162,3 +162,25 @@
 {"v":1,"ts":"2026-10-22T22:38:19.040Z","why":"共通化への追随のコミットに入れるため、テープを閉じて圧縮する","cmd":["srwr","tapes","new"],"dir":".","exit":0,"ms":12}
 {"v":1,"ts":"2026-10-22T22:38:19.226Z","why":"コミットするユーザーが正しいか確かめる","cmd":["git","config","user.email"],"dir":".","exit":0,"ms":1}
 {"v":1,"ts":"2026-10-22T22:38:20.952Z","why":"共通化への追随のコミットに入るものを確かめる","cmd":["git","status","--short"],"dir":".","exit":0,"ms":3}
+{"v":1,"ts":"2026-10-22T22:38:23.338Z","why":"共通化への追随の変更・記録・テープをコミット対象にする","cmd":["git","add",".bcuz/history.jsonl",".mtqg/journal.jsonl",".srwr/tapes",".claude/rules/distribution.md",".claude/rules/testing.md",".claude/skills/mutation-check/spec.txt",".devcontainer/postCreate.sh","tools/licenses/main_test.go"],"dir":".","exit":0,"ms":6}
+{"v":1,"ts":"2026-10-22T22:40:27.783Z","why":"フィードバックを保存する前に、既存のメモリに重なるものが無いか確かめる","cmd":["ls","/home/vscode/.claude/projects/-workspaces-mtqg/memory/"],"dir":".","exit":0,"ms":1}
+{"v":1,"ts":"2026-10-22T22:41:26.031Z","why":"リビルド後に道具がそろっているか、版をまとめて確かめる","cmd":["sh","-c","for c in \"go version\" \"qsoku .version\" \"srwr --version\" \"bcuz --version\" \"crube --version\" \"goreleaser --version\" \"golangci-lint version\" \"trivy --version\" \"shellcheck --version\" \"mtqg version\" \"zsh --version\" \"fish --version\" \"pwsh --version\" \"jq --version\" \"bwrap --version\" \"socat -V\"; do printf \"%s: \" \"$c\"; $c 2>&1 | grep -m1 -iE \"version|v[0-9]|[0-9]+\\.[0-9]+\" || echo MISSING; done"],"dir":".","exit":0,"ms":267}
+{"v":1,"ts":"2026-10-22T22:41:32.195Z","why":"リビルド後の確認：vet・lint・cross・単体テスト","cmd":["qsoku","check"],"dir":".","exit":0,"ms":3042}
+{"v":1,"ts":"2026-10-22T22:41:35.367Z","why":"リビルド後の確認：本物のバイナリと4つのシェルでのe2e","cmd":["sh","-c","qsoku test 2>&1 | tail -5"],"dir":".","exit":0,"ms":6256}
+{"v":1,"ts":"2026-10-22T22:41:41.772Z","why":"リビルド後の確認：シェルスクリプトの検査","cmd":["qsoku","shellcheck"],"dir":".","exit":0,"ms":185}
+{"v":1,"ts":"2026-10-22T22:41:42.097Z","why":"リビルド後の確認：bcuzを強制するフックの判定の表","cmd":["sh","-c","qsoku hook 2>&1 | tail -3"],"dir":".","exit":0,"ms":1888}
+{"v":1,"ts":"2026-10-22T22:41:52.061Z","why":"e2eの補完テストが4つのシェルを飛ばさずに動いたか確かめる","cmd":["sh","-c","go test -tags e2e -count=1 -run Completion -v ./e2e/ 2>&1 | grep -E \"SKIP|^--- |^ok|FAIL\""],"dir":".","exit":0,"ms":1926}
+{"v":1,"ts":"2026-10-22T22:41:54.120Z","why":"リビルド後の確認：脆弱性とライセンス（DBのキャッシュ先が書けるかも見る）","cmd":["sh","-c","qsoku trivy 2>&1 | tail -6"],"dir":".","exit":0,"ms":6890}
+{"v":1,"ts":"2026-10-22T22:42:01.146Z","why":"リビルド後にcgoと-raceが使えるか、ロックのあるジャーナル層だけで軽く確かめる","cmd":["env","CGO_ENABLED=1","go","test","-race","-count=1","./internal/journal/"],"dir":".","exit":0,"ms":11563}
+{"v":1,"ts":"2026-10-22T22:42:12.887Z","why":"リビルド後もgoreleaserで配布物が作れるか確かめる","cmd":["sh","-c","qsoku snapshot 2>&1 | tail -2"],"dir":".","exit":0,"ms":1778}
+{"v":1,"ts":"2026-10-22T22:42:55.441Z","why":"最新のタグを確かめ、そこからの差分のうち配布物に入るものがあるか見る","cmd":["git","describe","--tags","--abbrev=0"],"dir":".","exit":0,"ms":2}
+{"v":1,"ts":"2026-10-22T22:42:57.819Z","why":"v1.1.1以降に、バイナリや仕様に入るファイルが変わったかを見る","cmd":["git","diff","--stat","v1.1.1..HEAD","--","cmd","internal","schema.go","go.mod","go.sum","docs/reference",".goreleaser.yaml","README.md","README_ja.md","LICENSE"],"dir":".","exit":0,"ms":3}
+{"v":1,"ts":"2026-10-22T22:43:01.508Z","why":"v1.1.1以降の製品コードの変更が、利用者に見える振る舞いを変えるかを読む","cmd":["git","diff","v1.1.1..HEAD","--","cmd","internal/cli/env.go","internal/cli/mcp.go","internal/cli/version.go"],"dir":".","exit":0,"ms":3}
+{"v":1,"ts":"2026-10-22T22:43:01.690Z","why":"goreleaserの設定の変更が、配布物の中身を変えるかを見る","cmd":["git","diff","v1.1.1..HEAD","--",".goreleaser.yaml"],"dir":".","exit":0,"ms":2}
+{"v":1,"ts":"2026-10-22T22:43:29.221Z","why":"登録済みの用語を確かめ、足りない用語があるか判断する","cmd":["mtqg","g","list"],"dir":".","exit":0,"ms":4}
+{"v":1,"ts":"2026-10-22T22:43:36.613Z","why":"記録で繰り返し使われ、定義の無い用語の候補を探す（共通化・テンプレート）","cmd":["sh","-c","mtqg search 共通化 | head -12; mtqg search テンプレート | head -12"],"dir":".","exit":0,"ms":12}
+{"v":1,"ts":"2026-10-22T22:43:49.468Z","why":"テンプレートの定義に書いた「別リポジトリへ移した」が事実か、template/が残っていないかで確かめる","cmd":["git","ls-files","template"],"dir":".","exit":0,"ms":2}
+{"v":1,"ts":"2026-10-22T22:44:21.693Z","why":"不要と言われた用語（ルール共通化）を表示から外す","cmd":["mtqg","delete","d41a93cbe8"],"dir":".","exit":0,"ms":4}
+{"v":1,"ts":"2026-10-22T22:44:21.872Z","why":"不要と言われた用語（テンプレート）を表示から外す","cmd":["mtqg","delete","e32fde7d45"],"dir":".","exit":0,"ms":5}
+{"v":1,"ts":"2026-10-22T22:45:06.491Z","why":"用語の登録のコミットの前に、テープに無い変更が無いか確かめる","cmd":["srwr","tapes","check"],"dir":".","exit":0,"ms":57}
+{"v":1,"ts":"2026-10-22T22:45:08.555Z","why":"用語の登録のコミットに入るものを確かめる","cmd":["git","status","--short"],"dir":".","exit":0,"ms":3}

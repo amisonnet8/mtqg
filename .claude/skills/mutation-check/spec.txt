@@ -6,4 +6,139 @@
 # 例（crube の一覧から。照合の「完全一致をパターンより優先する」という約束を壊す）：
 # 照合: 完全一致をパターンより優先しない | internal/match/match.go | ⇥⇥if e.Name == exact {⏎⇥⇥⇥return e | ⇥⇥if false && e.Name == exact {⏎⇥⇥⇥return e
 
+#
+# mtqg の一覧。テストのコマンドは e2e も含める（シェルの補完スクリプトと CLI の出力は e2e が捕まえる）：
+#   go test -tags e2e -count=1 ./...
+# 元は .claude/rules/testing.md「mtqg固有の検証項目」に文章で残っていた変異（2026-10-23 に移した）。
+
+# --- 版
 版: リリースのビルドが埋めた版（main.version）を使わない | internal/cli/version.go | ⇥if set != "" { | ⇥if false && set != "" {
+
+# --- 書き込みの守り（ジャーナル層）
+追記: 衝突マーカーが残っていても書く | internal/journal/append.go | if hasConflictMarkers(existing) { | if false && hasConflictMarkers(existing) {
+追記: rule の種類を断る | internal/journal/append.go | TypeGlossary, TypeRule) { | TypeGlossary) {
+追記: 負の basis を受け付ける | internal/journal/append.go | if ev.Basis < 0 { | if false {
+書き直し: 衝突マーカーが残っていても書く | internal/journal/rewrite.go | if hasConflictMarkers(data) { | if false && hasConflictMarkers(data) {
+書き直し: ロックを取らない | internal/journal/rewrite.go | func (j *Journal) Rewrite(fn func(lines []Line) ([]Line, error)) error {⏎⇥release, err := j.lock() | func (j *Journal) Rewrite(fn func(lines []Line) ([]Line, error)) error {⏎⇥release, err := func() {}, error(nil)
+読み: 知らない新しい形式の版を受け入れる | internal/journal/journal.go | if version > SupportedVersion { | if false && version > SupportedVersion {
+ロック: 待たずに常に取れたことにする | internal/journal/lock.go | ok, err := tryLock(f) | ok, err := true, error(nil)
+ロック: 消えた .local/ を作り直さない | internal/journal/lock.go | if err := root.MkdirAll(localName, 0o750); err != nil { | if err := error(nil); err != nil {
+アーカイブ: 移す＋残すの行数の検査を外す | internal/journal/archive.go | if len(move)+len(keep) != len(lines) { | if false {
+アーカイブ: 移す行が無くても書く | internal/journal/archive.go | if len(move) == 0 {⏎⇥⇥return nil | if false {⏎⇥⇥return nil
+アーカイブ: journal.jsonl を置き換えてからアーカイブへ追記する（順序が逆） | internal/journal/archive.go | if err := appendArchive(root, name, moved); err != nil {⏎⇥⇥return err⏎⇥}⏎⇥return replaceJournal(root, kept, exists) | if err := replaceJournal(root, kept, exists); err != nil {⏎⇥⇥return err⏎⇥}⏎⇥return appendArchive(root, name, moved)
+upgrade: 最新で SCHEMA.md も新しく、dry run でも書く | internal/journal/upgrade.go | if !schemaUpdated || dryRun { | if false {
+upgrade: 古い SCHEMA.md のマーカーを無視する | internal/journal/upgrade.go | schemaUpdated = raise || stale | schemaUpdated = raise || (stale && false)
+upgrade: 衝突マーカーが残っていても書く | internal/journal/upgrade.go | if hasConflictMarkers(data) { | if false && hasConflictMarkers(data) {
+upgrade: SCHEMA.md を渡された内容で書かない | internal/journal/upgrade.go | []byte(schema) | []byte("")
+upgrade: version に上げる前の版を書く | internal/journal/upgrade.go | fmt.Sprintf("%d\n", to) | fmt.Sprintf("%d\n", from)
+upgrade: 上げたあと開いているジャーナルの版を更新しない | internal/journal/upgrade.go | ⇥⇥j.version = to | ⇥⇥_ = to
+SCHEMA.md: マーカーの無いものを古いと判定しない | internal/journal/schema.go | if !ok {⏎⇥⇥return true | if !ok {⏎⇥⇥return false
+SCHEMA.md: 版を数でなく文字列で比べる（1.9.0 と 1.10.0） | internal/journal/schema.go | ⇥pa, oka := parseSchemaVersion(a) | ⇥return a < b⏎⇥pa, oka := parseSchemaVersion(a)
+# schemaOlder の < を <= にしても区別できない：この行に来るのは、直前の != を通ったあと（等しいときは来ない）
+# SCHEMA.md: 版の比較で等しいものを古いとする | internal/journal/schema.go | return pa[i] < pb[i] | return pa[i] <= pb[i]
+探索: 開始点が読めないときも飛ばす | internal/journal/find.go | case first || !errors.Is(err, fs.ErrPermission): | case !errors.Is(err, fs.ErrPermission) || (first && false):
+探索: 読めない祖先を飛ばさない | internal/journal/find.go | case first || !errors.Is(err, fs.ErrPermission): | case first || err != nil:
+探索: .mtqg のリンクをたどらない | internal/journal/find.go | r.Stat(mtqgDirName) | r.Lstat(mtqgDirName)
+探索: 外を指す .mtqg のエラーを無視する | internal/journal/find.go | return false, false, fmt.Errorf("journal: %w", err)⏎⇥}⏎⏎⇥switch | return false, false, nil⏎⇥}⏎⏎⇥switch
+フック: 作業ツリーの変化から .mtqg/ を除かない | internal/journal/git.go | if len(entry) == 0 || bytes.Contains(entry, marker) { | if len(entry) == 0 || len(marker) == 0 {
+
+# --- 記録の意味（モデル層）
+種類: rule を知らず、質問として扱う | internal/model/record.go | case journal.TypeRule: | case "no such type":
+edit: 本文だけでなく用語も書き換える | internal/model/record.go | case journal.OpEdit:⏎⇥⇥⇥rec.Text = ev.Text | case journal.OpEdit:⏎⇥⇥⇥rec.Text = ev.Text⏎⇥⇥⇥rec.Word = ev.Text
+delete: 質問・バグを消しても回答・返信が残る | internal/model/record.go | if p := s.parentOf(r); p != nil && p.Deleted { | if false {
+log --events: 親が消えて隠れた回答を削除済みとしない | internal/model/record.go | return !s.visible(r) | return r.Deleted
+log --events: --before が削除済みの記録を見ない | internal/model/record.go | return prefixBefore(s.Every(), rec) | return prefixBefore(s.All(), rec)
+log --before: 指した記録も含めてしまう | internal/model/record.go | return list[:i] | return list[:i+1]
+ID: 3桁以下の ID を受け入れる | internal/model/resolve.go | if len(p) < MinIDDigits { | if len(p) < 3 {
+ID: 曖昧な前方一致で最初の1件を選ぶ | internal/model/resolve.go | switch len(matches) { | switch min(len(matches), 1) {
+basis: 状態の変更に basis を書かない | internal/model/resolve.go | Status: status, Basis: len(rec.Events)} | Status: status}
+basis: edit に basis を書かない | internal/model/resolve.go | OpEdit, Text: text, Basis: len(rec.Events)} | OpEdit, Text: text}
+undo: 端末を見ない | internal/model/undo.go | ev == nil || ev.Author != author || ev.TTY != tty | ev == nil || ev.Author != author
+undo: 記録者を見ない | internal/model/undo.go | ev == nil || ev.Author != author || ev.TTY != tty | ev == nil || ev.TTY != tty
+undo: 同じ秒の行をファイルの順でなく ID で決める | internal/model/undo.go | best < 0 || !at.Before(latest) | best < 0 || at.After(latest) || (at.Equal(latest) && ev.ID > lines[best].Event.ID)
+undo: 作成を消すと他のイベントが記録なしで残るときも断らない | internal/model/undo.go | others := s.Orphaned(ev)⏎⇥if len(others) == 0 { | others := s.Orphaned(ev)⏎⇥if true {
+archive: 未完了の todo・質問・バグも移す | internal/model/archive.go | return r.Status == journal.StatusDone | return true
+archive: 用語も移す | internal/model/archive.go | case r.Type == journal.TypeGlossary, r.Type == journal.TypeRule: | case r.Type == journal.TypeRule:
+archive: 決まり事も移す | internal/model/archive.go | case r.Type == journal.TypeGlossary, r.Type == journal.TypeRule: | case r.Type == journal.TypeGlossary:
+archive: 削除した記録を移さない | internal/model/archive.go | case r.Deleted:⏎⇥⇥return true | case r.Deleted:⏎⇥⇥return false
+archive: 回答・返信を親と一緒に移さない | internal/model/archive.go | move[f] = true | _ = f
+archive: 回答・返信の日付を見ない | internal/model/archive.go | if at := latestEvent(f); at.After(last) { | if at := latestEvent(f); false && at.After(last) {
+review: from の食い違いを見ない | internal/model/review.go | if ev.From != "" && ev.From != current { | if false && ev.From != current {
+review: 正しい順の変更（open→done→open→done）を並行と誤る | internal/model/review.go | current = ev.Status | _ = current
+review: 状態の変更の basis の食い違いを見ない | internal/model/review.go | ⇥⇥⇥⇥⇥if ev.Basis != 0 && ev.Basis != seen { | ⇥⇥⇥⇥⇥if false {
+review: edit の basis の食い違いを見ない | internal/model/review.go | case journal.OpEdit:⏎⇥⇥⇥⇥if ev.Basis != 0 && ev.Basis != seen { | case journal.OpEdit:⏎⇥⇥⇥⇥if false {
+review: それまでのイベントを数え違える | internal/model/review.go | seen++ | seen += 2
+review: 親のない返信を見つけない | internal/model/review.go | r.IsReply() && !s.HasParent(r) | false
+search: 大文字と小文字を区別する | internal/model/search.go | strings.Contains(strings.ToLower(r.Text), q) | strings.Contains(r.Text, q)
+search: 用語の語を探さない | internal/model/search.go | (r.Word != "" && strings.Contains | (false && strings.Contains
+context: 完了した todo も入れる | internal/model/context.go | d.Todos = s.Todos(false) | d.Todos = s.Todos(true)
+context: todo を新しいものから削る | internal/model/context.go | r.Todos = r.Todos[min(n, len(r.Todos)):] | r.Todos = r.Todos[:len(r.Todos)-min(n, len(r.Todos))]
+context: 用語の定義を削らない | internal/model/context.go | r.DefinitionsLeft = true⏎⇥r.Glossary = wordsOf(d.Glossary) | r.DefinitionsLeft = false
+context: 最新の3件の質問・バグも削る | internal/model/context.go | const keptThreads = 3 | const keptThreads = 0
+context: 最新の3件のバグだけ削る | internal/model/context.go | canB := len(r.Bugs)-b > keptThreads | canB := len(r.Bugs)-b > 0
+フック: 一度促したセッションでもまた促す | internal/model/session.go | if prompted {⏎⇥⇥return false | if false {⏎⇥⇥return false
+フック: リポジトリが変わっていなくても促す | internal/model/session.go | if start == now { | if false {
+フック: 開始時刻を秒に切り詰めない（同じ秒の記録を見落とす） | internal/model/session.go | startedAt = startedAt.Truncate(time.Second) | _ = time.Second
+
+# --- 入口（CLI・フック・MCP）
+--json: 本文の制御文字を置き換える | internal/cli/json.go | Text:    r.Text, | Text:    sanitize(r.Text),
+--json: ID を10桁にする | internal/cli/json.go | ID:      r.ID, | ID:      r.ID[:10],
+--json: 時刻を UTC で書かない | internal/cli/json.go | return t.UTC().Format(time.RFC3339) | return t.In(time.FixedZone("X", 9*3600)).Format(time.RFC3339)
+--json: エラー・警告を標準出力へ出す | internal/cli/json.go | _, _ = c.env.Stderr.Write(append(b, '\n')) | _, _ = c.env.Stdout.Write(append(b, '\n'))
+# recordJSON に Deleted: r.Deleted を足しても区別できない：log --events 以外が渡す記録は見えるものだけで、Deleted は常に false（omitzero で出ない）
+# --json: 削除済みの印を log --events 以外でも付ける | internal/cli/json.go | Updated: jsonTime(r.Updated), | Updated: jsonTime(r.Updated), Deleted: r.Deleted,
+archive: 終了日を含めない | internal/cli/archive.go | r.end.day+1, 0, 0, 0, 0, loc) | r.end.day, 0, 0, 0, 0, loc)
+archive: 日付をローカルでなく UTC で区切る | internal/cli/archive.go | from, to := rng.bounds(c.env.Location) | from, to := rng.bounds(time.UTC)
+archive: -n でも書く | internal/cli/archive.go | if !c.inv.dryRun {⏎⇥⇥// What moves | if true {⏎⇥⇥// What moves
+archive: 読めなかった行も移す | internal/cli/archive.go | if _, moves := ids[idOf(l)]; moves { | if _, moves := ids[idOf(l)]; moves || l.Event == nil {
+archive: 移した決まり事を数えない | internal/cli/archive.go | ⇥⇥⇥n.Rules++⏎⇥⇥}⏎⇥}⏎⇥return n⏎}⏎⏎// countSkipped | ⇥⇥⇥_ = 0⏎⇥⇥}⏎⇥}⏎⇥return n⏎}⏎⏎// countSkipped
+context: 予算を無視する | internal/cli/context.go | if budget <= 0 || cost(0) <= budget { | if true {
+context: 決まり事の本文も100文字で切る | internal/cli/context.go | out[0] = msgContextItem(v.id(r.ID), body[0], | out[0] = msgContextItem(v.id(r.ID), contextText(body[0]),
+review: edit を状態の変更として見せる | internal/cli/review.go | if e.Event.Op == journal.OpStatus { | if e.Event.Op != journal.OpCreate {
+upgrade: --json の schema_updated を常に false にする | internal/cli/upgrade.go | SchemaUpdated: schemaUpdated, DryRun | SchemaUpdated: false, DryRun
+init: -n でも .mtqg/ を作る | internal/cli/init.go | (loc journal.Location, created bool, err error) {⏎⇥if dryRun { | (loc journal.Location, created bool, err error) {⏎⇥if false {
+init --agent: 既にある env の値を上書きする | internal/cli/agent_claude.go | if _, ok := env[key]; !ok { | if true {
+init --agent: 同じコマンドのフックを二重に足す | internal/cli/agent_claude.go | ok && groupHasCommand(group, cmd) { | ok && false && groupHasCommand(group, cmd) {
+init --agent: 既にある mcpServers.mtqg を上書きする | internal/cli/agent_claude.go | if _, ok := servers[name]; !ok { | if true {
+q add・b add: ID らしい語で当てはまる記録が無くても新しい記録にする | internal/cli/thread.go | if len(words) == 0 || !model.IsIDLike(words[0]) { | if true {
+q add・b add: 返信先の種類を見ない（質問にバグの返信） | internal/cli/thread.go | parent, err := state.ResolveKind(words[0], model.ParentKind(typ))⏎⇥var notFound | parent, err := state.Resolve(words[0])⏎⇥var notFound
+log: --events に --json が無くても受け付ける | internal/cli/log.go | if c.inv.events && !c.inv.json { | if false {
+log --events: 削除した記録を連れ戻さない | internal/cli/log.go | source = state.Every() | source = state.All()
+log --events: 削除済みの印を付けない | internal/cli/log.go | recs[i].Deleted = state.Hidden(r) | recs[i].Deleted = false
+log --events: --before に削除済みの ID を使えない | internal/cli/log.go | rec, err = state.ResolveAny(v) | rec, err = state.Resolve(v)
+log --events: --before のあとは見える記録だけにする | internal/cli/log.go | source = state.EveryBefore(rec) | source = state.Before(rec)
+フック: stop_hook_active を見ない | internal/cli/hook_claude.go | if in.StopHookActive || in.SessionID == "" { | if in.SessionID == "" {
+フック: 促したことをセッションに書き戻さない | internal/cli/hook_claude.go | session.Prompted = true⏎⇥if err := j.WriteSession(in.SessionID, session); err != nil { | session.Prompted = true⏎⇥if err := error(nil); err != nil {
+フック: session-start が既にあるセッションを上書きする（compact で開始時の状態を忘れる） | internal/cli/hook_claude.go | if _, already := j.ReadSession(in.SessionID); !already { | if true {
+MCP: 記録者に接続したクライアントの名前を使わない | internal/cli/mcp.go | Name: clientName} | Name: "mtqg"}
+MCP: ドメインのエラーをツールの結果でなくプロトコルのエラーにする | internal/cli/mcp.go | return mcpErrorResult(c.reportOf(err)), nil, nil | return nil, nil, err
+MCP: 状態が既にそうでも書く | internal/cli/mcp_tools.go | ev, err := model.SetStatus(rec, status)⏎⇥if errors.Is(err, model.ErrNoChange) { | ev, err := model.SetStatus(rec, status)⏎⇥if false {
+MCP: 本文が同じでも edit を書く | internal/cli/mcp_tools.go | ev, err := model.EditText(rec, text)⏎⇥if errors.Is(err, model.ErrNoChange) { | ev, err := model.EditText(rec, text)⏎⇥if false {
+MCP: 回答・返信が親の種類を見ない | internal/cli/mcp_tools.go | parent, err := state.ResolveKind(id, model.ParentKind(typ)) | parent, err := state.Resolve(id)
+MCP: 状態の変更が種類を見ない（todo_done に質問の ID） | internal/cli/mcp_tools.go | rec, err := state.ResolveKind(id, model.ParentKind(typ)) | rec, err := state.Resolve(id)
+MCP: search の本文を切らない | internal/cli/mcp_tools.go | if utf8.RuneCountInString(line) <= searchSummaryLimit { | if utf8.RuneCountInString(line) >= 0 {
+# cleanText の空の本文の検査を外しても区別できない：モデル層の各 Create・EditText が同じ検査を持ち、同じ empty_text で断る
+# 本文: 空の本文を断らない | internal/cli/text.go | if strings.TrimSpace(text) == "" { | if false {
+
+# --- シェル補完
+補完: 打ちかけの語で前方一致を絞らない | internal/cli/candidates.go | return withPrefix(list, partial) | return list
+補完: done の ID に完了済みも出す | internal/cli/candidates.go | case idsOpen:⏎⇥⇥return r.Status == journal.StatusOpen | case idsOpen:⏎⇥⇥return true
+補完: ID を古い順に出す | internal/cli/candidates.go | for _, r := range slices.Backward(all) { | for _, r := range all {
+補完: 10桁が重なる ID も10桁で出す | internal/cli/candidates.go | if len(partial) > shortIDDigits || digits[value] > 1 { | if len(partial) > shortIDDigits {
+補完: 10桁より長く打っても10桁で出す | internal/cli/candidates.go | if len(partial) > shortIDDigits || digits[value] > 1 { | if digits[value] > 1 {
+補完: 本文の途中でもオプションを出す | internal/cli/candidates.go | case strings.HasPrefix(partial, "-") && !p.optsDone: | case strings.HasPrefix(partial, "-"):
+補完: -n と --dry-run を別のものとして数える | internal/cli/candidates.go | if same, ok := sameOption[name]; ok {⏎⇥⇥⇥key = same | if same, ok := sameOption[name]; false && ok {⏎⇥⇥⇥key = same
+補完: -C の値を読まない | internal/cli/candidates.go | if p.pending == "-C" {⏎⇥⇥⇥⇥p.dir = w | if false {⏎⇥⇥⇥⇥p.dir = w
+補完: --mark を出さない | internal/cli/candidates.go | if p.cmd.mark { | if false {
+補完: 未実装のコマンドも出す | internal/cli/candidates.go | if cmd.kind == "" && cmd.run != nil { | if cmd.kind == "" {
+補完: 種類を1文字の短縮形でも出す | internal/cli/candidates.go | list = append(list, candidate{value: k.name})⏎⇥}⏎⇥for _, cmd := range commands { | list = append(list, candidate{value: k.name}, candidate{value: k.short})⏎⇥}⏎⇥for _, cmd := range commands {
+補完: 読めなかった行の警告を出す | internal/cli/candidates.go | ⇥return model.Build(result.Events) | ⇥c.warn(result.Warnings)⏎⇥return model.Build(result.Events)
+補完: 説明を幅で切らない | internal/cli/candidates.go | return truncate(oneLine(text), candidateWidth) | return oneLine(text)
+補完: 説明の制御文字を置き換えない | internal/cli/candidates.go | return truncate(oneLine(text), candidateWidth) | return truncate(firstLine(text), candidateWidth)
+補完 bash: 打ちかけの語を --word= で渡さず語の並びに入れる | internal/cli/completions/mtqg.bash | "--word=${COMP_WORDS[COMP_CWORD]}" -- "${COMP_WORDS[@]:1:COMP_CWORD-1}" | -- "${COMP_WORDS[@]:1:COMP_CWORD}"
+補完 bash: mtqg 自身を語に入れる | internal/cli/completions/mtqg.bash | "${COMP_WORDS[@]:1:COMP_CWORD-1}" | "${COMP_WORDS[@]:0:COMP_CWORD}"
+補完 zsh: mtqg 自身を語に入れる | internal/cli/completions/mtqg.zsh | "${(@)words[2,CURRENT-1]}" | "${(@)words[1,CURRENT-1]}"
+補完 fish: 打ちかけの語を --word= で渡さない | internal/cli/completions/mtqg.fish | mtqg candidates "--word=$cur" -- $words | mtqg candidates -- $words
+# fish 3.6 では、"--word=$cur" の引用符を外しても通る（空のトークンでも $cur は空文字1つで、引数が消えない）。引用符は、空のリストのときの備えとして残す
+# 補完 fish: --word= の引用符を外す | internal/cli/completions/mtqg.fish | mtqg candidates "--word=$cur" -- $words | mtqg candidates --word=$cur -- $words
+補完 PowerShell: 打ちかけの語を --word= で渡さない | internal/cli/completions/mtqg.ps1 | mtqg candidates "--word=$wordToComplete" -- @words | mtqg candidates -- @words

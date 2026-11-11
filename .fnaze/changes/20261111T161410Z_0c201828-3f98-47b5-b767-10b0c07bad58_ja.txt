@@ -1,0 +1,45 @@
+# srwr・bcuzをやめ、コミットごとの説明をfnazeで書く
+.bcuz/	削除：bcuzでコマンドの実行を記録するのをやめた
+.claude/
+	hooks/
+		build.sh	srwrのedit・newでなく、Edit・Write・MultiEditのあとにビルドする
+		crube-untracked.sh	srwrのnewでなく、Writeのあとに説明の無いパスを知らせる
+		require-bcuz.sh	bcuzとともに削除
+		require-bcuz.test.sh	bcuzとともに削除（qsoku hookの判定の表だった）
+	rules/
+		bcuz-usage.md	bcuzとともに削除
+		crube-usage.md	例からbcuz・srwrを外し、フックはWriteのあとに動くとした
+		directory-structure.md	.srwr/・.srwrignore・.bcuz/を、.fnaze/・.githooks/に置き換えた
+		fnaze-usage.md	新規：コミットごとの説明をfnazeで英日に書く手順
+		mtqg-usage.md	@latestで入れる道具を、qsoku・crube・fnaze・golangci-lintにした
+		qsoku-usage.md	qsoku hookとbcuzを外し、shellcheckが.githooks/も見るとした
+		srwr-usage.md	削除：ファイルは組み込みのEdit・Writeで変えるのに戻した
+		testing.md	qsoku hookとsrwrの落とし穴を外し、shellcheckが.githooks/pre-commitも見るとした
+		working-with-human.md	小さなつまずきの例からsrwr initを外した
+	settings.json	Edit・Writeを再び許し、srwr・bcuzのフックを外し、fnazeのMCPサーバーを足した（人間の変更）
+	skills/
+		commit-with-tape/	削除：閉じるsrwrのテープがなくなった
+		mutation-check/
+			SKILL.md	コマンドをbcuzなしで打ち、テストをsrwrなしで足すとした
+.crube/
+	ignore	.srwr/・.bcuz/を外し、.fnaze/・.githooks/を対象にし、fnazeの説明のファイルは外した
+	structure.txt	.fnaze/・.githooks/を説明し、srwr・bcuz、hookジョブ、.gitattributesのmerge=unionを外した
+	structure_ja.txt	同じ変更の日本語版
+.devcontainer/
+	devcontainer.json	srwr-viewの拡張を外した
+	postCreate.sh	srwr・bcuzの代わりにfnazeを入れ、.fnaze/を作り、core.hooksPathを.githooks/に向ける
+.gitattributes	.bcuz/history.jsonlのmerge=unionを外した
+.githooks/
+	pre-commit	新規：fnazeの説明を足さないコミットを止める
+.github/
+	workflows/
+		ci.yml	qsoku hookの手順を外した
+.gitignore	.srwr/のテープ・.srwrignore・.bcuz/の代わりに、.fnaze/・.githooks/を追跡する
+.mcp.json	srwrのMCPサーバーをfnazeに置き換えた
+.mtqg/
+	journal.jsonl	rule：5f5c2d9ec9（道具）を編集、697dc08ac4・697aeb4f1a（srwr・bcuz）を削除、c1545f6044を追加。todo cd413a968d、memo 7d6af48f08
+.srwr/	削除：閉じたsrwrのテープ
+.srwrignore	srwrとともに削除
+CLAUDE.md	srwrでなくEdit・Write、bcuzなし、コミットにfnaze。文書がコードと食い違えばコードに従う
+PLAN.md	現在地にfnazeへの切り替えを書き、PostToolUseの対象をEdit・Write・MultiEditにした
+qsokufile	qsoku hookを外し、shellcheckが拡張子の無い.githooks/も拾う

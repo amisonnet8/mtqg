@@ -73,10 +73,6 @@ jobs:
         run: go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
       - name: qsoku shellcheck
         run: qsoku shellcheck
-      # The decision table of the PreToolUse hook that forces commands through
-      # bcuz (.claude/hooks/require-bcuz.sh). Needs jq, which ubuntu-latest has.
-      - name: qsoku hook
-        run: qsoku hook
 
   trivy:
     runs-on: ubuntu-latest

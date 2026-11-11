@@ -7,12 +7,6 @@
       "command": "mtqg",
       "type": "stdio"
     },
-    "srwr": {
-      "command": "srwr",
-      "args": [
-        "mcp"
-      ]
-    },
     "crube": {
       "command": "crube",
       "args": [
@@ -29,6 +23,13 @@
       "env": {
         "CRUBE_LANG": "ja"
       }
+    },
+    "fnaze": {
+      "command": "fnaze",
+      "args": [
+        "mcp",
+        "--allow-write"
+      ]
     }
   }
 }

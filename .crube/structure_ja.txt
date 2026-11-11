@@ -1,31 +1,24 @@
-.bcuz/	bcuz を通して動かしたコマンドの記録（コミットする）
-	history.jsonl	1コマンド1行の JSON：いつ・なぜ・何を・終了コード
 .claude/	リポジトリで共有する Claude Code の設定
 	hooks/	Claude Code が道具の前後に動かすフック
-		build.sh	srwr で .go・go.mod・go.sum を変えたあとに qsoku build を動かす
-		crube-untracked.sh	srwr の new でファイルを作ったあと、説明の無いパスを言語ごとに Claude に知らせる
-		require-bcuz.sh	bcuz を通さない Bash のコマンドを断る PreToolUse フック
-		require-bcuz.test.sh	require-bcuz.sh が通す・断るコマンドの表（qsoku hook）
+		build.sh	Edit・Write で .go・go.mod・go.sum を変えたあとに qsoku build を動かす
+		crube-untracked.sh	Write でファイルを作ったあと、説明の無いパスを言語ごとに Claude に知らせる
 	rules/	このリポジトリで作業するときのルール（日本語）。いつ読むかは CLAUDE.md にある
-		bcuz-usage.md	Bash のコマンドを bcuz で動かす方法と、秘密をコマンドに書かないこと
 		cli-output.md	CLI の出力：英語の文言は internal/cli だけ、--json は外との約束、したことを正直に伝える
 		crube-usage.md	crube の使い方：MCP と CLI、場所の探し方、両方の言語の説明の保ち方
 		datetime.md	日時の扱い：UTC で持ち、表示だけ利用者のタイムゾーンに直す
 		directory-structure.md	ファイルの置き場所と、リポジトリの構成
 		distribution.md	配布の方法：goreleaser での配布物の作り方と、リリースの流れ
 		documentation.md	文書の書き方：例の値は道具で求める、docs/design/ に書く経緯の線引き
+		fnaze-usage.md	fnaze の使い方：コミットごとに英語と日本語で説明を書く手順、pre-commit、落とし穴
 		git-integration.md	製品としての mtqg が git にしてよいこと・いけないこと（読むだけ）
 		journal-format.md	データ形式：追記だけ、行の書き方とロック、形式の版
 		mtqg-usage.md	mtqg でメモ・todo・質問・不具合・決まり事を記録する方法
 		naming.md	命名：製品名、日本語と英語の用語の対応、コマンド、JSON のフィールド
 		qsoku-usage.md	ビルド・テスト・lint の qsoku の名前と呼び方
-		srwr-usage.md	ファイルは srwr だけで変える（厳格モード）こと、テープの閉じ方
 		testing.md	テスト方針と、サンドボックス・OS ごとの CI の落とし穴
 		working-with-human.md	人間への頼み方：小さなつまずき、確認、見え方の了承
 	settings.json	Claude Code の許可・サンドボックス・フック（人間が管理する）
 	skills/	Claude Code のスキル
-		commit-with-tape/	スキル：srwr のテープを閉じてコミットする
-			SKILL.md	スキルの手順
 		mutation-check/	スキル：実装をわざと壊して、テストが気づくか確かめる
 			SKILL.md	スキルの手順
 			spec.txt	プロジェクトの仕様の約束を1つずつ壊す変異の一覧（仕様の言葉で書く。最初は空）
@@ -36,10 +29,10 @@
 .devcontainer/	開発用のコンテナ
 	devcontainer-lock.json	コンテナを作ったときの feature の版
 	devcontainer.json	コンテナの定義と VS Code の設定
-	postCreate.sh	コンテナを作ったときに1回動く：道具（@latest）とシェルを入れ、サンドボックスのキャッシュのディレクトリを作る
+	postCreate.sh	コンテナを作ったときに1回動く：道具（@latest。mtqg はこのソースから）を入れ、.fnaze/ を作り、git のフックを .githooks/ に向け、シェルを配線し、サンドボックスのキャッシュのディレクトリを作る
 .github/	GitHub の設定
 	workflows/	GitHub Actions のワークフロー
-		ci.yml	CI：Linux・macOS・Windows で qsoku check と e2e、ほかに race・shellcheck・hook・trivy（release.yml からも呼ぶ）
+		ci.yml	CI：Linux・macOS・Windows で qsoku check と e2e、ほかに race・shellcheck・trivy（release.yml からも呼ぶ）
 		release.yml	タグで動くリリース。ci.yml を通してから、goreleaser の配布物を Release に添付して公開する
 .mtqg/	mtqg の作業記録：メモ・todo・質問・不具合・用語・決まり事
 	.gitattributes	journal.jsonl を merge=union でマージする
@@ -47,16 +40,11 @@
 	SCHEMA.md	journal.jsonl のデータ形式
 	journal.jsonl	記録そのもの。1件1行の JSON（mtqg からだけ書く）
 	version	mtqg のデータ形式の版
-.srwr/	srwr：AI によるファイル編集のテープ（操作ごとに理由つき）
-	tapes/	閉じたテープ（コミットする）。srwr view で再生できる
-		| 作業のまとまりごとに1本のテープ（圧縮済みの *.tape.jsonl.gz）。
-		| テープは .crube/ignore で crube の対象から外してあり、説明は要らない。
-.gitattributes	改行（すべて LF）と、記録のファイルの merge=union
+.gitattributes	改行：すべて LF
 .gitignore	git に入れないもの。ルート直下のドットで始まる名前は許可リスト方式
 .golangci.yaml	golangci-lint の設定。層の依存の向き（depguard）と、出力を internal/cli に限ること（forbidigo）も検査する
 .goreleaser.yaml	配布物の作り方（goreleaser）。release.yml と qsoku snapshot が使う
-.mcp.json	Claude Code に mtqg・srwr と、crube（英語・日本語）の MCP サーバーをつなぐ設定
-.srwrignore	srwr がテープに記録しないファイル
+.mcp.json	Claude Code に mtqg と、crube（英語・日本語）と、fnaze の MCP サーバーをつなぐ設定
 CLAUDE.md	このリポジトリでの Claude Code のルールと、読むべきルールファイルの案内
 LICENSE	MIT ライセンス
 PLAN.md	実装計画と進み具合（日本語）：段階、現在地、保留事項
@@ -232,3 +220,8 @@ docs/	文書
 		cli_ja.md	コマンド（日本語）
 		schema.md	データ形式。埋め込まれ、.mtqg/SCHEMA.md として書き出される
 		schema_ja.md	データ形式（日本語）
+.fnaze/	コミットごとの説明を fnaze で書いたもの（.claude/rules/fnaze-usage.md）。.devcontainer/postCreate.sh が作る（fnaze init）
+	changes/	説明のファイル。コミット1つにつき組1つ（英語と日本語）
+		| <日時>_<UUID>[_<言語>].txt。fnaze new で作り、fnaze title・set・rm で書く。1つずつに説明を付けても意味が無いので、.crube/ignore で外す
+.githooks/	このリポジトリの git のフック（core.hooksPath。.devcontainer/postCreate.sh が設定する）
+	pre-commit	fnaze の docs/examples/pre-commit：説明のファイルを足さないコミットと、いちばん新しい組を fnaze status --require が報告するコミットを止める

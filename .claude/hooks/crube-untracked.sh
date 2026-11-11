@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# After srwr's new creates a file, tell Claude which paths of it still have no
+# After Write creates a file, tell Claude which paths of it still have no
 # description, in each language of this repository's .crube/ (English and
 # Japanese; .claude/rules/crube-usage.md). Only the new file and the
 # directories above it are reported, so that a file made in a new directory
@@ -7,7 +7,7 @@
 # (.claude/rules/crube-usage.md) is where status --require all has to pass.
 set -euo pipefail
 
-file=$(jq -r '.tool_input.file // empty')
+file=$(jq -r '.tool_input.file_path // empty')
 if [ -z "$file" ]; then
   exit 0
 fi

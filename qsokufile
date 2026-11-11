@@ -38,10 +38,8 @@ race: (cd //; CGO_ENABLED=1 go test -race -count=1 ./...)
 
 trivy: (cd //; trivy fs --config trivy.yaml .)
 
-shellcheck: (cd //; git ls-files '*.sh' '*.bash' | xargs -r shellcheck)
-
-# The decision table of the hook that forces commands through bcuz (needs jq).
-hook: (cd //; bash .claude/hooks/require-bcuz.test.sh)
+# The git hooks in .githooks/ have no extension, so they are listed by directory.
+shellcheck: (cd //; git ls-files '*.sh' '*.bash' '.githooks/*' | xargs -r shellcheck)
 
 # The release archives of .goreleaser.yaml, made without a tag into dist/, to
 # look at before tagging (needs goreleaser: .claude/rules/distribution.md).

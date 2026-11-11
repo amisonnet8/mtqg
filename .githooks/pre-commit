@@ -1,0 +1,16 @@
+#!/bin/sh
+# The pre-commit hook of this repository (core.hooksPath, set by
+# .devcontainer/postCreate.sh): each commit adds its description, written with
+# fnaze (.claude/rules/fnaze-usage.md). fnaze itself does not read git: this
+# hook is where git and fnaze meet. It is fnaze's docs/examples/pre-commit.
+set -eu
+
+# Require this commit to add a description file.
+if ! git diff --cached --name-only --diff-filter=A -- .fnaze/changes/ | grep -q .; then
+	echo "pre-commit: this commit adds no description in .fnaze/changes/." >&2
+	echo "Run 'fnaze new [languages]', write the title and descs, and stage the files." >&2
+	exit 1
+fi
+
+# Require the newest group to be fully written.
+fnaze status --require

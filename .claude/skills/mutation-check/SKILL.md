@@ -31,31 +31,31 @@ mutants -spec <一覧> [-only <名前の一部>] -- <テストのコマンド>  
 
 ## 手順
 
-Bashのコマンドは、すべて`bcuz "理由" …`で1つずつ打つ（`.claude/rules/bcuz-usage.md`）。回すのに数分かかるものは、`run_in_background`で走らせ、終わりの知らせを待つ。
+回すのに数分かかるものは、`run_in_background`で走らせ、終わりの知らせを待つ。
 
-1. **写しを作り、道具を建てる。** 作業ツリーでは壊さない（Bashで書き換えると、srwrのテープに理由のない`external`が残り、戻し忘れの心配もある）。写すのは、追跡中のファイルと、無視されない未追跡のファイルの今の中身（コミットしていない変更も入る）。消したがまだコミットしていないファイルは、`--ignore-failed-read`で飛ばす
+1. **写しを作り、道具を建てる。** 作業ツリーでは壊さない（Bashで書き換えると、戻し忘れの心配がある）。写すのは、追跡中のファイルと、無視されない未追跡のファイルの今の中身（コミットしていない変更も入る）。消したがまだコミットしていないファイルは、`--ignore-failed-read`で飛ばす
 
    ```
-   bcuz "壊して確かめる写しを作る" sh -c 'rm -rf "$TMPDIR/mut" && mkdir -p "$TMPDIR/mut/repo" && git ls-files -z --cached --others --exclude-standard | xargs -0 tar -cf - --ignore-failed-read | tar -x -C "$TMPDIR/mut/repo"'
-   bcuz "変異の道具を建てる" go -C .claude/skills/mutation-check/mutants build -o "$TMPDIR/mut/mutants" .
+   sh -c 'rm -rf "$TMPDIR/mut" && mkdir -p "$TMPDIR/mut/repo" && git ls-files -z --cached --others --exclude-standard | xargs -0 tar -cf - --ignore-failed-read | tar -x -C "$TMPDIR/mut/repo"'
+   go -C .claude/skills/mutation-check/mutants build -o "$TMPDIR/mut/mutants" .
    ```
 
 2. **②仕様の変異を、全テストで回す。** 約束を足した・変えたなら、先に`spec.txt`に足す（仕様の約束1つにつき1行。名前は仕様の言葉で書く。「除外したディレクトリの下も調べる」のように）
 
    ```
-   bcuz "仕様の約束をテストが守っているか確かめる" sh -c 'cd "$TMPDIR/mut/repo" && "$TMPDIR/mut/mutants" -spec .claude/skills/mutation-check/spec.txt -- go test -count=1 ./... > "$TMPDIR/mut/spec.log" 2>&1; grep -v "^killed" "$TMPDIR/mut/spec.log"'
+   sh -c 'cd "$TMPDIR/mut/repo" && "$TMPDIR/mut/mutants" -spec .claude/skills/mutation-check/spec.txt -- go test -count=1 ./... > "$TMPDIR/mut/spec.log" 2>&1; grep -v "^killed" "$TMPDIR/mut/spec.log"'
    ```
 
 3. **①構文の変異を、まずパッケージ自身のテストで回す。** 全ファイルを全テストで回すと遅いので、パッケージのテストで絞ってから、生き残った行だけを全テスト（e2eがあれば、それも含む）で回し直す。CLIの出力の変異は、e2eが捕まえることが多い
 
    ```
-   bcuz "構文の変異を、パッケージ自身のテストが捕まえるか確かめる" sh -c 'cd "$TMPDIR/mut/repo" && for f in $(find internal -name "*.go" ! -name "*_test.go" | sort); do "$TMPDIR/mut/mutants" -file $f -- go test -count=1 ./$(dirname $f)/; done > "$TMPDIR/mut/syntax.log" 2>&1; grep -c "^SURVIVED" "$TMPDIR/mut/syntax.log"'
-   bcuz "生き残った行を、全テストで回し直す" sh -c 'cd "$TMPDIR/mut/repo" && for f in $(grep "^SURVIVED" ../syntax.log | cut -d" " -f2 | cut -d: -f1 | sort -u); do "$TMPDIR/mut/mutants" -file $f -lines $(grep "^SURVIVED: $f:" ../syntax.log | cut -d: -f3 | sort -un | paste -sd,) -- go test -count=1 ./...; done > ../syntax2.log 2>&1; grep "^SURVIVED" ../syntax2.log'
+   sh -c 'cd "$TMPDIR/mut/repo" && for f in $(find internal -name "*.go" ! -name "*_test.go" | sort); do "$TMPDIR/mut/mutants" -file $f -- go test -count=1 ./$(dirname $f)/; done > "$TMPDIR/mut/syntax.log" 2>&1; grep -c "^SURVIVED" "$TMPDIR/mut/syntax.log"'
+   sh -c 'cd "$TMPDIR/mut/repo" && for f in $(grep "^SURVIVED" ../syntax.log | cut -d" " -f2 | cut -d: -f1 | sort -u); do "$TMPDIR/mut/mutants" -file $f -lines $(grep "^SURVIVED: $f:" ../syntax.log | cut -d: -f3 | sort -un | paste -sd,) -- go test -count=1 ./...; done > ../syntax2.log 2>&1; grep "^SURVIVED" ../syntax2.log'
    ```
 
 4. **生き残った変異（SURVIVED）を、握りつぶさずに1つずつ読む。** 次のどれかに決める
    - **変異が何も変えていない**（書き換えが同じ意味）：変異を直して、もう一度
-   - **テストが足りない**：作業ツリーにテストを足す（srwrで）。期待値は、実装と別の道具で求める（`.claude/rules/testing.md`「期待値は、テストを書く前に決める」）。足したテストを写しへ`cp`し、**同じ変異をもう一度入れて、killedになる**ことを確かめる（②は`-only`、①は`-lines`で絞る）。落ちるのを見るまで、足したことにならない
+   - **テストが足りない**：作業ツリーにテストを足す。期待値は、実装と別の道具で求める（`.claude/rules/testing.md`「期待値は、テストを書く前に決める」）。足したテストを写しへ`cp`し、**同じ変異をもう一度入れて、killedになる**ことを確かめる（②は`-only`、①は`-lines`で絞る）。落ちるのを見るまで、足したことにならない
    - **本当に同じ意味で、区別できない**（エラーのときにだけ添える値、ありえない入力の境界など）：理由とともに`.claude/rules/testing.md`「意味が同じなので残した変異」に書く。②の一覧なら、行を`#`でコメントにして、上に理由の行を置く。**黙って消さない**
 
 5. **最後に、作業ツリーで`qsoku check`を通す。** 写しは`$TMPDIR`にあるので、作業ツリーには何も残らない。`git status --short`で、テストと記録のほかに差分が無いことを確かめる
@@ -65,7 +65,7 @@ Bashのコマンドは、すべて`bcuz "理由" …`で1つずつ打つ（`.cla
 - **期待値が偶然一致すると、変異が生き残る。** 例（crube）：40桁の端末では、注記の前の空白を2つから3つにしても、切り詰めた結果が同じ「ア…」になった（41桁なら分かれる）。境目ちょうどの例を足す
 - **整える処理を通して比べると、手前の誤りが隠れる。** 例（crube）：書き出しの`Format`は説明の前後の空白をもう一度除くので、読み込みで空白を残す変異が、`Format`の出力の比較では見えなかった。読み込んだ結果そのものを比べる
 - 写しの中の`go test`は、作業ツリーと同じビルドキャッシュ（`~/.cache/go-build`）を使う。サンドボックスの書き込み先に入っているので、許可は要らない
-- 道具（`mutants/`）を変えたときは、そのディレクトリで整形・vet・テストを通す：`bcuz "変異の道具を変えたあとの確認" sh -c 'cd .claude/skills/mutation-check/mutants && gofmt -l . && go vet ./... && go test -count=1 ./...'`
+- 道具（`mutants/`）を変えたときは、そのディレクトリで整形・vet・テストを通す：`sh -c 'cd .claude/skills/mutation-check/mutants && gofmt -l . && go vet ./... && go test -count=1 ./...'`
 
 ## 記録する
 

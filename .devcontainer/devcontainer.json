@@ -11,8 +11,7 @@
         "golang.Go",
         "github.vscode-github-actions",
         "timonwong.shellcheck",
-        "amisonnet8.mtqg",
-        "amisonnet8.srwr-view"
+        "amisonnet8.mtqg"
       ],
       "settings": {
         "go.useLanguageServer": true,

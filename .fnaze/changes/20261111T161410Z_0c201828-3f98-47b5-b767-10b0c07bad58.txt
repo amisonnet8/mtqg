@@ -1,0 +1,45 @@
+# Drop srwr and bcuz, describe each commit with fnaze
+.bcuz/	Removed: bcuz no longer records the commands run
+.claude/
+	hooks/
+		build.sh	Build after Edit / Write / MultiEdit instead of srwr's edit / new
+		crube-untracked.sh	Report undescribed paths after Write instead of srwr's new
+		require-bcuz.sh	Removed with bcuz
+		require-bcuz.test.sh	Removed with bcuz (its table was qsoku hook)
+	rules/
+		bcuz-usage.md	Removed with bcuz
+		crube-usage.md	Drop bcuz and srwr from the examples; the hook runs after Write
+		directory-structure.md	Replace .srwr/, .srwrignore and .bcuz/ with .fnaze/ and .githooks/
+		fnaze-usage.md	New: how to describe each commit with fnaze in English and Japanese
+		mtqg-usage.md	The tools installed @latest are now qsoku, crube, fnaze and golangci-lint
+		qsoku-usage.md	Drop qsoku hook and bcuz; shellcheck also covers .githooks/
+		srwr-usage.md	Removed: files are changed with the built-in Edit and Write again
+		testing.md	Drop qsoku hook and the srwr pitfalls; shellcheck also covers .githooks/pre-commit
+		working-with-human.md	Drop srwr init from the small blockers
+	settings.json	Allow Edit and Write again, drop the srwr and bcuz hooks, add the fnaze MCP server (people's change)
+	skills/
+		commit-with-tape/	Removed: there are no srwr tapes to close any more
+		mutation-check/
+			SKILL.md	Run the commands without bcuz; tests are added without srwr
+.crube/
+	ignore	Stop ignoring .srwr/ and .bcuz/; track .fnaze/ and .githooks/, and leave out the fnaze description files
+	structure.txt	Describe .fnaze/ and .githooks/, drop srwr and bcuz, the hook job and merge=union of .gitattributes
+	structure_ja.txt	The same in Japanese
+.devcontainer/
+	devcontainer.json	Drop the srwr-view extension
+	postCreate.sh	Install fnaze instead of srwr and bcuz, make .fnaze/ and point core.hooksPath at .githooks/
+.gitattributes	Drop merge=union for .bcuz/history.jsonl
+.githooks/
+	pre-commit	New: stop a commit that adds no fnaze description
+.github/
+	workflows/
+		ci.yml	Drop the qsoku hook step
+.gitignore	Track .fnaze/ and .githooks/ instead of .srwr/ tapes, .srwrignore and .bcuz/
+.mcp.json	Replace the srwr MCP server with fnaze
+.mtqg/
+	journal.jsonl	Rules: edit 5f5c2d9ec9 (tools), delete 697dc08ac4 and 697aeb4f1a (srwr, bcuz), add c1545f6044; todo cd413a968d, memo 7d6af48f08
+.srwr/	Removed: the closed srwr tapes
+.srwrignore	Removed with srwr
+CLAUDE.md	Edit and Write instead of srwr, no bcuz, fnaze for commits; follow the code when documents disagree with it
+PLAN.md	Record the switch to fnaze in the current status; PostToolUse now targets Edit / Write / MultiEdit
+qsokufile	Drop qsoku hook; shellcheck also lists .githooks/ (no extension)

@@ -17,8 +17,7 @@
 | `qsoku docs-examples` | `docs/`の実行例を、実測の出力で書き直す（`e2e/examples_test.go`の`-update`） | 実行例のある文書や、出力を変えたとき |
 | `qsoku race` | `CGO_ENABLED=1 go test -race` | 並行性・排他（ロック）に関わる変更 |
 | `qsoku trivy` | 既知の脆弱性・ライセンスの検査 | 依存を足したとき |
-| `qsoku shellcheck` | 追跡中の`*.sh`・`*.bash`をShellCheckにかける | シェルスクリプトを足したとき |
-| `qsoku hook` | `.claude/hooks/require-bcuz.test.sh`（bcuz を強制するフックの判定の表。`jq`が要る） | `require-bcuz.sh`を変えたとき（CIでも`shellcheck`ジョブで回る） |
+| `qsoku shellcheck` | 追跡中の`*.sh`・`*.bash`と`.githooks/`のフックをShellCheckにかける | シェルスクリプトを足したとき |
 | `qsoku snapshot` | `goreleaser check`のあと、タグなしで配布物を`dist/`に作る（`.goreleaser.yaml`。goreleaser が要る） | タグを打つ前、`.goreleaser.yaml`や`tools/licenses`を変えたとき。中身を見てからタグを打つ（`.claude/rules/distribution.md`） |
 
 **`qsoku cross`**：`GOOS=windows`・`darwin`で`go vet`と`golangci-lint run`を動かす。このリポジトリにはOSごとのファイル（ロックの`flock`と`LockFileEx`、`internal/cli`の`ansi_*.go`・`tty_*.go`）があるので、有効にして`check`に入れてある。Linuxだけで動かしていると、Windows向けのファイルが壊れていてもCIのWindowsで初めて落ちる（`syscall.Flock`のようなUnix専用の呼び出しなど）
@@ -31,7 +30,6 @@
 qsoku <名前> [引数...]
 ```
 
-- **Claude Codeは、Bashツールでは`bcuz`を通して呼ぶ**：`bcuz "理由" qsoku <名前>`（`.claude/rules/bcuz-usage.md`）。以下の例・表の`qsoku <名前>`は、素の形で書いてある
 - 引数は、項目のコマンドの中で`"$@"`・`$1`として受けられる。**このリポジトリの`qsokufile`の項目は、どれも引数を受けていない**（書いていない引数は捨てられる）。受けたいときは、項目を`unit: (cd //; go test "$@")`のように書き換える。そうすれば`qsoku unit -run TestFoo ./internal/...`が使える
 - **qsoku自身のオプションは無い。** `--help`・`--version`は**名前として調べられる**ので、「定義されていない」というエラーになる。使い方は`qsoku .help`、バージョンは`qsoku .version`
 - コマンドは、どのOSでも、また呼び出し元がどのシェルでも、常に`sh`で実行される

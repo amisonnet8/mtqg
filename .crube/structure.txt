@@ -1,31 +1,24 @@
-.bcuz/	Record of the commands run through bcuz (committed)
-	history.jsonl	One JSON line per command: when, why, what and the exit code
 .claude/	Claude Code settings shared in the repository
 	hooks/	Hooks that Claude Code runs around its tools
-		build.sh	Runs qsoku build after a .go, go.mod or go.sum file is changed with srwr
-		crube-untracked.sh	After srwr new creates a file, tells Claude which of its paths have no description, per language
-		require-bcuz.sh	PreToolUse hook that refuses Bash commands not run through bcuz
-		require-bcuz.test.sh	Table of the commands require-bcuz.sh allows and refuses (qsoku hook)
+		build.sh	Runs qsoku build after a .go, go.mod or go.sum file is changed with Edit or Write
+		crube-untracked.sh	After Write creates a file, tells Claude which of its paths have no description, per language
 	rules/	Rules for working in this repository (Japanese); CLAUDE.md says when to read each
-		bcuz-usage.md	How to run Bash commands through bcuz, and keeping secrets out of them
 		cli-output.md	CLI output: English wording only in internal/cli, --json as a promise, saying honestly what was done
 		crube-usage.md	Using crube: MCP and the CLI, finding places, keeping descriptions in both languages
 		datetime.md	Dates and times: keep UTC, show in the local time zone
 		directory-structure.md	Where each file goes, and the layout of the repository
 		distribution.md	How the project is released: building the archives with goreleaser, and the release flow
 		documentation.md	How to write documents: example values from tools, what history goes in docs/design/
+		fnaze-usage.md	Using fnaze: describing each commit in English and Japanese, the pre-commit hook, pitfalls
 		git-integration.md	What mtqg as a product may and may not do to git (it only reads)
 		journal-format.md	The data format: append only, how lines are written and locked, the format version
 		mtqg-usage.md	How to record memos, todos, questions, bugs and rules with mtqg
 		naming.md	Names: the product, Japanese and English terms, commands, JSON fields
 		qsoku-usage.md	The qsoku names for build, test and lint, and how to call them
-		srwr-usage.md	Editing files only through srwr (strict mode), and closing tapes
 		testing.md	Test policy, and pitfalls of the sandbox and of CI on each OS
 		working-with-human.md	How to ask people: small blockers, checks, and approval of what users see
 	settings.json	Permissions, sandbox and hooks of Claude Code (managed by people)
 	skills/	Skills of Claude Code
-		commit-with-tape/	Skill: close the srwr tape and commit
-			SKILL.md	The steps of the skill
 		mutation-check/	Skill: break the code on purpose to see that the tests notice
 			SKILL.md	The steps of the skill
 			spec.txt	Mutations that break the promises of the project one by one, in the words of the spec (empty at first)
@@ -36,10 +29,10 @@
 .devcontainer/	Development container
 	devcontainer-lock.json	Versions of the features the container was built with
 	devcontainer.json	Container definition and VS Code settings
-	postCreate.sh	Runs once the container is made: installs the tools (@latest), the shells, and makes the sandbox's cache directories
+	postCreate.sh	Runs once the container is made: installs the tools (@latest; mtqg from this source), makes .fnaze/, points git at .githooks/, wires up the shells, and makes the sandbox's cache directories
 .github/	GitHub settings
 	workflows/	GitHub Actions workflows
-		ci.yml	CI: qsoku check and e2e on Linux, macOS and Windows; race, shellcheck, hook and trivy (release.yml calls it too)
+		ci.yml	CI: qsoku check and e2e on Linux, macOS and Windows; race, shellcheck and trivy (release.yml calls it too)
 		release.yml	Release on a tag: runs ci.yml, attaches goreleaser's archives to a Release and publishes it
 .mtqg/	Process record kept with mtqg: memos, todos, questions, bugs, glossary and rules
 	.gitattributes	Merges journal.jsonl with merge=union
@@ -47,16 +40,11 @@
 	SCHEMA.md	Data format of journal.jsonl
 	journal.jsonl	The records, one JSON line each (written only through mtqg)
 	version	Version of the mtqg data format
-.srwr/	srwr: tapes of the file edits made by AI, each with its reason
-	tapes/	Closed tapes (committed); replay them with srwr view
-		| One compressed tape (*.tape.jsonl.gz) for each unit of work.
-		| The tapes are left out by .crube/ignore, so that they need no description.
-.gitattributes	Line endings (LF everywhere) and merge=union for the record files
+.gitattributes	Line endings: LF everywhere
 .gitignore	Files kept out of git; dot entries in the root are an allowlist
 .golangci.yaml	golangci-lint settings, including the direction of the layers (depguard) and printing only in internal/cli (forbidigo)
 .goreleaser.yaml	How the release archives are made (goreleaser): used by release.yml and qsoku snapshot
-.mcp.json	MCP servers for Claude Code: mtqg, srwr, and crube in English and Japanese
-.srwrignore	Files srwr does not put on its tapes
+.mcp.json	MCP servers for Claude Code: mtqg, crube in English and Japanese, and fnaze
 CLAUDE.md	Rules for Claude Code in this repository, and the rule files to read
 LICENSE	MIT license
 PLAN.md	Implementation plan and progress (Japanese): stages, where things stand, pending items
@@ -232,3 +220,8 @@ docs/	Documents
 		cli_ja.md	The commands (Japanese)
 		schema.md	The data format, embedded and written out as .mtqg/SCHEMA.md
 		schema_ja.md	The data format (Japanese)
+.fnaze/	The description of each commit, written with fnaze (.claude/rules/fnaze-usage.md); made by .devcontainer/postCreate.sh (fnaze init)
+	changes/	The description files, one group per commit, in English and Japanese
+		| <datetime>_<UUID>[_<language>].txt, made by fnaze new and written by fnaze title, set and rm. Left out by .crube/ignore: a description of each one would add nothing.
+.githooks/	The git hooks of this repository (core.hooksPath, set by .devcontainer/postCreate.sh)
+	pre-commit	fnaze's docs/examples/pre-commit: stops a commit that adds no description file, or whose newest group fnaze status --require reports

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Build after a Go source or module file is changed by srwr's edit / new, and
-# report failures to Claude. In strict mode (srwr init) the built-in Edit and
-# Write are denied, so this hook runs on the srwr tools; their input names the
-# file as "file" (or as "edits[].file" for several changes at once).
+# Build after a Go source or module file is changed by Edit / Write / MultiEdit,
+# and report failures to Claude. Their input names the file as "file_path".
 set -euo pipefail
 
 changed=false
@@ -10,7 +8,7 @@ while IFS= read -r file; do
   case "$file" in
     *.go | *go.mod | *go.sum) changed=true ;;
   esac
-done < <(jq -r '.tool_input | [.file, .file_path, (.edits[]?.file)] | .[] | strings')
+done < <(jq -r '.tool_input.file_path // empty')
 
 if [ "$changed" = false ]; then
   exit 0

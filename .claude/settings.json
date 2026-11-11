@@ -4,17 +4,6 @@
     "MTQG_AUTHOR_NAME": "claude-code"
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/require-bcuz.sh",
-            "type": "command"
-          }
-        ],
-        "matcher": "Bash"
-      }
-    ],
     "PostToolUse": [
       {
         "hooks": [
@@ -23,7 +12,7 @@
             "type": "command"
           }
         ],
-        "matcher": "mcp__srwr__edit|mcp__srwr__new"
+        "matcher": "Edit|Write|MultiEdit"
       },
       {
         "hooks": [
@@ -32,16 +21,7 @@
             "type": "command"
           }
         ],
-        "matcher": "mcp__srwr__new"
-      },
-      {
-        "matcher": "Read|Bash|Grep|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "srwr hook"
-          }
-        ]
+        "matcher": "Write"
       }
     ],
     "SessionStart": [
@@ -77,7 +57,11 @@
         "~/.cache/trivy",
         "~/.cache/golangci-lint"
       ],
-      "denyRead": ["~/.ssh", "~/.aws", "~/.config/gh"]
+      "denyRead": [
+        "~/.ssh",
+        "~/.aws",
+        "~/.config/gh"
+      ]
     },
     "network": {
       "allowedDomains": [
@@ -99,20 +83,18 @@
     "deny": [
       "Bash(git push*)",
       "Bash(gh pr merge*)",
-      "Bash(gh release create*)",
-      "Edit",
-      "Write",
-      "MultiEdit",
-      "NotebookEdit"
+      "Bash(gh release create*)"
     ],
     "allow": [
-      "mcp__srwr__look",
-      "mcp__srwr__edit",
-      "mcp__srwr__new",
-      "mcp__srwr__session",
       "mcp__crube",
-      "mcp__crube-ja"
+      "mcp__crube-ja",
+      "mcp__fnaze"
     ]
   },
-  "enabledMcpjsonServers": ["mtqg", "srwr", "crube", "crube-ja"]
+  "enabledMcpjsonServers": [
+    "mtqg",
+    "crube",
+    "crube-ja",
+    "fnaze"
+  ]
 }

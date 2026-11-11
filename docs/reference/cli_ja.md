@@ -35,7 +35,7 @@ mtqg自身が出す文言は英語。記録の中身は書いたとおりに表�
 | `mtqg undo` | この記録者がこの端末から書いた最後の行を消す |
 | `mtqg status` | 未完了の項目と未コミットの記録の概況 |
 | `mtqg log [--limit N] [--kind K] [--before <id>] [--events]` | 全種類の記録を、新しいものから |
-| `mtqg show <id>` | 1件の記録を、全文と履歴とともに |
+| `mtqg show <id>...` | 記録を、全文と履歴とともに（渡した順に） |
 | `mtqg search <語>` | 本文に`<語>`を含む記録を、新しいものから |
 | `mtqg review` | 並行した状態変更、用語の重複定義、親のない回答・返信 |
 | `mtqg context [--max-tokens N]` | AIエージェント向けの要約 |
@@ -142,7 +142,7 @@ $ mtqg memo list --json
 | `qa list`、`bug list` | `todo list`と同じ。各記録が`replies`を持つ |
 | `glossary list` | `records`、`entries`（その数）、`duplicate_words` |
 | `log` | `records`（新しい順）、`shown`、`total`（`--before`指定時はそれより前の件数のみ）、`before`：解決した完全ID（`--before`指定時のみ）、`--events`指定時は各記録に`events`、削除された記録も`deleted: true`として含まれる |
-| `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む。`log --events`はその記録自身のものだけ） |
+| `show` | `record`と`events`：その記録に起きたことを、古い順に、[schema_ja.md](schema_ja.md)の形の`journal.jsonl`の行として（質問・バグでは、各返信の`create`も含む。`log --events`はその記録自身のものだけ）。IDを2つ以上渡したときは、代わりに`records`：渡した順に`{"record", "events"}`を1つずつ（同じ記録は1度だけ）。形はIDの数で決まり、IDが1つなら`records`は無い |
 | `status` | `open_todos`、`open_questions`、`questions_awaiting_confirmation`、`open_bugs`、`bugs_awaiting_confirmation`、`glossary_entries`、`duplicate_words`、`concurrent_status_changes`（記録の数）、`uncommitted_records`（gitを実行できなければ`null`） |
 | `init` | `root`：`.mtqg/`を作った場所 |
 | `upgrade` | `from`、`to`：形式のバージョン、前後（変わらなければ同じ）、`schema_updated`：`SCHEMA.md`を書き直した（`-n`なら書き直すはずだった）か、`dry_run` |
@@ -609,7 +609,7 @@ mtqgはどちらかを選ばない。
 
 <!-- mtqg:example repo=parser_ja -->
 ```
-$ mtqg show 1012f037b6
+$ mtqg show 1012f037b6 7f3a2b1c09
 question  1012f037b6  open
 by claude-code (ai), 2026-09-21 09:10
 
@@ -626,7 +626,6 @@ Events
   2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
   2026-09-21 09:41  create  yamada (human)    answer 95e761d177
 
-$ mtqg show 7f3a2b1c09
 bug  7f3a2b1c09  open
 by yamada (human), 2026-09-21 10:41
 
@@ -641,6 +640,9 @@ Events
   2026-09-21 10:45  create  claude-code (ai)  reply 3d8e4a0b12
 ```
 
+- IDを複数渡すと、渡した順に1件ずつ、間に空行を1つ置いて表示する。同じ記録を2度渡したとき（同じIDでも、同じ記録に
+  当てはまる別の長さの前方一致でも）は1度だけ表示する。1つでも当てはまらない・複数に当てはまるIDがあれば、何も表示せず、
+  そのIDだけを渡したときと同じエラーになる（終了コード1）
 - 1行目は、種類（`memo`、`todo`、`question`、`answer`、`bug`、`reply`、`glossary`、`rule`）、ID、todo・質問・バグなら状態。2行目は、誰がいつ
   書いたか（記録者の種別つき）
 - 本文は、どう読まれる出力でも、すべての行を全文で表示する。制御文字は一覧と同じように置き換える。glossaryの
@@ -1240,7 +1242,7 @@ mtqg completion powershell >> $PROFILE
 | `--kind`の次 | `memo`、`todo`、`qa`、`bug`、`glossary`、`rule` |
 | `todo done`、`qa done`、`bug done`のID | その種類の、未完了のもの |
 | `todo reopen`、`qa reopen`、`bug reopen`のID | その種類の、完了したもの |
-| `show`、`edit`、`delete`のID | 見えている記録すべて（新しい順） |
+| `show`のID（2つ目以降も）、`edit`・`delete`のID | 見えている記録すべて（新しい順） |
 | `log --before`のID | 見えている記録すべて（新しい順、種類を問わない） |
 | `qa add`、`bug add`の1語目 | 質問（バグ）。完了したものも含む。回答（返信）する相手のIDかもしれないため |
 | `completion`の次 | 4つのシェル |

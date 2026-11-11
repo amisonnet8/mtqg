@@ -8,8 +8,10 @@ import (
 	"github.com/amisonnet8/mtqg/internal/model"
 )
 
-// runShow shows one record in full: its text, whatever the width of the window,
-// its answers if it is a question, and what happened to it.
+// runShow shows records in full, in the order given: each one's text, whatever
+// the width of the window, its answers if it is a question, and what happened to
+// it. A record given twice is shown once. If any ID does not name one record,
+// nothing is shown: a reader would not notice the one that is missing.
 func runShow(c *ctx) int {
 	j, err := c.reader()
 	if err != nil {
@@ -19,24 +21,53 @@ func runShow(c *ctx) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	rec, err := state.Resolve(c.inv.words[0])
-	if err != nil {
-		return c.fail(err)
+	var recs []*model.Record
+	seen := map[string]bool{}
+	for _, word := range c.inv.words {
+		rec, err := state.Resolve(word)
+		if err != nil {
+			return c.fail(err)
+		}
+		if !seen[rec.ID] {
+			seen[rec.ID] = true
+			recs = append(recs, rec)
+		}
 	}
 	if c.inv.json {
-		history := state.History(rec)
-		events := make([]journal.Event, len(history))
-		for i, e := range history {
-			events[i] = e.Event
+		// The shape follows the command line, not what the IDs turn out to name:
+		// one ID gives the record itself, as show always has.
+		if len(c.inv.words) == 1 {
+			e := showJSON(state, recs[0])
+			return c.emit(jsonShow{Command: c.inv.cmd.label(), Record: e.Record, Events: e.Events})
 		}
-		record := recordJSON(rec)
-		if rec.CanHaveReplies() {
-			record = threadJSON(state, rec)
+		entries := make([]jsonShowEntry, len(recs))
+		for i, rec := range recs {
+			entries[i] = showJSON(state, rec)
 		}
-		return c.emit(jsonShow{Command: c.inv.cmd.label(), Record: record, Events: events})
+		return c.emit(jsonShowMany{Command: c.inv.cmd.label(), Records: entries})
 	}
-	c.printRecord(state, rec)
+	for i, rec := range recs {
+		if i > 0 {
+			c.println()
+		}
+		c.printRecord(state, rec)
+	}
 	return exitOK
+}
+
+// showJSON is a record as show gives it: with its replies, if it can have them,
+// and what happened to it, as lines of the journal.
+func showJSON(state *model.State, rec *model.Record) jsonShowEntry {
+	history := state.History(rec)
+	events := make([]journal.Event, len(history))
+	for i, e := range history {
+		events[i] = e.Event
+	}
+	record := recordJSON(rec)
+	if rec.CanHaveReplies() {
+		record = threadJSON(state, rec)
+	}
+	return jsonShowEntry{Record: record, Events: events}
 }
 
 func (c *ctx) printRecord(state *model.State, rec *model.Record) {

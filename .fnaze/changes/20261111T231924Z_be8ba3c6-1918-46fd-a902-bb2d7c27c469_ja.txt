@@ -1,0 +1,23 @@
+# showに複数のIDを渡せるようにする
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	複数のIDのshowの変異：順序、1度だけ、誤ったID、空行、--jsonの形、補完
+.mtqg/
+	journal.jsonl	memo f9002770df、todo e047e30adbの完了
+docs/
+	design/
+		cli.md	showが複数のIDを受ける
+	reference/
+		cli.md	show <id>...：渡した順、1度だけ、1つでも誤れば何も出さない。--jsonはIDが2つ以上ならrecords
+		cli_ja.md	同じ変更の日本語版
+internal/
+	cli/
+		args.go	引数の形argsIDs（IDを1つ以上）を足し、showに使う
+		candidates.go	複数のIDを受けるコマンドでは、どの位置でもIDを出す
+		candidates_test.go	showが1つ目のIDの後にもIDを出す
+		json.go	IDを2つ以上渡したshowの形
+		json_test.go	IDが1つと複数のときのshowの--json
+		mcp_tools.go	showツールのJSONを、showと同じ関数で組み立てる
+		show.go	複数の記録を渡した順に1度ずつ出し、IDが1つでも誤れば何も出さない
+		show_test.go	複数のID：順序、空行、1度だけ、まとめて失敗する

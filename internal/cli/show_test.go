@@ -170,6 +170,47 @@ func TestShow(t *testing.T) {
 		code, out, errOut := h.run("show")
 		wantExit(t, code, 2, out, errOut)
 	})
+
+	t.Run("several IDs: each record in the order given, a blank line between, once each", func(t *testing.T) {
+		h := initialized(t)
+		h.setJournal(
+			question(idQ2, "Should nested block comments be supported?", nameC, "2026-09-17T09:10:00Z"),
+			record(idM, "memo", "Use English for all error messages", "yamada", "2026-09-16T10:32:00Z"),
+			record(idA, "todo", "Skip block comments", "yamada", "2026-09-17T10:18:00Z"),
+		)
+		alone := func(id string) string { return mustRun(h, "show", id) }
+		want := alone(idA) + "\n" + alone(idM) + "\n" + alone(idQ2)
+		// The todo again, by another prefix of it, is not shown twice.
+		code, out, errOut := h.run("show", idA[:6], idM[:4], idA, idQ2[:8])
+		wantExit(t, code, 0, out, errOut)
+		if out != want || errOut != "" {
+			t.Errorf("stdout:\n%s\nwant:\n%s\nstderr %q", out, want, errOut)
+		}
+	})
+
+	t.Run("several IDs: one that names no record, or more than one, shows nothing", func(t *testing.T) {
+		h := initialized(t)
+		h.setJournal(
+			record(idM, "memo", "Use English for all error messages", "yamada", "2026-09-16T10:32:00Z"),
+			record(idA, "todo", "Skip block comments", "yamada", "2026-09-17T10:18:00Z"),
+			record("6cad4a268d0f4e2f8c1b7a3d5e9f0a99", "memo", "Same first digits", "yamada", "2026-09-17T10:20:00Z"),
+		)
+		for _, tt := range []struct {
+			args []string
+			want string
+		}{
+			{[]string{idM[:6], "ffff"}, `No record matches "ffff"`},
+			{[]string{"ffff", idM[:6]}, `No record matches "ffff"`},
+			{[]string{idM[:6], "6cad"}, "6cad4a268d0f4e2f8c1b7a3d5e9f0a99"}, // ambiguous: the candidates
+			{[]string{idM[:6], "ab"}, "too short"},
+		} {
+			code, out, errOut := h.run(append([]string{"show"}, tt.args...)...)
+			wantExit(t, code, 1, out, errOut)
+			if out != "" || !strings.Contains(errOut, tt.want) {
+				t.Errorf("%q: stdout %q, stderr %q", tt.args, out, errOut)
+			}
+		}
+	})
 }
 
 func TestShowAnAnswerThatBelongsToNothing(t *testing.T) {

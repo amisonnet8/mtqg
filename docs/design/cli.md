@@ -51,7 +51,7 @@
 | `mtqg delete <id>` | 記録を消す（表示から除外。gitの履歴には残る） |
 | `mtqg status` | 概況と、未コミットの記録の件数 |
 | `mtqg log [--limit N] [--kind K]` | すべての種類を時系列（新しい順）で束ねて見る |
-| `mtqg show <id>` | 1件の詳細とイベント履歴 |
+| `mtqg show <id>...` | 記録の詳細とイベント履歴（渡した順に） |
 | `mtqg search <語>` | 本文の部分一致 |
 | `mtqg context [--max-tokens N]` | AI・フック向けの要約（設計§11.3） |
 | `mtqg review` | 並行した変更、用語の重複定義、親のない回答・返信 |

@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -385,6 +386,48 @@ func TestJSONShow(t *testing.T) {
 	events = records(t, obj, "events")
 	if len(events) != 2 || events[1]["op"] != "status" || events[1]["from"] != "open" || events[1]["status"] != "done" {
 		t.Errorf("events %v", events)
+	}
+}
+
+func TestJSONShowSeveral(t *testing.T) {
+	h := initialized(t)
+	jsonFixture(h)
+
+	// One ID keeps the shape show has always had: no records.
+	one := jsonObject(t, mustRun(h, "--json", "show", idA[:10]))
+	if _, ok := one["records"]; ok {
+		t.Errorf("one ID gives records: %v", one)
+	}
+
+	// Two or more: records, in the order given, each as show gives one; a record
+	// named twice (by two prefixes) comes once, and there is no record of its own.
+	obj := jsonObject(t, mustRun(h, "--json", "show", idA[:10], idQ2[:6], idA[:4]))
+	if _, ok := obj["record"]; ok {
+		t.Errorf("several IDs give record: %v", obj)
+	}
+	if _, ok := obj["events"]; ok {
+		t.Errorf("several IDs give events: %v", obj)
+	}
+	entries := records(t, obj, "records")
+	if len(entries) != 2 {
+		t.Fatalf("records %v", entries)
+	}
+	first := field(t, entries[0], "record").(map[string]any)
+	second := field(t, entries[1], "record").(map[string]any)
+	if first["id"] != idA || second["id"] != idQ2 || len(records(t, second, "replies")) != 2 {
+		t.Errorf("records %v, %v", first, second)
+	}
+	if !reflect.DeepEqual(entries[0]["events"], one["events"]) || !reflect.DeepEqual(entries[0]["record"], one["record"]) {
+		t.Errorf("an entry differs from show of its ID alone:\n%v\n%v", entries[0], one)
+	}
+	if len(records(t, entries[1], "events")) != 3 {
+		t.Errorf("events of the question %v", entries[1]["events"])
+	}
+
+	// The same record twice is still two IDs: the shape follows the command line.
+	obj = jsonObject(t, mustRun(h, "--json", "show", idA[:10], idA))
+	if entries := records(t, obj, "records"); len(entries) != 1 {
+		t.Errorf("records %v", entries)
 	}
 }
 

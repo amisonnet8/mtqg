@@ -117,6 +117,13 @@ log --events: --before のあとは見える記録だけにする | internal/cli
 フック: session-start が --max-tokens を使わない | internal/cli/hook_claude.go | c.contextDocument(budget) | c.contextDocument(defaultContextTokens)
 フック: stop に付けた --max-tokens を断らない | internal/cli/hook.go | given && event != "session-start" | given && event == ""
 フック: 誤った --max-tokens を断らない | internal/cli/hook.go | budget, ok := c.maxTokens()⏎⇥if !ok { | budget, ok := c.maxTokens()⏎⇥if false && !ok {
+show: 2つ目以降のIDを見ない | internal/cli/show.go | for _, word := range c.inv.words { | for _, word := range c.inv.words[:1] {
+show: 同じ記録を2度出す | internal/cli/show.go | if !seen[rec.ID] { | if true {
+show: 当てはまらないIDを飛ばして残りを出す | internal/cli/show.go | rec, err := state.Resolve(word)⏎⇥⇥if err != nil {⏎⇥⇥⇥return c.fail(err) | rec, err := state.Resolve(word)⏎⇥⇥if err != nil {⏎⇥⇥⇥continue
+show: 記録の間に空行を置かない | internal/cli/show.go | if i > 0 { | if i < 0 {
+show: IDが1つでも --json を records にする | internal/cli/show.go | if len(c.inv.words) == 1 { | if false {
+show: --json の形を重なりを除いた件数で決める | internal/cli/show.go | if len(c.inv.words) == 1 { | if len(recs) == 1 {
+show: IDを渡さなくても断らない | internal/cli/args.go | case argsIDs, argsIDText: | case argsIDText:
 MCP: 記録者に接続したクライアントの名前を使わない | internal/cli/mcp.go | Name: clientName} | Name: "mtqg"}
 MCP: ドメインのエラーをツールの結果でなくプロトコルのエラーにする | internal/cli/mcp.go | return mcpErrorResult(c.reportOf(err)), nil, nil | return nil, nil, err
 MCP: 状態が既にそうでも書く | internal/cli/mcp_tools.go | ev, err := model.SetStatus(rec, status)⏎⇥if errors.Is(err, model.ErrNoChange) { | ev, err := model.SetStatus(rec, status)⏎⇥if false {
@@ -128,6 +135,7 @@ MCP: search の本文を切らない | internal/cli/mcp_tools.go | if utf8.RuneC
 # 本文: 空の本文を断らない | internal/cli/text.go | if strings.TrimSpace(text) == "" { | if false {
 
 # --- シェル補完
+補完: show の2つ目以降のIDを出さない | internal/cli/candidates.go | case p.words == 0, p.cmd.args == argsIDs: | case p.words == 0:
 補完: 打ちかけの語で前方一致を絞らない | internal/cli/candidates.go | return withPrefix(list, partial) | return list
 補完: done の ID に完了済みも出す | internal/cli/candidates.go | case idsOpen:⏎⇥⇥return r.Status == journal.StatusOpen | case idsOpen:⏎⇥⇥return true
 補完: ID を古い順に出す | internal/cli/candidates.go | for _, r := range slices.Backward(all) { | for _, r := range all {

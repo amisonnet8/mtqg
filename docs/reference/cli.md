@@ -37,7 +37,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg undo` | Remove the last line this author wrote from this terminal |
 | `mtqg status` | Summary of open items and uncommitted records |
 | `mtqg log [--limit N] [--kind K] [--before <id>] [--events]` | Records of all kinds, newest first |
-| `mtqg show <id>` | One record with its full text and history |
+| `mtqg show <id>...` | Records with their full text and history, in the order given |
 | `mtqg search <text>` | Records whose text contains `<text>`, newest first |
 | `mtqg review` | Concurrent status changes, duplicate glossary definitions, and answers or replies with no parent |
 | `mtqg context [--max-tokens N]` | Summary for AI agents |
@@ -163,7 +163,7 @@ What each command prints, after `command`:
 | `qa list`, `bug list` | as `todo list`; each record has `replies` |
 | `glossary list` | `records`, `entries` (their number), `duplicate_words` |
 | `log` | `records` (newest first), `shown`, `total` (with `--before`, counts only records before it); `before`: the full ID it resolved to (only with `--before`); with `--events`, each record has `events` (its own, not a reply's) and deleted records are included too, marked `deleted: true` |
-| `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply; `log --events` gives only a record's own) |
+| `show` | `record`, and `events`: what happened to it, oldest first, as lines of `journal.jsonl` in the form of [schema.md](schema.md) (for a question or a bug this includes the `create` of each reply; `log --events` gives only a record's own). Given two or more IDs, `records` instead: one `{"record", "events"}` for each, in the order given (a record given twice, once). The shape follows the number of IDs: with one ID there is no `records` |
 | `status` | `open_todos`, `open_questions`, `questions_awaiting_confirmation`, `open_bugs`, `bugs_awaiting_confirmation`, `glossary_entries`, `duplicate_words`, `concurrent_status_changes` (the number of records), `uncommitted_records` (`null` if git cannot be run) |
 | `init` | `root`: where `.mtqg/` was created |
 | `upgrade` | `from`, `to`: the format version before and after (equal if unchanged); `schema_updated`: whether `SCHEMA.md` was (or, with `-n`, would be) rewritten; `dry_run` |
@@ -727,7 +727,7 @@ How a list is shown:
 
 <!-- mtqg:example repo=parser -->
 ```
-$ mtqg show 1012f037b6
+$ mtqg show 1012f037b6 7f3a2b1c09
 question  1012f037b6  open
 by claude-code (ai), 2026-09-21 09:10
 
@@ -744,7 +744,6 @@ Events
   2026-09-21 09:15  create  claude-code (ai)  answer ae2eb1547f
   2026-09-21 09:41  create  yamada (human)    answer 95e761d177
 
-$ mtqg show 7f3a2b1c09
 bug  7f3a2b1c09  open
 by yamada (human), 2026-09-21 10:41
 
@@ -759,6 +758,10 @@ Events
   2026-09-21 10:45  create  claude-code (ai)  reply 3d8e4a0b12
 ```
 
+- Given several IDs, `show` shows each record in the order given, one blank line
+  between them; a record given twice (by the same ID or two prefixes of it) is
+  shown once. If any ID matches no record, or more than one, nothing is shown and
+  the error is the same as for that ID alone (exit code 1).
 - The first line names the kind (`memo`, `todo`, `question`, `answer`, `bug`,
   `reply`, `glossary` or `rule`), the ID and, for a todo, a question or a bug, its
   state. The second line
@@ -1559,7 +1562,7 @@ What is completed:
 | After `--kind` | `memo`, `todo`, `qa`, `bug`, `glossary`, `rule` |
 | The ID of `todo done`, `qa done`, `bug done` | The open ones of that kind |
 | The ID of `todo reopen`, `qa reopen`, `bug reopen` | The done ones of that kind |
-| The ID of `show`, `edit`, `delete` | Every record in view, newest first |
+| The ID of `show` (each of them), `edit`, `delete` | Every record in view, newest first |
 | The ID of `log --before` | Every record in view, newest first (any kind) |
 | The first word of `qa add`, `bug add` | The questions (the bugs), open or done: it may be the ID of the one to answer (reply to) |
 | After `completion` | The four shells |

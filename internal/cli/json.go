@@ -304,6 +304,17 @@ type jsonShow struct {
 	Events  []journal.Event `json:"events"`
 }
 
+// jsonShowMany is show given two or more IDs: each record as show gives one.
+type jsonShowMany struct {
+	Command string          `json:"command"`
+	Records []jsonShowEntry `json:"records"`
+}
+
+type jsonShowEntry struct {
+	Record jsonRecord      `json:"record"`
+	Events []journal.Event `json:"events"`
+}
+
 type jsonStatus struct {
 	Command                       string `json:"command"`
 	OpenTodos                     int    `json:"open_todos"`

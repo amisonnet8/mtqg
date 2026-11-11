@@ -1,0 +1,23 @@
+# Let show take several IDs
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	Mutations of show with several IDs: order, once each, a bad ID, the blank line, the shape of --json, the completion
+.mtqg/
+	journal.jsonl	Memo f9002770df, todo e047e30adb done
+docs/
+	design/
+		cli.md	show takes several IDs
+	reference/
+		cli.md	show <id>...: in the order given, once each, nothing if one ID fails; --json gives records for two IDs or more
+		cli_ja.md	The same in Japanese
+internal/
+	cli/
+		args.go	The argument mode argsIDs (one ID or more), used by show
+		candidates.go	Offer IDs at every position of a command that takes several
+		candidates_test.go	show offers IDs after its first one
+		json.go	The shape of show given two IDs or more
+		json_test.go	The --json of show with one ID and with several
+		mcp_tools.go	The show tool builds its JSON with the same function as show
+		show.go	Show several records in the order given, once each, or none if an ID fails
+		show_test.go	Several IDs: order, the blank line, once each, and failing as a whole

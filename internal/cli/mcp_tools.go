@@ -326,16 +326,8 @@ func mcpShow(c *ctx, id string) (*mcp.CallToolResult, any, error) {
 	if err != nil {
 		return mcpError(c, err)
 	}
-	history := state.History(rec)
-	events := make([]journal.Event, len(history))
-	for i, e := range history {
-		events[i] = e.Event
-	}
-	record := recordJSON(rec)
-	if rec.CanHaveReplies() {
-		record = threadJSON(state, rec)
-	}
-	return mcpResult(jsonShow{Command: c.inv.cmd.label(), Record: record, Events: events})
+	e := showJSON(state, rec)
+	return mcpResult(jsonShow{Command: c.inv.cmd.label(), Record: e.Record, Events: e.Events})
 }
 
 // searchSummaryLimit is how many characters of a match's text the search tool

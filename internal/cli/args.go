@@ -49,6 +49,8 @@ const (
 	argsNone argMode = iota
 	// argsID: one ID. Options may be anywhere.
 	argsID
+	// argsIDs: one ID or more. Options may be anywhere.
+	argsIDs
 	// argsText: free text, joined with spaces. Options come before the text; from
 	// its first word on, everything is text.
 	argsText
@@ -169,7 +171,7 @@ func init() {
 		{name: "delete", usage: "mtqg delete <id>", summary: "Hide a record", args: argsID, ids: idsAll, run: runDelete},
 		{name: "undo", usage: "mtqg undo", summary: "Remove the last line you wrote from this terminal", args: argsNone, run: runUndo},
 		{name: "log", usage: "mtqg log [--limit N] [--kind K] [--before <id>] [--events]", summary: "Show the newest records of all kinds", args: argsNone, values: []string{"--limit", "--kind", "--before"}, events: true, run: runLog},
-		{name: "show", usage: "mtqg show <id>", summary: "Show a record in full, with its history", args: argsID, ids: idsAll, run: runShow},
+		{name: "show", usage: "mtqg show <id>...", summary: "Show records in full, with their history", args: argsIDs, ids: idsAll, run: runShow},
 		{name: "search", usage: "mtqg search <text>", summary: "Find the records whose text contains a text", args: argsText, minWords: 1, run: runSearch},
 		{name: "review", usage: "mtqg review", summary: "Show concurrent changes, duplicate definitions and answers with no parent", args: argsNone, run: runReview},
 		{name: "context", usage: "mtqg context [--max-tokens N]", summary: "Summarize the records for an AI agent", args: argsNone, values: []string{"--max-tokens"}, run: runContext},
@@ -435,8 +437,8 @@ func checkArity(cmd *command, words []string) error {
 		case len(words) > 1:
 			return &usageError{msgTooManyArguments(cmd.usage)}
 		}
-	case argsIDText:
-		// The ID alone is enough: with no text, the editor opens.
+	case argsIDs, argsIDText:
+		// For argsIDText, the ID alone is enough: with no text, the editor opens.
 		if len(words) == 0 {
 			return &usageError{msgMissingArgument(cmd.usage)}
 		}

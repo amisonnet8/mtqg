@@ -177,7 +177,7 @@ func (c *ctx) candidatesAt(p position, partial string) []candidate {
 				list = append(list, candidate{value: cmd.name, description: cmd.summary})
 			}
 		}
-	case p.words == 0:
+	case p.words == 0, p.cmd.args == argsIDs:
 		list = c.firstArgument(p, partial)
 	}
 	return withPrefix(list, partial)

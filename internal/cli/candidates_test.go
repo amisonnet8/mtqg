@@ -202,7 +202,11 @@ func TestCandidatesOfIDs(t *testing.T) {
 		{name: "the ID of a done todo is not offered to done", partial: short(idC), words: []string{"t", "done"}},
 		{name: "after the ID, the text of an answer", words: []string{"q", "add", idQ}},
 		{name: "after the ID, the text of edit", words: []string{"edit", idA}},
-		{name: "after the ID of show, nothing", words: []string{"show", idA}},
+		{name: "after the ID of delete, nothing", words: []string{"delete", idA}},
+		{name: "after the ID of show, another ID", words: []string{"show", idA}, want: []string{
+			short(idBug3), short(idC), short(idW1), short(idBug2), short(idA1), short(idA), short(idQ), short(idM),
+		}},
+		{name: "the third ID of show, by prefix", partial: "6c", words: []string{"show", idQ, idM}, want: []string{short(idA)}},
 		{name: "an ID after an option", words: []string{"--json", "show"}, want: []string{
 			short(idBug3), short(idC), short(idW1), short(idBug2), short(idA1), short(idA), short(idQ), short(idM),
 		}},
@@ -546,7 +550,7 @@ func TestCandidateOptionsAreTheOnesParseArgsTakes(t *testing.T) {
 
 func TestEveryCommandThatTakesAnIDCompletesIt(t *testing.T) {
 	for _, cmd := range commands {
-		takesID := cmd.args == argsID || cmd.args == argsIDText
+		takesID := cmd.args == argsID || cmd.args == argsIDs || cmd.args == argsIDText
 		if takesID && cmd.ids == idsNone {
 			t.Errorf("%s takes an ID and does not complete it", cmd.full())
 		}

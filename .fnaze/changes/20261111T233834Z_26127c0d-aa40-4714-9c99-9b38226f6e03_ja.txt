@@ -1,0 +1,4 @@
+# sairdからの改善をPLAN.mdにまとめる
+.mtqg/
+	journal.jsonl	memo 5dd9745cba、todo c406597105の完了
+PLAN.md	現在地：sairdからの3つの改善、採らなかった案、mtqg-vscodeへの影響が無いこと

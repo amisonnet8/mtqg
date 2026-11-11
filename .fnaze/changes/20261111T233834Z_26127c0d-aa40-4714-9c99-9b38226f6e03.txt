@@ -1,0 +1,4 @@
+# Sum up the improvements from saird in PLAN.md
+.mtqg/
+	journal.jsonl	Memo 5dd9745cba, todo c406597105 done
+PLAN.md	The current position: the three improvements from saird, the ones not taken, and no impact on mtqg-vscode

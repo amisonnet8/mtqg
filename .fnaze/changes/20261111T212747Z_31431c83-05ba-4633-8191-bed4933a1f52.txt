@@ -1,0 +1,21 @@
+# Keep the next todos in context: cut the newest todos, and the recent records later
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	Mutations of the new order: the todos cut oldest first, the recent records cut at the wrong step, the todos said to be older
+.mtqg/
+	journal.jsonl	Question ae60b19c91 (approval of improvements 2-4) and its answer, memos 238dcfee75 and 16eeb10a48, todos 8e4b226b42 and 37de0f9e75 done
+docs/
+	design/
+		07-integrations.md	Why the todos go newest first, and why the recent records go to none before the todos
+	reference/
+		cli.md	The new order of what context leaves out; the example output taken again
+		cli_ja.md	The same in Japanese
+internal/
+	cli/
+		context.go	Say how many newer todos are left out, after the todos shown
+		context_test.go	Check the new order as invariants as the budget falls, and that the oldest todos stay
+		messages.go	The wording (N newer; see mtqg todo list)
+	model/
+		context.go	Cut the recent records in three places of the order, and the todos newest first
+		context_test.go	The expected shape after each cut in the new order

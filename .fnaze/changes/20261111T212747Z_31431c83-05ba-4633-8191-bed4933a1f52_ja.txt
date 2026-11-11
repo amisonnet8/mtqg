@@ -1,0 +1,21 @@
+# contextで次のtodoを残す：新しいtodoから削り、最近の記録は後まで残す
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	新しい順序の変異：todoを古い側から削る、最近の記録を違う段で削る、削ったtodoをolderと言う
+.mtqg/
+	journal.jsonl	質問ae60b19c91（改善2〜4の了承）と回答、memo 238dcfee75・16eeb10a48、todo 8e4b226b42・37de0f9e75の完了
+docs/
+	design/
+		07-integrations.md	todoを新しい側から削る理由と、最近の記録をtodoより先に0件にする理由
+	reference/
+		cli.md	contextの削る新しい順序。実行例を取り直した
+		cli_ja.md	同じ変更の日本語版
+internal/
+	cli/
+		context.go	削った新しいtodoの数を、見せたtodoの後ろに言う
+		context_test.go	上限を下げながら新しい順序を不変条件で確かめ、古いtodoが残ることを確かめる
+		messages.go	文言 (N newer; see mtqg todo list)
+	model/
+		context.go	最近の記録を順序の3か所で削り、todoを新しい側から削る
+		context_test.go	新しい順序での、削るごとの期待する形

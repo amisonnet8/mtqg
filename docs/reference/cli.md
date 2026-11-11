@@ -1050,10 +1050,10 @@ This is the process record of this project. Read the following before you start 
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- (2 older; see mtqg todo list)
+- 6cad4a268d Skip block comments /* */ (claude-code, 10:18)
+- 6513270e26 Ignore // inside string literals (yamada, 10:52)
 - 1e27a1c08a Show error positions as line and column (claude-code, 11:06)
-- 1818e81189 List the supported syntax in the README (yamada, 11:30)
-- 2e44158bae Add test cases for comment handling (claude-code, 11:32)
+- (2 newer; see mtqg todo list)
 
 ## Open questions (2)
 - 1012f037b6 Should nested block comments be supported? (awaiting confirmation, claude-code, 09:10)
@@ -1139,13 +1139,15 @@ Read full entries with mtqg show <id>.
   **the newest 3 questions and the newest 3 bugs** are never left out: what is
   open, undecided, or a standing convention must stay in view. When the text is
   over budget, mtqg leaves out, in
-  this order and only as much as it takes: recent records (10, then 5, then 3,
-  then none), the definitions of the glossary (leaving each word), the latest
-  answers and replies, the oldest questions and bugs beyond those 3 of each (of
-  both sections together, one at a time), the oldest todos (one at a time, down
-  to none). If that is not enough, the text is printed as it is.
+  this order and only as much as it takes: recent records (10, then 5), the
+  definitions of the glossary (leaving each word), the latest answers and
+  replies, recent records (to 3), the oldest questions and bugs beyond those 3
+  of each (of both sections together, one at a time), recent records (to none),
+  the newest todos (one at a time, down to none: the oldest, which are worked on
+  first, stay longest). If that is not enough, the text is printed as it is.
 - What is left out is always said, in its section, with where to read it:
-  `- (7 more; see mtqg log)`, `- (3 older; see mtqg todo list)`,
+  `- (7 more; see mtqg log)`, `- (3 newer; see mtqg todo list)` (after the
+  todos that are shown), `- (2 older; see mtqg qa list)`,
   `- (definitions left out; see mtqg glossary list)`,
   `- (latest answers left out; see mtqg show <id>)`. The heading of a section
   counts everything in it, not what was shown.

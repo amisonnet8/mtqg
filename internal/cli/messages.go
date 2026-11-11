@@ -667,6 +667,10 @@ func msgContextOlder(n int, list string) string {
 	return fmt.Sprintf("- (%d older; see mtqg %s)", n, list)
 }
 
+func msgContextNewer(n int, list string) string {
+	return fmt.Sprintf("- (%d newer; see mtqg %s)", n, list)
+}
+
 func msgContextMoreRecent(n int) string { return fmt.Sprintf("- (%d more; see mtqg log)", n) }
 
 func msgContextRepliesLeft(typ string) string {

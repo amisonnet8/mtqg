@@ -118,11 +118,11 @@ func TestContextReducedCutsInTheOrderOfTheSpec(t *testing.T) {
 	}{
 		{0, shape{10, 3, 2, 2, 3}, "everything"},
 		{1, shape{5, 3, 2, 2, 3}, "recent records to 5"},
-		{2, shape{3, 3, 2, 2, 3}, "to 3"},
-		{3, shape{0, 3, 2, 2, 3}, "to none"},
-		{4, shape{0, 2, 2, 2, 3}, "the definitions: each word once"},
-		{5, shape{0, 2, 2, 2, 3}, "the latest answers and replies"},
-		{6, shape{0, 2, 2, 2, 2}, "the oldest todo: the questions and bugs are all among the newest 3"},
+		{2, shape{5, 2, 2, 2, 3}, "the definitions: each word once"},
+		{3, shape{5, 2, 2, 2, 3}, "the latest answers and replies"},
+		{4, shape{3, 2, 2, 2, 3}, "recent records to 3: the questions and bugs are all among the newest 3"},
+		{5, shape{0, 2, 2, 2, 3}, "recent records to none"},
+		{6, shape{0, 2, 2, 2, 2}, "the newest todo"},
 		{7, shape{0, 2, 2, 2, 1}, "the next"},
 		{8, shape{0, 2, 2, 2, 0}, "all the todos"},
 		{9, shape{0, 2, 2, 2, 0}, "more cuts than steps make no difference"},
@@ -138,16 +138,24 @@ func TestContextReducedCutsInTheOrderOfTheSpec(t *testing.T) {
 	if len(r.Questions) != 2 || len(r.Bugs) != 2 || r.QuestionsTotal != 2 || r.BugsTotal != 2 || r.TodosTotal != 3 || r.RecentTotal != d.RecentTotal || r.GlossaryTotal != 3 {
 		t.Errorf("totals: %+v", r)
 	}
+	// The todos that stay are the oldest: the next to work on.
 	_, r = got(6)
-	sameIDs(t, "todos left after one cut", r.Todos, cid(2), cid(3))
+	sameIDs(t, "todos left after one cut", r.Todos, cid(1), cid(2))
+	_, r = got(7)
+	sameIDs(t, "todos left after two cuts", r.Todos, cid(1))
+	// The recent records that stay are the newest.
+	_, r = got(4)
+	if r.Recent[0] != d.Recent[0] || r.Recent[2] != d.Recent[2] {
+		t.Errorf("recent %v, want the first 3 of %v", r.Recent, d.Recent)
+	}
 
 	// The words are the words: b has two definitions and no entry.
-	_, r = got(4)
+	_, r = got(2)
 	if !r.DefinitionsLeft || r.Glossary[0].Word != "a" || r.Glossary[1].Word != "b" || r.Glossary[1].Definitions != 2 || r.Glossary[1].Entry != nil {
 		t.Errorf("words %+v", r.Glossary)
 	}
 	// Leaving out the latest answers keeps how many there were.
-	_, r = got(5)
+	_, r = got(3)
 	if !r.RepliesLeft || r.Questions[0].Latest != nil || r.Questions[0].ReplyCount != 2 || r.Bugs[0].Latest != nil {
 		t.Errorf("questions %+v", r.Questions)
 	}
@@ -213,7 +221,7 @@ func TestContextKeepsTheNewestQuestionsAndBugs(t *testing.T) {
 	if d.Steps() != 3+2+3+2+4 {
 		t.Fatalf("steps = %d", d.Steps())
 	}
-	first := 3 + 2 // the steps before the questions and bugs
+	first := 4 // the steps before the questions and bugs
 	type shape struct{ questions, bugs, todos int }
 	for _, tt := range []struct {
 		cuts int
@@ -226,15 +234,20 @@ func TestContextKeepsTheNewestQuestionsAndBugs(t *testing.T) {
 		{first + 3, shape{4, 4, 4}, "q1 (minute 2)"},
 		{first + 4, shape{4, 3, 4}, "b1 (minute 3)"},
 		{first + 5, shape{3, 3, 4}, "q2 (minute 4); q3, b2 and the newer ones are the newest 3 and stay"},
-		{first + 6, shape{3, 3, 3}, "and now the todos, oldest first"},
-		{first + 9, shape{3, 3, 0}, "all the todos"},
-		{first + 10, shape{3, 3, 0}, "and the newest 3 of each are still there"},
+		{first + 6, shape{3, 3, 4}, "the recent records to none"},
+		{first + 7, shape{3, 3, 3}, "and now the todos, newest first"},
+		{first + 10, shape{3, 3, 0}, "all the todos"},
+		{first + 11, shape{3, 3, 0}, "and the newest 3 of each are still there"},
 		{100, shape{3, 3, 0}, "however many cuts"},
 	} {
 		r := d.Reduced(tt.cuts)
 		if got := (shape{len(r.Questions), len(r.Bugs), len(r.Todos)}); got != tt.want {
 			t.Errorf("after %d cuts (%s): %+v, want %+v", tt.cuts, tt.note, got, tt.want)
 		}
+	}
+	sameIDs(t, "todos left after the newest goes", d.Reduced(first+7).Todos, cid(30), cid(31), cid(32))
+	if r := d.Reduced(first + 5); len(r.Recent) != 3 {
+		t.Errorf("recent records while the questions and bugs are cut: %d, want 3", len(r.Recent))
 	}
 	r := d.Reduced(100)
 	if r.Questions[0].Parent.ID != cid(13) || r.Questions[2].Parent.ID != cid(15) || r.Bugs[0].Parent.ID != cid(22) || r.Bugs[2].Parent.ID != cid(24) {
@@ -256,8 +269,8 @@ func TestContextReducedWhenOneSectionIsOlder(t *testing.T) {
 		events = append(events, create(cid(20+i), journal.TypeBug, fmt.Sprintf("b%d", i), 10+i))
 	}
 	d := Build(events).Context(0)
-	const first = 3 + 2
-	if d.Steps() != first+2+2 {
+	const first = 4 // the steps before the questions and bugs
+	if d.Steps() != 5+2+2 {
 		t.Fatalf("steps = %d", d.Steps())
 	}
 	r := d.Reduced(first + 2)

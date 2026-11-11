@@ -887,7 +887,7 @@ This is the process record of this project. Read the following before you start 
 - 3 mtqg records are not committed
 
 ## Open todos (5)
-- (5 older; see mtqg todo list)
+- (5 newer; see mtqg todo list)
 
 ## Open questions (2)
 - 1012f037b6 ブロックコメントの入れ子に対応する？ (awaiting confirmation, claude-code, 09:10)
@@ -947,8 +947,8 @@ Read full entries with mtqg show <id>.
 - 未完了のtodo・質問・バグは古い順で、ID、記録者、時刻（今日は`HH:MM`、別の日は日付。ローカル時間）を持つ。質問とバグは`unanswered`（バグは`no replies`）または`awaiting confirmation`（回答・返信があり、閉じていない）と書き、その下に最新の回答・返信を、記録者と記録者の種別とともに出す
 - 最近の記録は、`log`と同じく、全種類の新しい記録を新しい順に、種類とIDとともに出す。回答・返信の終わりに、向かう質問・バグを書く。Glossaryは全項目を、IDとともに出す
 - 本文は1行目を100文字で`...`で切ったもの。制御文字は一覧と同じく置き換える。**ruleの本文だけは例外で、全文をそのまま出す**（決まり事が途中で切れて意味が変わらないようにするため）
-- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、**Rules**、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のこと・この先も効き続ける決まり事は見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件、3件、なし）、用語の定義（用語は残す）、最新の回答・返信、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、古いtodo（1件ずつ、なくなるまで）。それでも収まらないときは、そのまま出す
-- 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 older; see mtqg todo list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
+- **分量。** `--max-tokens N`で決める（既定2000。`0`は上限なし）。**文字数からの見積もりで、トークン数そのものではない**：ASCIIの4文字を1トークン、それ以外の1文字を1トークンとして数える。冒頭の行、読み手への指示、Attention、**Rules**、見出し、最後の行、**最新の3件の質問と最新の3件のbug**は削らない：未決のこと・この先も効き続ける決まり事は見えていなければならない。上限を超えるときは、次の順に、必要な分だけ削る：最近の記録（10件、5件）、用語の定義（用語は残す）、最新の回答・返信、最近の記録（3件まで）、それぞれ最新の3件より古い質問とbug（2つの区画をあわせて、1件ずつ）、最近の記録（なし）、新しいtodo（1件ずつ、なくなるまで。先に取りかかる古いtodoが最後まで残る）。それでも収まらないときは、そのまま出す
+- 削ったものは、必ずその区画の中で、どこで読めるかとともに言う：`- (7 more; see mtqg log)`、`- (3 newer; see mtqg todo list)`（見せたtodoの後ろに）、`- (2 older; see mtqg qa list)`、`- (definitions left out; see mtqg glossary list)`、`- (latest answers left out; see mtqg show <id>)`。区画の見出しの件数は、見せた数ではなく、その区画の全部の数
 - `--json`は、同じ削り方をしたあとの同じ内容を、構造にして返す。`command`のほかに、`repository`、`branch`、`attention`、`truncated`（何か削ったら`true`）、`max_tokens`（`0`のときは`null`）、`estimated_tokens`（文章の形の見積もり）と、区画ごとのオブジェクト`rules`、`open_todos`、`open_questions`、`open_bugs`、`recent`、`glossary`（それぞれ`total`と`records`を持つ。`rules`は削られないので、`total`と`records`は常に一致する）。`open_questions`と`open_bugs`の記録は`reply_count`と、削っていなければ`latest_reply`を持つ。glossaryの記録は`definitions`（その用語の定義の数）を持ち、定義を削ったときは`id`と`text`を持たない。`attention`は`{"kind": "duplicate_word", "word": ...}`、`{"kind": "concurrent_status_change", "id": ..., "text": ...}`（完全なIDと全文）、`{"kind": "uncommitted", "count": N}`
 
 ## format

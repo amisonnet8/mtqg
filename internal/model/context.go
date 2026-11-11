@@ -9,11 +9,10 @@ import (
 // model layer decides what is in it and what is left out first when there is too
 // much; putting it into words and measuring it are the entry point's.
 
-// recentShown is how many recent records there are to begin with, and
-// recentSteps what that is cut to, one step at a time, when there is too much.
+// recentShown is how many recent records there are to begin with. When there is
+// too much, they are cut to 5, then to 3, then to none, each at its place in the
+// order of Reduced.
 const recentShown = 10
-
-var recentSteps = [...]int{5, 3, 0}
 
 // keptThreads is how many of the newest questions, and of the newest bugs, are
 // never left out. What is open and undecided must stay in view: the agent is told
@@ -122,34 +121,46 @@ func (s *State) threads(typ string) []Thread {
 	return out
 }
 
-// Steps is how many times Reduced can cut: the steps that are always there (the
-// recent records in three steps, the definitions, the latest answers and replies),
-// and one for each todo and for each question and bug beyond the newest few that
-// are kept. A step may cut nothing (when there are
-// only 3 recent records, the step from 5 to 3 does nothing).
+// fixedSteps is how many steps of Reduced are always there: the recent records
+// in three steps (to 5, to 3, to none), the definitions, the latest answers and
+// replies.
+const fixedSteps = 5
+
+// Steps is how many times Reduced can cut: the steps that are always there, and
+// one for each todo and for each question and bug beyond the newest few that are
+// kept. A step may cut nothing (when there are only 3 recent records, the step to
+// 3 does nothing).
 func (d *ContextData) Steps() int {
-	return len(recentSteps) + 2 + droppable(len(d.Questions)) + droppable(len(d.Bugs)) + len(d.Todos)
+	return fixedSteps + droppable(len(d.Questions)) + droppable(len(d.Bugs)) + len(d.Todos)
 }
 
 // droppable is how many of n questions (or bugs) may be left out.
 func droppable(n int) int { return max(0, n-keptThreads) }
 
 // Reduced returns d with its first n cuts made, in this order: the recent records
-// (to 5, to 3, to none), the definitions of the glossary (each word stays), the
-// latest answers and replies, then the oldest questions and bugs, one at a time (the
-// two together, and never the newest few of each), then the oldest todos, one at a time. More cuts than Steps make
-// no more difference. d itself is not changed, and the more cuts, the less there is.
+// to 5, the definitions of the glossary (each word stays), the latest answers and
+// replies, the recent records to 3, then the oldest questions and bugs, one at a
+// time (the two together, and never the newest few of each), the recent records to
+// none, then the newest todos, one at a time. More cuts than Steps make no more
+// difference. d itself is not changed, and the more cuts, the less there is.
+//
+// The todos go newest first: they are mostly worked on in the order they were
+// made, and the oldest is what comes next. The recent records go to none before
+// the todos: the order is strict, so keeping the last 3 of them past the todos
+// would leave out every todo to keep them.
 func (d *ContextData) Reduced(n int) *ContextData {
 	r := *d
-	for _, limit := range recentSteps {
-		if n == 0 {
-			return &r
-		}
-		n--
+	recent := func(limit int) {
 		if len(r.Recent) > limit {
 			r.Recent = r.Recent[:limit]
 		}
 	}
+
+	if n == 0 {
+		return &r
+	}
+	n--
+	recent(5)
 
 	if n == 0 {
 		return &r
@@ -165,6 +176,12 @@ func (d *ContextData) Reduced(n int) *ContextData {
 	r.RepliesLeft = true
 	r.Questions = withoutLatest(r.Questions)
 	r.Bugs = withoutLatest(r.Bugs)
+
+	if n == 0 {
+		return &r
+	}
+	n--
+	recent(3)
 
 	// The oldest question or bug of the two sections goes first, and the newest few
 	// of each stay.
@@ -187,7 +204,13 @@ func (d *ContextData) Reduced(n int) *ContextData {
 	}
 	r.Questions, r.Bugs = r.Questions[q:], r.Bugs[b:]
 
-	r.Todos = r.Todos[min(n, len(r.Todos)):]
+	if n == 0 {
+		return &r
+	}
+	n--
+	recent(0)
+
+	r.Todos = r.Todos[:len(r.Todos)-min(n, len(r.Todos))]
 	return &r
 }
 

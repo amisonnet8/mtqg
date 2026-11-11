@@ -346,7 +346,7 @@ func TestContextBudget(t *testing.T) {
 	}
 
 	t.Run("no limit leaves nothing out but the recent records past ten", func(t *testing.T) {
-		for _, left := range []string{"older; see", "definitions left out", "left out; see mtqg show"} {
+		for _, left := range []string{"older; see", "newer; see", "definitions left out", "left out; see mtqg show"} {
 			if strings.Contains(full, left) {
 				t.Errorf("%q in the full text", left)
 			}
@@ -406,38 +406,47 @@ func TestContextBudget(t *testing.T) {
 			out := mustRun(h, "context", "--max-tokens", fmt.Sprint(budget))
 			f := contextFacts(out)
 			for name, made := range map[string]bool{
-				"recent":      f.recentShown < 10,
-				"definitions": f.definitionsLeft,
-				"replies":     f.repliesLeft,
-				"threads":     f.threadsLeft,
-				"todos":       f.todosLeft,
+				"recent to 5":    f.recentShown < 10,
+				"definitions":    f.definitionsLeft,
+				"replies":        f.repliesLeft,
+				"recent to 3":    f.recentShown < 5,
+				"threads":        f.threadsLeft,
+				"recent to none": f.recentShown == 0,
+				"todos":          f.todosLeft,
 			} {
 				reached[name] = reached[name] || made
 			}
-			if f.definitionsLeft && f.recentShown != 0 {
+			if f.definitionsLeft && f.recentShown > 5 {
 				t.Errorf("budget %d: definitions are left out while %d recent records are shown", budget, f.recentShown)
 			}
 			if f.repliesLeft && !f.definitionsLeft {
 				t.Errorf("budget %d: answers are left out before the definitions", budget)
 			}
-			if f.threadsLeft && (f.replyLines != 0 || !f.definitionsLeft) {
-				t.Errorf("budget %d: questions or bugs are left out while %d answers are shown (definitions left out: %v)", budget, f.replyLines, f.definitionsLeft)
+			if f.recentShown < 5 && (!f.repliesLeft || f.replyLines != 0) {
+				t.Errorf("budget %d: %d recent records are shown while the latest answers are not left out", budget, f.recentShown)
 			}
-			if f.todosLeft && f.threadsShown != 2*bigKept {
-				t.Errorf("budget %d: todos are left out while %d questions and bugs are shown, and only the newest %d of each should be", budget, f.threadsShown, bigKept)
+			if f.threadsLeft && (f.replyLines != 0 || !f.definitionsLeft || f.recentShown > 3) {
+				t.Errorf("budget %d: questions or bugs are left out while %d answers and %d recent records are shown (definitions left out: %v)", budget, f.replyLines, f.recentShown, f.definitionsLeft)
+			}
+			if f.recentShown == 0 && f.threadsShown != 2*bigKept {
+				t.Errorf("budget %d: no recent record is shown while %d questions and bugs are, and only the newest %d of each should be", budget, f.threadsShown, bigKept)
+			}
+			if f.todosLeft && f.recentShown != 0 {
+				t.Errorf("budget %d: todos are left out while %d recent records are shown", budget, f.recentShown)
 			}
 		}
-		for _, name := range []string{"recent", "definitions", "replies", "threads", "todos"} {
+		for _, name := range []string{"recent to 5", "definitions", "replies", "recent to 3", "threads", "recent to none", "todos"} {
 			if !reached[name] {
 				t.Errorf("no budget made the cut of %s: the test proves nothing about it", name)
 			}
 		}
 	})
 
-	t.Run("what is cut is the oldest, and the newest stays", func(t *testing.T) {
+	t.Run("the oldest questions and bugs and the newest todos are cut", func(t *testing.T) {
 		// In this fixture every question is older than every bug, so the questions go
 		// first, oldest first, down to the newest few; then the bugs, down to the newest
-		// few; and only then the todos.
+		// few; and only then the todos, newest first: the oldest, the next to work on,
+		// stay longest.
 		checked := map[string]bool{}
 		for budget := fullTokens; budget >= 300; budget -= 10 {
 			out := mustRun(h, "context", "--max-tokens", fmt.Sprint(budget))
@@ -454,12 +463,19 @@ func TestContextBudget(t *testing.T) {
 					t.Errorf("budget %d: %d older bugs are left out, and that is not the oldest %d:\n%s", budget, k, k, out)
 				}
 			}
-			if k := olderCount(out, "todo list"); k > 0 && k < bigTodos {
+			if olderCount(out, "todo list") != 0 {
+				t.Errorf("budget %d: older todos are said to be left out:\n%s", budget, out)
+			}
+			if k := leftCount(out, "newer", "todo list"); k > 0 && k < bigTodos {
 				checked["todos"] = true
-				if strings.Contains(out, fmt.Sprintf("Todo number %02d ", k-1)) || !strings.Contains(out, fmt.Sprintf("Todo number %02d ", k)) ||
-					!strings.Contains(out, fmt.Sprintf("Todo number %02d ", bigTodos-1)) ||
+				kept := bigTodos - k
+				if !strings.Contains(out, fmt.Sprintf("Todo number %02d ", 0)) || !strings.Contains(out, fmt.Sprintf("Todo number %02d ", kept-1)) ||
+					strings.Contains(out, fmt.Sprintf("Todo number %02d ", kept)) ||
 					olderCount(out, "qa list") != bigQuestions-bigKept || olderCount(out, "bug list") != bigBugs-bigKept {
-					t.Errorf("budget %d: %d older todos are left out, and that is not the oldest %d, or questions and bugs were not cut to the newest %d first", budget, k, k, bigKept)
+					t.Errorf("budget %d: %d newer todos are left out, and that is not the newest %d, or questions and bugs were not cut to the newest %d first:\n%s", budget, k, k, bigKept, out)
+				}
+				if strings.Index(out, fmt.Sprintf("(%d newer; see mtqg todo list)", k)) < strings.Index(out, fmt.Sprintf("Todo number %02d ", kept-1)) {
+					t.Errorf("budget %d: what is left out of the todos is not said after them:\n%s", budget, out)
 				}
 			}
 		}
@@ -498,8 +514,12 @@ func TestContextBudget(t *testing.T) {
 
 // olderCount is how many are said to be left out of a section, in "(N older; see
 // mtqg <list>)", or 0 if nothing is.
-func olderCount(out, list string) int {
-	suffix := " older; see mtqg " + list + ")"
+func olderCount(out, list string) int { return leftCount(out, "older", list) }
+
+// leftCount is how many are said to be left out of a section, in "(N <which>;
+// see mtqg <list>)", or 0 if nothing is.
+func leftCount(out, which, list string) int {
+	suffix := " " + which + "; see mtqg " + list + ")"
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "- (") && strings.HasSuffix(line, suffix) {
 			n, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(line, "- ("), suffix))
@@ -540,7 +560,7 @@ func contextFacts(out string) facts {
 	f.definitionsLeft = strings.Contains(out, "- (definitions left out; see mtqg glossary list)")
 	f.repliesLeft = strings.Contains(out, "left out; see mtqg show <id>)")
 	f.threadsLeft = strings.Contains(out, "older; see mtqg qa list)") || strings.Contains(out, "older; see mtqg bug list)")
-	f.todosLeft = strings.Contains(out, "older; see mtqg todo list)")
+	f.todosLeft = strings.Contains(out, "newer; see mtqg todo list)")
 	return f
 }
 
@@ -616,7 +636,7 @@ func TestContextJSON(t *testing.T) {
 		}
 		todos := field(t, obj, "open_todos").(map[string]any)
 		shown := len(records(t, todos, "records"))
-		if todos["total"] != float64(bigTodos) || (shown < bigTodos && !strings.Contains(text, fmt.Sprintf("(%d older; see mtqg todo list)", bigTodos-shown))) {
+		if todos["total"] != float64(bigTodos) || (shown < bigTodos && !strings.Contains(text, fmt.Sprintf("(%d newer; see mtqg todo list)", bigTodos-shown))) {
 			t.Errorf("todos: total %v, shown %d\n%s", todos["total"], shown, text)
 		}
 		// With the definitions left out a word has no id and no text.

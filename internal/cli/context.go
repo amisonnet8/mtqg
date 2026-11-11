@@ -196,11 +196,12 @@ func (v contextView) lines(d *model.ContextData) []string {
 
 	if d.TodosTotal > 0 {
 		lines := []string{msgContextHeading("Open todos", d.TodosTotal)}
-		if left := d.TodosTotal - len(d.Todos); left > 0 {
-			lines = append(lines, msgContextOlder(left, "todo list"))
-		}
 		for _, r := range d.Todos {
 			lines = append(lines, msgContextItem(v.id(r.ID), contextText(r.Text), oneLine(r.Author.Name), v.when(r.Created)))
+		}
+		// The newest todos are left out first, so what is left out comes after them.
+		if left := d.TodosTotal - len(d.Todos); left > 0 {
+			lines = append(lines, msgContextNewer(left, "todo list"))
 		}
 		section(lines...)
 	}

@@ -72,7 +72,11 @@ review: 親のない返信を見つけない | internal/model/review.go | r.IsRe
 search: 大文字と小文字を区別する | internal/model/search.go | strings.Contains(strings.ToLower(r.Text), q) | strings.Contains(r.Text, q)
 search: 用語の語を探さない | internal/model/search.go | (r.Word != "" && strings.Contains | (false && strings.Contains
 context: 完了した todo も入れる | internal/model/context.go | d.Todos = s.Todos(false) | d.Todos = s.Todos(true)
-context: todo を新しいものから削る | internal/model/context.go | r.Todos = r.Todos[min(n, len(r.Todos)):] | r.Todos = r.Todos[:len(r.Todos)-min(n, len(r.Todos))]
+context: todo を古いものから削る | internal/model/context.go | r.Todos = r.Todos[:len(r.Todos)-min(n, len(r.Todos))] | r.Todos = r.Todos[min(n, len(r.Todos)):]
+context: 最近の記録を最初に3件まで削る | internal/model/context.go | recent(5) | recent(3)
+context: 最近の記録を古い質問・バグより先に0件にする | internal/model/context.go | recent(3) | recent(0)
+context: 最近の記録を0件にしないまま todo を削る | internal/model/context.go | recent(0) | recent(3)
+context: 削った todo を older と言う | internal/cli/context.go | msgContextNewer(left, "todo list") | msgContextOlder(left, "todo list")
 context: 用語の定義を削らない | internal/model/context.go | r.DefinitionsLeft = true⏎⇥r.Glossary = wordsOf(d.Glossary) | r.DefinitionsLeft = false
 context: 最新の3件の質問・バグも削る | internal/model/context.go | const keptThreads = 3 | const keptThreads = 0
 context: 最新の3件のバグだけ削る | internal/model/context.go | canB := len(r.Bugs)-b > keptThreads | canB := len(r.Bugs)-b > 0

@@ -11,7 +11,9 @@ import "slices"
 //
 // An unknown agent or event is a mistake in the command line (exit code 2), the
 // same as any other command's usage error: it does not depend on anything a
-// hook reads at run time. Once the agent and event are known, hook never fails
+// hook reads at run time. So is a bad --max-tokens, or one given to an event
+// that prints no context: falling back to the default quietly would leave the
+// budget unchanged with nothing to say so. Once the command line is right, hook never fails
 // the agent's turn: a journal that cannot be opened, input mtqg cannot parse,
 // or git being unavailable are all quietly nothing to report, with exit code 0
 // (see hookClaudeCode). Unlike every other command, hook does not use exit
@@ -32,9 +34,16 @@ func runHook(c *ctx) int {
 	if !slices.Contains(events, event) {
 		return c.usageFailure(msgUnknownHookEvent(agent, event, events))
 	}
+	if _, given := c.inv.values["--max-tokens"]; given && event != "session-start" {
+		return c.usageFailure(msgHookMaxTokensEvent(event, c.inv.cmd.usage))
+	}
+	budget, ok := c.maxTokens()
+	if !ok {
+		return c.usageFailure(msgBadMaxTokens(c.inv.values["--max-tokens"]))
+	}
 	switch agent {
 	case "claude-code":
-		return c.hookClaudeCode(event)
+		return c.hookClaudeCode(event, budget)
 	default:
 		return c.usageFailure(msgUnknownAgent(agent, initAgents))
 	}

@@ -28,13 +28,9 @@ const maxContextWords = 5
 // says what there is and what is cut first; this measures the words and cuts until
 // they are within the budget.
 func runContext(c *ctx) int {
-	budget := defaultContextTokens
-	if v, ok := c.inv.values["--max-tokens"]; ok {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 0 {
-			return c.usageFailure(msgBadMaxTokens(v))
-		}
-		budget = n
+	budget, ok := c.maxTokens()
+	if !ok {
+		return c.usageFailure(msgBadMaxTokens(c.inv.values["--max-tokens"]))
 	}
 
 	text, cuts, view, reduced, err := c.contextDocument(budget)
@@ -46,6 +42,21 @@ func runContext(c *ctx) int {
 	}
 	_, _ = c.env.Stdout.Write([]byte(text))
 	return exitOK
+}
+
+// maxTokens is the budget --max-tokens gives (context, and hook's
+// session-start), or the default without it. ok is false when the value is not
+// a number of 0 or more.
+func (c *ctx) maxTokens() (budget int, ok bool) {
+	v, given := c.inv.values["--max-tokens"]
+	if !given {
+		return defaultContextTokens, true
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, false
+	}
+	return n, true
 }
 
 // contextDocument builds the text "mtqg context" shows, at the given budget: the

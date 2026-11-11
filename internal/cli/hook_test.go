@@ -37,6 +37,24 @@ func TestHookUsage(t *testing.T) {
 			t.Fatalf("code = %d, stderr = %q", code, errOut)
 		}
 	})
+	// A bad --max-tokens is a mistake in the configuration: said, not ignored,
+	// though hook never fails the turn over what it reads at run time.
+	for _, value := range []string{"many", "-1", ""} {
+		t.Run("--max-tokens "+value+" is a usage error", func(t *testing.T) {
+			h.stdin = `{"session_id":"s1"}`
+			code, out, errOut := h.run("hook", "claude-code", "session-start", "--max-tokens", value)
+			if code != exitUsage || out != "" || !strings.Contains(errOut, "--max-tokens") {
+				t.Fatalf("code = %d, out = %q, stderr = %q", code, out, errOut)
+			}
+		})
+	}
+	t.Run("--max-tokens on stop is a usage error", func(t *testing.T) {
+		h.stdin = `{"session_id":"s1"}`
+		code, out, errOut := h.run("hook", "claude-code", "stop", "--max-tokens", "4000")
+		if code != exitUsage || out != "" || !strings.Contains(errOut, "only for session-start") {
+			t.Fatalf("code = %d, out = %q, stderr = %q", code, out, errOut)
+		}
+	})
 }
 
 func TestHookClaudeCodeSessionStart(t *testing.T) {
@@ -50,6 +68,24 @@ func TestHookClaudeCodeSessionStart(t *testing.T) {
 		_, wantOut, _ := h.run("context")
 		if out != wantOut {
 			t.Fatalf("session-start output differs from context:\ngot:  %q\nwant: %q", out, wantOut)
+		}
+	})
+
+	t.Run("--max-tokens is the budget, as context's is", func(t *testing.T) {
+		h := bigContextHarness(t)
+		for _, budget := range []string{"600", "0"} {
+			h.stdin = `{"session_id":"s1"}`
+			code, out, errOut := h.run("hook", "claude-code", "session-start", "--max-tokens", budget)
+			if code != exitOK || errOut != "" {
+				t.Fatalf("--max-tokens %s: code = %d, stderr = %q", budget, code, errOut)
+			}
+			if want := mustRun(h, "context", "--max-tokens", budget); out != want {
+				t.Errorf("--max-tokens %s: session-start differs from context:\ngot:  %q\nwant: %q", budget, out, want)
+			}
+			h.stdin = `{"session_id":"s1"}`
+			if _, def, _ := h.run("hook", "claude-code", "session-start"); out == def {
+				t.Errorf("--max-tokens %s gives the same as the default: the fixture proves nothing", budget)
+			}
 		}
 	})
 

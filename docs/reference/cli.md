@@ -44,7 +44,7 @@ any language. The storage format is described in [schema.md](schema.md).
 | `mtqg format [--mark] [file]` | Pretty-print event lines found in any text |
 | `mtqg archive <start>..<end> [-n]` | Move the items of a date range out of view (`-n`: only report) |
 | `mtqg init [--agent claude-code] [-n]` | Create `.mtqg/`, optionally wiring up an agent's hooks too (`-n`: only report) |
-| `mtqg hook <agent> <event>` | Run one agent hook event. Called from the agent's own configuration, not typed by hand. See [Agent hooks](#agent-hooks) |
+| `mtqg hook <agent> <event> [--max-tokens N]` | Run one agent hook event. Called from the agent's own configuration, not typed by hand. See [Agent hooks](#agent-hooks) |
 | `mtqg mcp` | Run an MCP server on standard input and output, for an AI agent. See [MCP server](#mcp-server) |
 | `mtqg version` | Show the mtqg version and the repository's format version |
 | `mtqg upgrade [-n]` | Raise the repository's format version (`-n`: only report). See [upgrade](#upgrade) |
@@ -1424,15 +1424,26 @@ Updated: SCHEMA.md (format 1 unchanged)
 ## Agent hooks
 
 ```
-mtqg hook <agent> <event>
+mtqg hook <agent> <event> [--max-tokens N]
 ```
 
 An adapter for one agent's hook event: it reads what the agent gives it on
 standard input, and writes back in the shape that agent expects. It is meant to
 be called from the agent's own configuration (`mtqg init --agent` sets this
 up), not typed by hand. `<agent>` and `<event>` that mtqg does not know are a
-usage error (exit code 2); once they are known, `hook` never fails the agent's
-turn (see below).
+usage error (exit code 2), and so is a `--max-tokens` that is not a number of 0
+or more, or that is given to an event other than `session-start`: these are
+mistakes in the configuration, not something read at run time. Once the
+command line is right, `hook` never fails the agent's turn (see below).
+
+- **`--max-tokens N`** (`session-start` only): the budget of the text it
+  prints, the same as `mtqg context --max-tokens N` (default 2000; `0` means no
+  limit). `mtqg init --agent` writes the hook without it; add it to the
+  command in the agent's configuration to change the budget:
+
+  ```
+  mtqg hook claude-code session-start --max-tokens 4000
+  ```
 
 The only agent today is `claude-code`, with two events:
 
@@ -1440,7 +1451,8 @@ The only agent today is `claude-code`, with two events:
   no `.mtqg/` to find from `cwd`, it prints nothing. Otherwise it remembers what
   the repository looks like right now (the commit `HEAD` points to, and a
   digest of the working tree other than `.mtqg/` itself) under this session, and
-  prints the same text `mtqg context` would, for the agent to read.
+  prints the same text `mtqg context` would (with the same `--max-tokens`), for
+  the agent to read.
 - **`stop`**: reads `session_id`, `cwd` and `stop_hook_active`. It says nothing
   unless all of these hold: the session is one `session-start` saw,
   `stop_hook_active` is not set, nothing has been recorded with mtqg since the

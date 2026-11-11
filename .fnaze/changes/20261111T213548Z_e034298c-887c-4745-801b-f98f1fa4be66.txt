@@ -1,0 +1,23 @@
+# Let the session-start hook take --max-tokens
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	Mutations of hook's --max-tokens: not used, not refused on stop, a bad value not refused
+	rules/
+		cli-output.md	hook also exits 2 for a bad --max-tokens
+.mtqg/
+	journal.jsonl	Memo 54288380ab, todo 42162bc0e7 done
+docs/
+	design/
+		07-integrations.md	Why session-start takes --max-tokens, and why its mistakes exit 2
+	reference/
+		cli.md	mtqg hook takes --max-tokens N for session-start
+		cli_ja.md	The same in Japanese
+internal/
+	cli/
+		context.go	Read --max-tokens in one place, for context and hook
+		messages.go	The wording for --max-tokens given to another event
+		args.go	hook takes the value --max-tokens
+		hook.go	Refuse a bad --max-tokens, or one on another event than session-start, with exit code 2
+		hook_claude.go	session-start prints context within the given budget
+		hook_test.go	The budget of session-start, and the usage errors of --max-tokens

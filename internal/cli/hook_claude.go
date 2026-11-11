@@ -28,8 +28,9 @@ type claudeStopBlock struct {
 // hookClaudeCode runs one Claude Code hook event. Nothing past reading the
 // event name (runHook already checked that) makes this fail the agent's turn:
 // bad input, no .mtqg/ here, or git being unavailable are all quietly nothing
-// to report, with exit code 0 (see runHook).
-func (c *ctx) hookClaudeCode(event string) int {
+// to report, with exit code 0 (see runHook). budget is the --max-tokens of
+// session-start.
+func (c *ctx) hookClaudeCode(event string, budget int) int {
 	var in claudeCodeInput
 	if err := jsonv2.UnmarshalRead(c.env.Stdin, &in); err != nil {
 		c.warning(warningReport{kind: kindHookInput, message: "warning: " + msgHookBadInput(err)})
@@ -46,7 +47,7 @@ func (c *ctx) hookClaudeCode(event string) int {
 	}
 	switch event {
 	case "session-start":
-		return c.hookSessionStart(j, in)
+		return c.hookSessionStart(j, in, budget)
 	case "stop":
 		return c.hookStop(j, in)
 	default:
@@ -56,8 +57,8 @@ func (c *ctx) hookClaudeCode(event string) int {
 
 // hookSessionStart records that a session began here (so hookStop can compare
 // against it later) and prints the same document "mtqg context" would, for
-// Claude Code to add to the agent's context.
-func (c *ctx) hookSessionStart(j *journal.Journal, in claudeCodeInput) int {
+// Claude Code to add to the agent's context, within budget (--max-tokens).
+func (c *ctx) hookSessionStart(j *journal.Journal, in claudeCodeInput, budget int) int {
 	now := c.env.Now()
 	j.PruneSessions(now)
 
@@ -70,7 +71,7 @@ func (c *ctx) hookSessionStart(j *journal.Journal, in claudeCodeInput) int {
 		}
 	}
 
-	text, _, _, _, err := c.contextDocument(defaultContextTokens)
+	text, _, _, _, err := c.contextDocument(budget)
 	if err != nil {
 		return exitOK
 	}

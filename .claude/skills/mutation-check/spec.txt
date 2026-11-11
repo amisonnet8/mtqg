@@ -114,6 +114,9 @@ log --events: --before のあとは見える記録だけにする | internal/cli
 フック: stop_hook_active を見ない | internal/cli/hook_claude.go | if in.StopHookActive || in.SessionID == "" { | if in.SessionID == "" {
 フック: 促したことをセッションに書き戻さない | internal/cli/hook_claude.go | session.Prompted = true⏎⇥if err := j.WriteSession(in.SessionID, session); err != nil { | session.Prompted = true⏎⇥if err := error(nil); err != nil {
 フック: session-start が既にあるセッションを上書きする（compact で開始時の状態を忘れる） | internal/cli/hook_claude.go | if _, already := j.ReadSession(in.SessionID); !already { | if true {
+フック: session-start が --max-tokens を使わない | internal/cli/hook_claude.go | c.contextDocument(budget) | c.contextDocument(defaultContextTokens)
+フック: stop に付けた --max-tokens を断らない | internal/cli/hook.go | given && event != "session-start" | given && event == ""
+フック: 誤った --max-tokens を断らない | internal/cli/hook.go | budget, ok := c.maxTokens()⏎⇥if !ok { | budget, ok := c.maxTokens()⏎⇥if false && !ok {
 MCP: 記録者に接続したクライアントの名前を使わない | internal/cli/mcp.go | Name: clientName} | Name: "mtqg"}
 MCP: ドメインのエラーをツールの結果でなくプロトコルのエラーにする | internal/cli/mcp.go | return mcpErrorResult(c.reportOf(err)), nil, nil | return nil, nil, err
 MCP: 状態が既にそうでも書く | internal/cli/mcp_tools.go | ev, err := model.SetStatus(rec, status)⏎⇥if errors.Is(err, model.ErrNoChange) { | ev, err := model.SetStatus(rec, status)⏎⇥if false {

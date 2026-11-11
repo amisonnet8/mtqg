@@ -1,0 +1,23 @@
+# セッション開始のフックが--max-tokensを受けるようにする
+.claude/
+	skills/
+		mutation-check/
+			spec.txt	hookの--max-tokensの変異：使わない、stopで断らない、誤った値を断らない
+	rules/
+		cli-output.md	hookは誤った--max-tokensでも終了コード2にする
+.mtqg/
+	journal.jsonl	memo 54288380ab、todo 42162bc0e7の完了
+docs/
+	design/
+		07-integrations.md	session-startが--max-tokensを受ける理由と、その誤りを終了コード2にする理由
+	reference/
+		cli.md	mtqg hookがsession-startで--max-tokens Nを受ける
+		cli_ja.md	同じ変更の日本語版
+internal/
+	cli/
+		context.go	--max-tokensを1か所で読み、contextとhookで使う
+		messages.go	ほかのイベントに付けた--max-tokensの文言
+		args.go	hookが値つきの--max-tokensを受ける
+		hook.go	誤った--max-tokensと、session-start以外に付けたものを終了コード2で断る
+		hook_claude.go	session-startが渡された上限でcontextを出す
+		hook_test.go	session-startの上限と、--max-tokensのコマンドラインの誤り

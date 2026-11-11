@@ -427,6 +427,10 @@ func msgUnknownHookEvent(agent, word string, events []string) string {
 	return fmt.Sprintf("Unknown event %q for %s: mtqg knows %s.", word, agent, strings.Join(events, ", "))
 }
 
+func msgHookMaxTokensEvent(event, usage string) string {
+	return fmt.Sprintf("Option --max-tokens is only for session-start, not %s: %s prints no context. Usage: %s", event, event, usage)
+}
+
 func msgHookBadInput(err error) string {
 	return fmt.Sprintf("could not read the hook's input: %v", err)
 }

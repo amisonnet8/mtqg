@@ -1,0 +1,3 @@
+# v1.2.0のリリースを記録する
+.mtqg/
+	journal.jsonl	memo e9dfbaf2ea・2eaae3be68、質問49eaddfe2cの追加と回答（66bd40c017、v1.2.0）と完了

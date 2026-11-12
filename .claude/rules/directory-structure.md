@@ -2,7 +2,7 @@
 
 mtqgは「**コア（ジャーナル層・モデル層）が核、CLIはコアを使う入口の1つ**」という構造を取る（設計§10.7）。新しいファイルを追加する際は、どの層に属するか、どこに置くかをここで確かめる。**構成を変えたら、この文書も同じ変更の中で直す。**
 
-**このリポジトリの説明（`.crube/`）も保つ。** ファイル・ディレクトリを足す・動かす・消すときは、同じ変更の中で英語と日本語の説明を直し、コミットの前に両方の言語で`crube status --require all`を通す。やり方（MCPとCLI、`.crube/ignore`の保ち方）は`.claude/rules/crube-usage.md`
+**このリポジトリの説明（`.crube/`）も保つ。** ファイル・ディレクトリを足す・動かす・消すときは、同じ変更の中で英語と日本語の説明を直し、コミットの前に両方の言語で`crube status --require all --lang en`・`--lang ja`を通す。やり方（MCPとCLI、`.crube/ignore`の保ち方）は`.claude/rules/crube-usage.md`
 
 ```
 mtqg/
@@ -17,7 +17,7 @@ mtqg/
 ├── .golangci.yaml           ← lintの設定（層の依存の向き、文言をCLIの層に限ることも機械的に検査）
 ├── trivy.yaml              ← 脆弱性・ライセンス検査の設定（testing.md）
 ├── .goreleaser.yaml         ← 配布物の作り方（goreleaser。`release.yml`と`qsoku snapshot`が使う。`.claude/rules/distribution.md`）
-├── .mcp.json               ← mtqg・crube（英語の`crube`・日本語の`crube-ja`）・fnazeのMCPサーバーの配線
+├── .mcp.json               ← mtqg・crube・fnazeのMCPサーバーの配線
 ├── .crube/                 ← このリポジトリのファイルの説明（crube。`structure.txt`は英語、`structure_ja.txt`は日本語、`ignore`は`.gitignore`に合わせて手で保つ）。**コミットする**
 ├── .fnaze/changes/         ← コミットごとの説明（fnaze。`.claude/rules/fnaze-usage.md`）。**コミットする**
 ├── .githooks/              ← git のフック（`pre-commit`：説明の無いコミットを止める。`core.hooksPath`は`postCreate.sh`が設定する）
@@ -77,7 +77,7 @@ mtqg/
 - **`docs/examples/`**: 実装完了後に、英語版（`examples.md`）と日本語版（`examples_ja.md`）を最初から両方作った（2026-09-28、`PLAN.md`「公開前にやること」）。当初は歩いて回る入門を`docs/tour/`に分けていたが、単体の文書としては小さすぎたため、`docs/examples/`の冒頭の節に統合し`docs/tour/`は廃止した（同日、人間の指摘）。例の実行・確認は`e2e/examples_test.go`が`docs/reference/`と同じしくみで担う
 - **README**: **看板としてのREADMEは最後に作る**（`PLAN.md`「READMEとGitHubの看板」）。先に作ってはいけない。ただしリポジトリはpublicなので、未完成の間は**注意書きだけの`README.md`・`README_ja.md`**をルートに置く（Step 1）。注意書きに売り文句・機能の説明・使い方を足さない
 - **`.mtqg/`**: コミットされる。中のファイルは直接編集せず、すべて`mtqg`のコマンド経由で書く（`.claude/rules/mtqg-usage.md`）。`.mtqg/.local/`はコミットされない
-- **`.mcp.json`**: `mtqg mcp`（MCPサーバー）の配線。`mtqg init --agent claude-code`が書くものと同じ。呼ぶ`mtqg`は作業中のソースから入れたもの（`.claude/rules/mtqg-usage.md`）。その後ろに、crubeのMCPサーバー（`crube mcp --allow-write`。`crube-ja`は`CRUBE_LANG=ja`）を手で足している（`.claude/rules/crube-usage.md`）。最後に、fnazeのMCPサーバー（`fnaze mcp --allow-write`。1つだけ）を足している（`.claude/rules/fnaze-usage.md`）
+- **`.mcp.json`**: `mtqg mcp`（MCPサーバー）の配線。`mtqg init --agent claude-code`が書くものと同じ。呼ぶ`mtqg`は作業中のソースから入れたもの（`.claude/rules/mtqg-usage.md`）。その後ろに、crubeのMCPサーバー（`crube mcp --allow-write`。1つだけで、言語は道具の引数`lang`）を手で足している（`.claude/rules/crube-usage.md`）。最後に、fnazeのMCPサーバー（`fnaze mcp --allow-write`。1つだけ）を足している（`.claude/rules/fnaze-usage.md`）
 - **`.crube/`**: このリポジトリのファイルとディレクトリの説明（`.claude/rules/crube-usage.md`）。**コミットする**（`.gitignore`の`!/.crube/`）。`ignore`は`.gitignore`を手で写したもの（crube は`.gitignore`を読まない）。ただし、`.fnaze/changes/`の説明のファイルは、説明を付けず`ignore`でだけ外す（パターンのエントリにすると、最初の`fnaze new`まで何にも当たらず`orphan`になるため）
 - **`.fnaze/`**: コミットごとの説明を fnaze で書き、そのコミットに入れる（`.claude/rules/fnaze-usage.md`）。**コミットする**（`.gitignore`の`!/.fnaze/`）。`.devcontainer/postCreate.sh`が無ければ`fnaze init`で作る
 - **`.githooks/`**: 追跡する git のフック。`.git/hooks/`は git に乗らないので、ここに置いて`core.hooksPath`で指す（`.devcontainer/postCreate.sh`）。`pre-commit`は fnaze の`docs/examples/pre-commit`と、先頭のコメントのほかは同じ中身

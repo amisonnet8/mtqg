@@ -44,7 +44,7 @@
 .gitignore	Files kept out of git; dot entries in the root are an allowlist
 .golangci.yaml	golangci-lint settings, including the direction of the layers (depguard) and printing only in internal/cli (forbidigo)
 .goreleaser.yaml	How the release archives are made (goreleaser): used by release.yml and qsoku snapshot
-.mcp.json	MCP servers for Claude Code: mtqg, crube in English and Japanese, and fnaze
+.mcp.json	MCP servers for Claude Code: mtqg, crube (one server, the language passed as lang) and fnaze
 CLAUDE.md	Rules for Claude Code in this repository, and the rule files to read
 LICENSE	MIT license
 PLAN.md	Implementation plan and progress (Japanese): stages, where things stand, pending items

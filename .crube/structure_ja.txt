@@ -44,7 +44,7 @@
 .gitignore	git に入れないもの。ルート直下のドットで始まる名前は許可リスト方式
 .golangci.yaml	golangci-lint の設定。層の依存の向き（depguard）と、出力を internal/cli に限ること（forbidigo）も検査する
 .goreleaser.yaml	配布物の作り方（goreleaser）。release.yml と qsoku snapshot が使う
-.mcp.json	Claude Code に mtqg と、crube（英語・日本語）と、fnaze の MCP サーバーをつなぐ設定
+.mcp.json	Claude Code に mtqg・crube（サーバーは1つで、言語は引数 lang）・fnaze の MCP サーバーをつなぐ設定
 CLAUDE.md	このリポジトリでの Claude Code のルールと、読むべきルールファイルの案内
 LICENSE	MIT ライセンス
 PLAN.md	実装計画と進み具合（日本語）：段階、現在地、保留事項

@@ -87,14 +87,12 @@
     ],
     "allow": [
       "mcp__crube",
-      "mcp__crube-ja",
       "mcp__fnaze"
     ]
   },
   "enabledMcpjsonServers": [
     "mtqg",
     "crube",
-    "crube-ja",
     "fnaze"
   ]
 }

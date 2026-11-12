@@ -104,7 +104,7 @@ go install github.com/amisonnet8/qsoku/cmd/qsoku@latest
 go install ./cmd/mtqg
 
 # crube: descriptions of this repository's files and directories in .crube/,
-# used by Claude Code through the crube / crube-ja MCP servers of .mcp.json,
+# used by Claude Code through the crube MCP server of .mcp.json,
 # the CLI and the hook .claude/hooks/crube-untracked.sh
 # (.claude/rules/crube-usage.md). @latest, like the tools above.
 go install github.com/amisonnet8/crube/cmd/crube@latest

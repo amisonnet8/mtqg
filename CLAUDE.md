@@ -23,7 +23,7 @@
   - `docs/reference/`は**実装しながら育てる文書**であり、**実装と仕様がずれたらここを更新すること**
 - **`docs/design/`** — 今の設計と、その判断の理由（日本語）。「なぜこうなっているか」はここにある。`docs/design/README.md`に章とファイルの対応がある。本文や`.claude/rules/`中の「設計§7.4」はここの節番号、「CLI設計§4.5」は`docs/design/cli.md`の節番号。**仕様と食い違う場合は`docs/reference/`が正**
 - **`.claude/rules/qsoku-usage.md`** — qsokuの使い方（`qsokufile`の名前の一覧、呼び方、書式、`//`、シェル連携）。**ビルド・テスト・lintは`go`などを直接打たず、ここの名前で実行する**
-- **`.claude/rules/crube-usage.md`** — crubeの使い方（MCPの`crube`・`crube-ja`とCLI、場所の探し方、英語と日本語の説明の保ち方）。**場所を探す前、ファイルを足す・動かす・消す前に読む**
+- **`.claude/rules/crube-usage.md`** — crubeの使い方（MCPの`crube`とCLI、言語の渡し方、場所の探し方、英語と日本語の説明の保ち方）。**場所を探す前、ファイルを足す・動かす・消す前に読む**
 - **`.claude/rules/fnaze-usage.md`** — fnazeの使い方（コミットごとに、変えたファイルの説明を英語と日本語で書き、一緒にコミットする手順、pre-commit、落とし穴）。**コミットする前に読む**
 - **`.claude/rules/directory-structure.md`** — ディレクトリ構成（コアの2層とCLIの層、配置の判断基準、`schema.go`）。**新しいファイルを追加するときに読む**
 - **`.claude/rules/journal-format.md`** — データ形式の扱い（追記だけの原則、書き込みの手順とロック、書き出し規則、形式のバージョン）。**データに触れる作業では必ず読む**
@@ -51,7 +51,7 @@
 
 - 現在の段階とステップは`PLAN.md`の「現在地」を確認すること。進んだら、そちらを更新すること
 - **ファイルの変更は、組み込みの`Edit`・`Write`で行う。** Bashでの書き換え（`sed -i`・リダイレクト）はしない（ビルドとcrubeのフックが動かない。下の「権限・自動化について」）
-- **このリポジトリの中の場所は、まずcrubeで引く**（MCPの`find`・`tree`・`show`、または`crube find …`）。ファイル・ディレクトリを足す・動かす・消すときは、同じ変更の中で英語と日本語の説明を直し、コミットの前に両方の言語で`crube status --require all`を通す（`.claude/rules/crube-usage.md`）
+- **このリポジトリの中の場所は、まずcrubeで引く**（MCPの`find`・`tree`・`show`、または`crube find …`）。ファイル・ディレクトリを足す・動かす・消すときは、同じ変更の中で英語と日本語の説明を直し、コミットの前に両方の言語で`crube status --require all --lang en`・`--lang ja`を通す（`.claude/rules/crube-usage.md`）
 - 実装後は`.claude/rules/testing.md`に従い、ビルド確認に加えて実際の動作確認（`qsoku check`、必要に応じて`qsoku test`・`qsoku race`・`qsoku trivy`・`qsoku shellcheck`）を行うこと。判断に迷ったら実行する側に倒すこと
 - **設計判断を変える場合は、まず`docs/reference/`を更新してから着手すること。** 実装が先行して仕様が後追いになると、どちらが正なのか分からなくなる。判断の理由が大きく変わる場合は、`docs/design/`の該当節を今の設計に合わせて直す。経緯をどこまで`docs/design/`に書き、どこからmtqgに記録するかは`.claude/rules/documentation.md`「`docs/design/`に書く経緯」に従う
 - **依存ライブラリは、Goの標準ライブラリと`golang.org/x/`だけを使う。** それ以外は「どうしても必要な場合」の例外とし、①標準・`x/`に無い、または②自前で書くと量が多く、正しさや安全性の確認が難しい、のどちらかを説明して確認を取り、理由を`PLAN.md`に記録すること。追加したらTrivyでライセンス（MITと衝突しないか）と脆弱性を確認すること（`.claude/rules/testing.md`）。基準が線引きなのは、信頼の根をGoチームに絞り、そのたびに議論しなくて済むようにするため
@@ -109,9 +109,9 @@
 
 ビルドの自動フック（`PostToolUse`）が設定されている。`Edit`・`Write`・`MultiEdit`で`.go`・`go.mod`・`go.sum`を変えると`.claude/hooks/build.sh`が`qsoku build`を実行し、失敗すると理由がClaude Codeに返る。複数ファイルにまたがる編集の途中は、まだ書いていないファイルを参照して一時的に失敗することがある（`PLAN.md`「保留事項」参照）。
 
-**crubeの配線**：`.mcp.json`に、crubeのMCPサーバーが2つある（`crube`は英語、`crube-ja`は日本語。`crube mcp --allow-write`）。`Write`のあとには`.claude/hooks/crube-untracked.sh`が、説明の無いパスを言語ごとに知らせる（止めはしない）。詳細は`.claude/rules/crube-usage.md`。
+**crubeの配線**：`.mcp.json`に、crubeのMCPサーバーが1つある（`crube`。`crube mcp --allow-write`）。言語は、道具の引数`lang`（CLIは`--lang`）でいつも明示する。`Write`のあとには`.claude/hooks/crube-untracked.sh`が、説明の無いパスを言語ごとに知らせる（止めはしない）。詳細は`.claude/rules/crube-usage.md`。
 
-**fnazeの配線**：`.mcp.json`に、fnazeのMCPサーバーが1つある（`fnaze mcp --allow-write`）。fnaze の道具は言語を引数で受けるので、crube のように言語ごとに分けない。git のフックは`.githooks/`にあり、`.devcontainer/postCreate.sh`が`core.hooksPath`をそこへ向ける。詳細は`.claude/rules/fnaze-usage.md`。
+**fnazeの配線**：`.mcp.json`に、fnazeのMCPサーバーが1つある（`fnaze mcp --allow-write`）。fnaze の道具も、言語を引数で受ける。git のフックは`.githooks/`にあり、`.devcontainer/postCreate.sh`が`core.hooksPath`をそこへ向ける。詳細は`.claude/rules/fnaze-usage.md`。
 
 ## mtqg自身の記録について
 

@@ -1,0 +1,23 @@
+# crube の MCP サーバーを1つにして言語を引数で渡し、ルールの更新に追随する
+.mtqg/
+	journal.jsonl	mtqg：rule d8c14b17aa の edit、todo a979b8e162 の追加と完了、memo daac7ef421
+.claude/
+	hooks/
+		crube-untracked.sh	crube status に CRUBE_LANG でなく --lang を渡す（crube v0.2.0）
+	rules/
+		crube-usage.md	MCP サーバーを1つにし引数 lang で言語を渡す。言語はいつも明示する。パス・status・set の -- の落とし穴を足した
+		datetime.md	TZ を変えても go test はキャッシュを返すので、GOFLAGS=-count=1 を付けることを足した
+		directory-structure.md	.mcp.json の crube を1つのサーバーとし、crube status を --lang en・--lang ja の形にした
+		fnaze-usage.md	title・set・rm では、題・パス・desc の前にいつも -- を付ける
+	settings.json	許可と有効なサーバーから crube-ja の MCP サーバーを外した
+	skills/
+		mutation-check/
+			SKILL.md	spec.txt に空白で挟んだ縦棒を書くと一覧ぜんたいが回らないことを足した
+.crube/
+	structure.txt	.mcp.json の説明を、crube のサーバーが1つで言語は引数 lang の形に直した（crube set）
+	structure_ja.txt	.mcp.json の説明を、crube のサーバーが1つで言語は引数 lang の形に直した（crube set --lang ja）
+.devcontainer/
+	postCreate.sh	コメント：Claude Code が使う crube の MCP サーバーは1つ
+.mcp.json	crube-ja のサーバーを消した。crube は言語を引数 lang で受ける
+CLAUDE.md	crube の MCP サーバーを1つとし引数 lang を書いた。crube status を --lang en・--lang ja の形にした
+PLAN.md	現在地：crube の MCP サーバーを1つにしたことと、合わせて入ったルールの更新

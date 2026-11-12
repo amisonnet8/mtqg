@@ -1,0 +1,23 @@
+# Use one crube MCP server with the language as an argument, and follow the rule updates
+.mtqg/
+	journal.jsonl	mtqg: edit of rule d8c14b17aa, todo a979b8e162 added and done, memo daac7ef421
+.claude/
+	hooks/
+		crube-untracked.sh	Pass --lang to crube status instead of CRUBE_LANG (crube v0.2.0)
+	rules/
+		crube-usage.md	One MCP server with the lang argument; always name the language; pitfalls of paths, status and set --
+		datetime.md	Add GOFLAGS=-count=1 when changing TZ, since go test returns cached results
+		directory-structure.md	Describe .mcp.json with one crube server, and run crube status with --lang en and --lang ja
+		fnaze-usage.md	Always put -- before the title, path and desc of title, set and rm
+	settings.json	Drop the crube-ja MCP server from the allow list and the enabled servers
+	skills/
+		mutation-check/
+			SKILL.md	Note that a space-padded vertical bar in spec.txt breaks the whole list
+.crube/
+	structure.txt	.mcp.json: one crube server, the language passed as lang (crube set)
+	structure_ja.txt	.mcp.json: one crube server, the language passed as lang (crube set --lang ja)
+.devcontainer/
+	postCreate.sh	Comment: Claude Code uses one crube MCP server
+.mcp.json	Remove the crube-ja server; crube takes the language as the lang argument
+CLAUDE.md	Describe one crube MCP server and the lang argument; run crube status with --lang en and --lang ja
+PLAN.md	Where things stand: one crube MCP server and the rule updates that came with it

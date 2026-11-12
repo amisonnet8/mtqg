@@ -25,4 +25,5 @@
 ## テスト
 
 - 固定した日時で確かめる。タイムゾーンに関わる変更は、`TZ=UTC` と `TZ=Asia/Tokyo` の両方で流す（手元は JST、CI は UTC のことが多い。文字列比較のテストは、手元でだけ通る）
+  - **`TZ`を変えても、`go test`のキャッシュは前の結果を返す**（`(cached)`と出る）。`TZ=Asia/Tokyo GOFLAGS=-count=1 qsoku unit`のように、`GOFLAGS=-count=1`を付けて流す
 - 表示が `TZ` に従うことは、`time.Local` を差し替えるテストで確かめる
